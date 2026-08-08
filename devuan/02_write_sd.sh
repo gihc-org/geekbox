@@ -14,6 +14,10 @@ lsblk -d -o NAME,SIZE,MODEL,TRAN "$DEV"
 read -rp "ALT på $DEV slettes. Tast JA for at fortsætte: " svar
 [ "$svar" = "JA" ] || { echo "afbrudt"; exit 1; }
 
+echo "== afmounter evt. auto-mountede partitioner =="
+umount "$DEV"?* 2>/dev/null || true
+sleep 1
+
 echo "== partitionering =="
 parted -s "$DEV" mklabel msdos
 parted -s "$DEV" mkpart primary ext4 4MiB 100%
