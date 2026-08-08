@@ -10,7 +10,7 @@ UT="$PROJ/Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool"
 lsusb | grep -q 2207: || { echo "FEJL: ingen Rockchip-enhed (2207:xxxx) på USB"; exit 1; }
 
 echo "== skriver ny parameter (root=LABEL=sdrootfs1) =="
-"$UT" DI -p "$PROJ/devuan/parameter_sdroot"
+"$UT" DI -p "$PROJ/devuan/parameter_sdroot.txt"
 
 echo ""
 echo "== FÆRDIG hvis der står 'Download image ok'/'success' ovenfor. =="
