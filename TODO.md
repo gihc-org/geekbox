@@ -1,4 +1,22 @@
-# TODO: Mainline kernel + nyere Linux på GeekBox (RK3368)
+# TODO: Nyere Linux på GeekBox (RK3368)
+
+## Spor A (aktivt): Devuan Excalibur med vendor-kernel — I GANG
+
+Moderne userspace (Devuan Excalibur/Trixie-base, armhf) på vendor-kernen 3.10.79.
+Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC, root på SD via
+ændret parameter (`root=LABEL=sdrootfs1`, RK-CRC genberegnet). Scripts i `devuan/`:
+
+- [x] Udpak update.img (rkfwtools) — analysér boot-flow: monolitisk kernel, initramfs mounter via LABEL
+- [x] Verificér parameter-format mod vendor U-Boot-kilde (`lollipop_u-boot`): sector 0, PARM+crc32_rk
+- [x] 01: debootstrap Devuan rootfs (kræver Devuans egen debootstrap pga. cron-daemon-common/systemd)
+- [ ] 02: skriv rootfs til SD (ext4 uden metadata_csum/64bit — kernel 3.10)
+- [ ] 03: flash modificeret parameter til eMMC sector 0 (04 gendanner)
+- [ ] Test-boot, login root/geekbox — verificér netværk + ssh
+- [ ] WiFi: bcmdhd + firmware fra `/system/etc/firmware` (allerede kopieret til rootfs)
+- [ ] Desktop: vendor's libhybris GPU-stack (armhf blobs i vendor_root/usr/local/lib) — research
+- [ ] Opdatér README.md med metoden + commit
+
+## Spor B (parket indtil videre): Mainline kernel + nyere Linux på GeekBox (RK3368)
 
 Mål: Erstatte vendor-kernen (3.10.79 fra 2015) med en mainline LTS-kernel og en moderne
 arm64-userspace. Arbejdet sker på microSD-kort, så eMMC med den fungerende Lubuntu V160309

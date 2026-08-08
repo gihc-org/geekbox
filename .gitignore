@@ -2,6 +2,16 @@
 *.7z
 *.zip
 *.bin
+*.deb
 Geekbox_Lubuntu_V160309/
 Linux_Upgrade_Tool_v1.23/
 UpgradeTool_Geekbox_v1.39/
+
+# Store artefakter fra Devuan-arbejdet (regenereres via scripts i devuan/)
+extracted/
+vendor_root/
+devuan/rootfs/
+devuan/keyring/
+devuan/debootstrap-pkg/
+lollipop_u-boot/
+rkfwtools/
