@@ -28,7 +28,9 @@ sleep 2
 umount "$DEV"?* 2>/dev/null || true
 
 echo "== filsystem (ext4 uden features kernel 3.10 ikke kender) =="
-mkfs.ext4 -q -F -L sdrootfs1 -O has_journal,ext_attr,resize_inode,dir_index,filetype,extent,flex_bg,sparse_super,large_file,huge_file,uninit_bg,dir_nlink,extra_isize "${DEV}1"
+# Bemærk: -O med positiv liste TILFØJER til standarderne — metadata_csum og 64bit
+# (som 3.10 ikke understøtter) skal slås fra eksplicit med ^
+mkfs.ext4 -q -F -L sdrootfs1 -O has_journal,ext_attr,resize_inode,dir_index,filetype,extent,flex_bg,sparse_super,large_file,huge_file,uninit_bg,dir_nlink,extra_isize,^64bit,^metadata_csum,^metadata_csum_seed,^orphan_file "${DEV}1"
 
 echo "== kopierer rootfs (tager lidt tid) =="
 MNT=$(mktemp -d)
