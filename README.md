@@ -102,6 +102,18 @@ sudo rkdeveloptool db RK3368MiniLoaderAll_V2.26.bin   # upload loader → enhede
 Bemærk: `rkdeveloptool` kan ikke flash en `update.img` direkte — imaget skal pakkes ud i
 enkelte partitions-images først (fx med `rkfwtools`/`imgRePackerRK`). Derfor er `upgrade_tool uf` at foretrække.
 
+## Efter dd af et image til SD: udvid filsystemet
+
+Et dd'et image fylder ikke hele SD-partitionen — filsystemet tror, det er lige så stort
+som imaget (fx 1,4 GB på en 14,5 GB partition), og man rammer "No space left on device".
+Udvid online (kan gøres på den kørende boks, mens / er mountet):
+
+```bash
+sudo resize2fs /dev/mmcblk1p1   # SD-kortets root-partition på boksen
+```
+
+Eller fra PC'en med kortet i læseren (afmountet): `sudo resize2fs /dev/sda1`
+
 ## Kilder (verificeret august 2026)
 
 - **Firmware** (direkte downloads, verificeret fungerende):
