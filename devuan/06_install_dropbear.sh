@@ -12,4 +12,9 @@ chroot "$ROOTFS" /usr/bin/apt-get update
 chroot "$ROOTFS" /usr/bin/apt-get install -y --no-install-recommends dropbear
 rm -f "$ROOTFS/usr/bin/qemu-arm-static"
 chroot "$ROOTFS" /usr/bin/apt-get clean
+
+# debug-init med i rootfs, så script 02 får den med på kortet
+cp "$PROJ/devuan/myinit.sh" "$ROOTFS/root/myinit.sh"
+chmod +x "$ROOTFS/root/myinit.sh"
+
 echo "== FÆRDIG: dropbear installeret i rootfs =="
