@@ -13,8 +13,8 @@ ip addr add 192.168.1.50/24 dev eth0
 ip route add default via 192.168.1.254
 
 # ssh så tidligt som overhovedet muligt
-/usr/sbin/sshd
-# debug-sshd på port 2222: logger hele handshake til /root/sshd.log
+# dropbear på port 22 (virker på 3.10); openssh på 2222 fejler pga. seccomp på gammel kernel
+dropbear -R -p 22
 /usr/sbin/sshd -ddd -p 2222 -E /root/sshd.log
 
 {
