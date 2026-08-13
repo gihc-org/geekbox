@@ -1,20 +1,28 @@
 # TODO: Nyere Linux på GeekBox (RK3368)
 
-## Spor A (aktivt): Devuan Excalibur med vendor-kernel — I GANG
+## Spor A (aktivt): Devuan Excalibur med vendor-kernel — BOOTER ✅ (aug 2026)
 
 Moderne userspace (Devuan Excalibur/Trixie-base, armhf) på vendor-kernen 3.10.79.
 Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC, root på SD via
-ændret parameter (`root=LABEL=sdrootfs1`, RK-CRC genberegnet). Scripts i `devuan/`:
+ændret parameter (`DI -p` med tekst-parameter). Scripts i `devuan/`:
 
 - [x] Udpak update.img (rkfwtools) — analysér boot-flow: monolitisk kernel, initramfs mounter via LABEL
 - [x] Verificér parameter-format mod vendor U-Boot-kilde (`lollipop_u-boot`): sector 0, PARM+crc32_rk
 - [x] 01: debootstrap Devuan rootfs (kræver Devuans egen debootstrap pga. cron-daemon-common/systemd)
-- [ ] 02: skriv rootfs til SD (ext4 uden metadata_csum/64bit — kernel 3.10)
-- [ ] 03: flash modificeret parameter til eMMC sector 0 (04 gendanner)
-- [ ] Test-boot, login root/geekbox — verificér netværk + ssh
-- [ ] WiFi: bcmdhd + firmware fra `/system/etc/firmware` (allerede kopieret til rootfs)
+- [x] 02: skriv rootfs til SD — ext4 SKAL laves med `^64bit,^metadata_csum` (ellers "error loading journal" på 3.10)
+- [x] 03: flash modificeret parameter via `DI -p` (tekstfil-format; 04 gendanner)
+- [x] Bevis SD-vejen: Lubuntu rootfs fra SD booter fint (findmnt viser /dev/disk/by-label/sdrootfs1)
+- [x] chroot-test: Excalibur-userspace kører på 3.10
+- [x] OpenSSH 10 virker IKKE på 3.10 (seccomp-sandbox dræber preauth; syscall 397/403 mangler) → **dropbear** bruges i stedet (06)
+- [x] Boot-hæng løst: 14.04-initramfs flytter ikke /proc,/sys,/dev ind i nyt root → sysvinit hænger i rcS. Løsning: **`myinit.sh` som PID1-shim** (init=/root/myinit.sh) der mounter selv, starter netværk+dropbear, logger til kortet, og exec'er /sbin/init
+- [x] **Ren uovervåget boot til runlevel 2 med ssh verificeret** (aug 2026)
+
+Videre:
+- [ ] WiFi: wlan0 ses allerede (bcmdhd + firmware fra vendor); konfigurér wpa_supplicant
+- [ ] Skift root-kodeord (nu `geekbox`); overvej at låse PermitRootLogin
 - [ ] Desktop: vendor's libhybris GPU-stack (armhf blobs i vendor_root/usr/local/lib) — research
-- [ ] Opdatér README.md med metoden + commit
+- [ ] RTC: boksen har ingen batteri-backup — tid starter i 2013 ved hver boot (ntp/chrony ved netværk)
+- [ ] Klon SD til de øvrige bokse (dd) — husk at parameter-flashe hver boks (03)
 
 ## Spor B (parket indtil videre): Mainline kernel + nyere Linux på GeekBox (RK3368)
 

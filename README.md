@@ -129,6 +129,6 @@ Eller fra PC'en med kortet i læseren (afmountet): `sudo resize2fs /dev/sda1`
 
 ## Videre muligheder
 
-- **Devuan-sporet (i gang):** Nyere userspace (Devuan Excalibur, armhf) på vendor-kernen med root på SD-kort — se `devuan/` og TODO.md. Metode: `DI -p` med modificeret parameter (`root=LABEL=sdrootfs1`), boot-kæden på eMMC urørt
+- **Devuan-sporet (BOOTER ✅ aug 2026):** Devuan Excalibur (armhf) på vendor-kernen med root på SD — se `devuan/` og TODO.md. Opskrift: 01 bygger rootfs (Devuans egen debootstrap), 02 skriver SD (ext4 med `^64bit,^metadata_csum`!), 03 flasher parameter (`DI -p`, tekstformat). Bemærk to fælder løst undervejs: OpenSSH 10's seccomp-sandbox dør på 3.10 → brug **dropbear**; og 14.04-initramfs'en flytter ikke /proc,/sys,/dev ind i det nye root → **`myinit.sh` som PID1-shim** løser det (og giver tidlig netværk+ssh som bonus)
 - Mainline-kernen har device-tree for GeekBox (`rk3368-geekbox.dts`), men aktiverer ikke HDMI/GPU/WiFi — realistisk kun som headless server
 - Armbian understøtter ikke RK3368
