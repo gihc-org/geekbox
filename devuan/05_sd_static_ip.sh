@@ -1,24 +1,28 @@
 #!/bin/bash
-# 05: Giver SD-kortets Lubuntu statisk IP 192.168.0.50 + ssh ved boot (headless debugging).
-# Kør med kortet i læseren: sudo devuan/05_sd_static_ip.sh /dev/sda1
+# 05: Giver SD-kortets Lubuntu statisk IP + ssh ved boot (headless debugging).
+# Kør med kortet i læseren: sudo devuan/05_sd_static_ip.sh /dev/sda1 [IP]
+# Standard-IP: 192.168.0.50 (gateway antages at være .1 på samme subnet)
 set -euo pipefail
-DEV=${1:?Brug: $0 /dev/sdX1}
+DEV=${1:?Brug: $0 /dev/sdX1 [IP]}
+IP=${2:-192.168.0.50}
 [ -b "$DEV" ] || { echo "FEJL: $DEV er ikke en blok-enhed"; exit 1; }
+GW=$(echo "$IP" | sed -E 's/\.[0-9]+$/.1/')
+echo "$IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || { echo "FEJL: ugyldig IP '$IP'"; exit 1; }
 
 MNT=$(mktemp -d)
 mount "$DEV" "$MNT"
 trap 'umount "$MNT"; rmdir "$MNT"' EXIT
 
-cat > "$MNT/etc/network/interfaces" <<'EOF'
+cat > "$MNT/etc/network/interfaces" <<EOF
 auto lo
 iface lo inet loopback
 
 auto eth0
 iface eth0 inet static
-    address 192.168.0.50
+    address $IP
     netmask 255.255.255.0
-    gateway 192.168.0.1
-    dns-nameservers 192.168.0.1
+    gateway $GW
+    dns-nameservers $GW
 EOF
 sync
-echo "== OK: $DEV får statisk IP 192.168.0.50 ved næste boot =="
+echo "== OK: $DEV får statisk IP $IP (gateway $GW) ved næste boot =="
