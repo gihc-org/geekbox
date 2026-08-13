@@ -16,9 +16,13 @@ if ! ip addr show eth0 | grep -q "inet "; then
     ip addr add 192.168.1.50/24 dev eth0
     ip route add default via 192.168.1.254
 fi
+# DNS (boksen har ingen RTC — ved statisk fallback skal nameserver sættes her)
+grep -q nameserver /etc/resolv.conf 2>/dev/null || \
+    echo "nameserver $(ip route | awk '/default/ {print $3; exit}')" > /etc/resolv.conf
 
 # dropbear virker på 3.10; OpenSSH 10 gør ikke (seccomp-sandbox kræver nyere kernel)
-dropbear -R -p 22
+# -s: kun nøgle-login, ingen kodeord
+dropbear -s -R -p 22
 
 {
   echo "=== myinit $(date) ==="

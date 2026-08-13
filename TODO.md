@@ -17,12 +17,14 @@ Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC, root på SD 
 - [x] Boot-hæng løst: 14.04-initramfs flytter ikke /proc,/sys,/dev ind i nyt root → sysvinit hænger i rcS. Løsning: **`myinit.sh` som PID1-shim** (init=/root/myinit.sh) der mounter selv, starter netværk+dropbear, logger til kortet, og exec'er /sbin/init
 - [x] **Ren uovervåget boot til runlevel 2 med ssh verificeret** (aug 2026)
 
-Videre:
+Videre (prioriteret rækkefølge, aftalt aug 2026):
+- [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
+- [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [ ] WiFi: wlan0 ses allerede (bcmdhd + firmware fra vendor); konfigurér wpa_supplicant
-- [ ] Skift root-kodeord (nu `geekbox`); overvej at låse PermitRootLogin
-- [ ] Desktop: vendor's libhybris GPU-stack (armhf blobs i vendor_root/usr/local/lib) — research
-- [ ] RTC: boksen har ingen batteri-backup — tid starter i 2013 ved hver boot (ntp/chrony ved netværk)
-- [ ] Klon SD til de øvrige bokse (dd) — husk at parameter-flashe hver boks (03)
+- [ ] Grafisk miljø: X + LXDE via **fbdev** (/dev/fb0 findes; vendor-Lubuntu brugte fbdev, ikke GPU) — `xserver-xorg-video-fbdev xinit lxde-core lightdm`. Software-rendering, men brugbart på 8×A53
+- [ ] Klon SD til de øvrige bokse (dd) — husk parameter-flash pr. boks (03)
+- [ ] RTC: boksen har ingen batteri — tid starter i 2013 ved hver boot (apt brokker sig). Installér chrony/ntpsec, eller sæt dato ved netværk i myinit
+- [ ] Desktop med GPU: vendor's libhybris-stak (armhf blobs i vendor_root/usr/local/lib) — research, lav prioritet (fbdev dækker det meste)
 
 ## Spor B (parket indtil videre): Mainline kernel + nyere Linux på GeekBox (RK3368)
 
