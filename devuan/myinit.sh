@@ -14,6 +14,8 @@ ip route add default via 192.168.1.254
 
 # ssh så tidligt som overhovedet muligt
 /usr/sbin/sshd
+# debug-sshd på port 2222: logger hele handshake til /root/sshd.log
+/usr/sbin/sshd -ddd -p 2222 -E /root/sshd.log
 
 {
   echo "=== myinit $(date) ==="
