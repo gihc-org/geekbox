@@ -1,0 +1,25 @@
+#!/bin/sh
+# zzbootlog — engangs-debug: dump boot-tilstand til /root/bootlog.txt på SD-kortet.
+# Kører sent i rcS (S99). Bruges til headless fejlsøgning uden seriel konsol.
+exec >/root/bootlog.txt 2>&1
+echo "=== zzbootlog $(date) ==="
+echo "--- ip addr (før):"; ip addr
+echo "--- ip route:"; ip route
+
+# Hvis eth0 ikke har IPv4: prøv DHCP, ellers fald tilbage til statisk
+if ! ip addr show eth0 | grep -q "inet "; then
+    echo "--- eth0 uden IPv4, kører dhclient:"
+    ip link set eth0 up
+    dhclient -1 -v eth0 2>&1 | tail -8 || true
+fi
+if ! ip addr show eth0 | grep -q "inet "; then
+    echo "--- dhcp fejlede, sætter statisk 192.168.1.50:"
+    ip addr add 192.168.1.50/24 dev eth0
+    ip route add default via 192.168.1.254
+fi
+
+echo "--- ip addr (efter):"; ip addr
+echo "--- ip route (efter):"; ip route
+echo "--- dmesg tail:"; dmesg | tail -40
+echo "=== BOOTLOG-END ==="
+sync
