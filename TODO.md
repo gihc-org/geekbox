@@ -21,8 +21,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)
-- [ ] Grafisk miljø: X + LXDE via **fbdev** (/dev/fb0 findes; vendor-Lubuntu brugte fbdev, ikke GPU) — `xserver-xorg-video-fbdev xinit lxde-core lightdm`. Software-rendering, men brugbart på 8×A53
-- [ ] Klon SD til de øvrige bokse (dd) — husk parameter-flash pr. boks (03)
+- [x] Grafisk miljø: VIRKER (aug 2026) — X + LXDE via **fbdev** med **nodm** autologin som `kristian`. Vigtige fælder løst: (1) fb0 rapporterer tilfældig bpp ift. reel buffer (EDID-race) → myinit normaliserer med fbset + vælger DefaultDepth 24/16 efter målt bufferstørrelse; (2) `xserver-xorg-legacy` + `allowed_users=anybody` kræves da der ikke er KMS; (3) bruger skal være i `input`-gruppen for at X kan åbne /dev/input/event*; (4) lightdm erstattet af nodm (lightdm's logind-seat-detektion virkede ikke her); (5) `systemd-sysusers` fejler på 3.10 (EINVAL på lock) → divert'ed væk så postinsts bruger adduser-stien; (6) adwaita-icon-theme .deb kunne ikke xz-dekomprimeres på boksen → ompakket til gzip på PC'en
+- [ ] Klon SD til de øvrige bokse (dd af kortet — alt inklusive desktop følger med) — husk parameter-flash pr. boks (03)
 - [ ] RTC: boksen har ingen batteri — tid starter i 2013 ved hver boot (apt brokker sig). Installér chrony/ntpsec, eller sæt dato ved netværk i myinit
 - [ ] Desktop med GPU: vendor's libhybris-stak (armhf blobs i vendor_root/usr/local/lib) — research, lav prioritet (fbdev dækker det meste)
 
