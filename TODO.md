@@ -23,7 +23,7 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)
 - [x] Grafisk miljø: VIRKER (aug 2026) — X + LXDE via **fbdev** med **nodm** autologin som `kristian`. Vigtige fælder løst: (1) fb0 rapporterer tilfældig bpp ift. reel buffer (EDID-race) → myinit normaliserer med fbset + vælger DefaultDepth 24/16 efter målt bufferstørrelse; (2) `xserver-xorg-legacy` + `allowed_users=anybody` kræves da der ikke er KMS; (3) bruger skal være i `input`-gruppen for at X kan åbne /dev/input/event*; (4) lightdm erstattet af nodm (lightdm's logind-seat-detektion virkede ikke her); (5) `systemd-sysusers` fejler på 3.10 (EINVAL på lock) → divert'ed væk så postinsts bruger adduser-stien; (6) adwaita-icon-theme .deb kunne ikke xz-dekomprimeres på boksen → ompakket til gzip på PC'en
 - [ ] Klon SD til de øvrige bokse (dd af kortet — alt inklusive desktop følger med) — husk parameter-flash pr. boks (03)
-- [ ] RTC: boksen har ingen batteri — tid starter i 2013 ved hver boot (apt brokker sig). Installér chrony/ntpsec, eller sæt dato ved netværk i myinit
+- [x] RTC: løst (aug 2026) — chrony installeret; synker fra NTP i runlevel 2 når netværket er oppe. Boksen har ingen batteri-backup, så uret starter i 2013 ved hver boot indtil chrony retter det (apt virker herefter)
 - [ ] Desktop med GPU: vendor's libhybris-stak (armhf blobs i vendor_root/usr/local/lib) — research, lav prioritet (fbdev dækker det meste)
 
 ## Spor B (parket indtil videre): Mainline kernel + nyere Linux på GeekBox (RK3368)
