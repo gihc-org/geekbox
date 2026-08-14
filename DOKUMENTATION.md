@@ -27,6 +27,23 @@ Der er to spor (se TODO.md), og valget faldt på **Spor A**:
   (loader, U-Boot, kernel, initramfs) bliver stående, og Lubuntu på eMMC er altid en
   fungerende fallback (script 04).
 
+### 64-bit kernel, 32-bit brugerland — et bevidst valg
+
+Værd at fremhæve, fordi det forklarer flere af kampene senere:
+
+- **Kernen kører 64-bit** (`uname -m` → `aarch64`)
+- **Hele brugerlandet kører 32-bit** (armhf) — både vendor-Lubuntu og vores Devuan
+
+Det virker, fordi kernen er bygget med ARM32-kompatibilitetslag (`CONFIG_COMPAT`), der
+lader 32-bit-binærer køre på 64-bit kernen. Vi valgte 32-bit, fordi vendor's
+GPU/libhybris-blobs og hele 2016-brugerlandet er armhf — så kan de genbruges direkte
+(fx lydens dmix-config). Bonus: Devuan Excalibur armhf har 64-bit `time_t` efter Debians
+t64-transition, så den er y2038-sikker.
+
+Prisen: 3.10's compat-lag kender ikke nyere syscalls (statx, clock_gettime64, OFD-locks)
+og matcher ikke moderne ALSA-ioctl-struct-layouts. Det blev roden til OpenSSH-nedbruddet,
+sysusers-låsefejlen og lyd-problemet — se §5.5, §5.9 og §5.11.
+
 Alternativet (Spor B, mainline kernel) er parkeret: mainline understøtter hverken
 HDMI, GPU eller WiFi på RK3368 — kun en headless server ville være realistisk.
 
