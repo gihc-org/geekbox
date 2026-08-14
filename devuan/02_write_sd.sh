@@ -36,6 +36,12 @@ echo "== kopierer rootfs (tager lidt tid) =="
 MNT=$(mktemp -d)
 mount "${DEV}1" "$MNT"
 cp -a "$PROJ"/devuan/rootfs/. "$MNT"/
+
+# swapfil (2 GB RAM på boksen er ikke nok til tunge apps uden sikkerhedsnet)
+dd if=/dev/zero of="$MNT/swapfile" bs=1M count=2048 status=none
+chmod 600 "$MNT/swapfile"
+grep -q swapfile "$MNT/etc/fstab" || echo "/swapfile none swap sw 0 0" >> "$MNT/etc/fstab"
+
 sync
 umount "$MNT"
 rmdir "$MNT"
