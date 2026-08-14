@@ -9,12 +9,16 @@ mount -t devtmpfs dev /dev 2>/dev/null
 mkdir -p /run/sshd /dev/pts
 mount -t devpts devpts /dev/pts 2>/dev/null
 
-# netværk: DHCP først, ellers statisk fallback
-ip link set eth0 up
-timeout 15 dhclient -1 eth0 2>/dev/null
-if ! ip addr show eth0 | grep -q "inet "; then
-    ip addr add 192.168.1.50/24 dev eth0
-    ip route add default via 192.168.1.254
+# netværk: eth0 med DHCP først, ellers statisk fallback — men KUN hvis der er link!
+# (ellers efterlades en død default-route på eth0, der kvalte wlan0)
+# wlan0 overlades til ifupdown/wpa_supplicant i rcS (undgår dobbelt-dhclient)
+if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ]; then
+    ip link set eth0 up
+    timeout 15 dhclient -1 eth0 2>/dev/null
+    if ! ip addr show eth0 | grep -q "inet "; then
+        ip addr add 192.168.1.50/24 dev eth0
+        ip route add default via 192.168.1.254
+    fi
 fi
 # DNS (boksen har ingen RTC — ved statisk fallback skal nameserver sættes her)
 grep -q nameserver /etc/resolv.conf 2>/dev/null || \
