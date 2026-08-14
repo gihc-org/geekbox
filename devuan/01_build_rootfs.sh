@@ -28,13 +28,18 @@ echo "== basis-konfiguration =="
 echo geekbox > "$ROOTFS/etc/hostname"
 echo 'root:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # SKIFT efter første login!
 
-# netværk: DHCP på ethernet
+# netværk: DHCP på ethernet + wifi (wpa-credentials udfyldes på boksen)
 cat > "$ROOTFS/etc/network/interfaces" <<'EOF'
 auto lo
 iface lo inet loopback
 
 auto eth0
 iface eth0 inet dhcp
+
+auto wlan0
+iface wlan0 inet dhcp
+    wpa-driver nl80211
+    wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 EOF
 
 # root mountes via label (sat af parameteren på eMMC)
