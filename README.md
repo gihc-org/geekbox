@@ -1,5 +1,8 @@
 # Flash Linux på GeekBox (RK3368)
 
+> **Læs først [DOKUMENTATION.md](DOKUMENTATION.md)** — den fulde historie: arkitektur,
+> beslutninger, blindgyde og hvordan hele Devuan-systemet genskabes.
+
 Metode til at flashe GeekBox-boksen med Lubuntu Linux fra en moderne Linux-maskine
 (testet på Linux Mint 22.3, august 2026). Erstatter boksens Android helt.
 
