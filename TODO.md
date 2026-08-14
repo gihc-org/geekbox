@@ -20,7 +20,7 @@ Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC, root på SD 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
-- [ ] WiFi: wlan0 ses allerede (bcmdhd + firmware fra vendor); konfigurér wpa_supplicant
+- [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)
 - [ ] Grafisk miljø: X + LXDE via **fbdev** (/dev/fb0 findes; vendor-Lubuntu brugte fbdev, ikke GPU) — `xserver-xorg-video-fbdev xinit lxde-core lightdm`. Software-rendering, men brugbart på 8×A53
 - [ ] Klon SD til de øvrige bokse (dd) — husk parameter-flash pr. boks (03)
 - [ ] RTC: boksen har ingen batteri — tid starter i 2013 ved hver boot (apt brokker sig). Installér chrony/ntpsec, eller sæt dato ved netværk i myinit
