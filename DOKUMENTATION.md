@@ -227,4 +227,55 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 - Hardware video-decode/GPU-acceleration (PowerVR-blobs + libhybris) — urørt, lav værdi
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
+
+## 9. eMMC-migration (aug 2026)
+
+Efter at systemet kørte stabilt fra SD, blev det flyttet til eMMC — SD-kortet er dermed
+frit, og eMMC er markant hurtigere.
+
+### Metoden (ingen reflashing nødvendig)
+
+1. **Kopi:** eMMC's root-partition `/dev/mmcblk0p6` (label `linuxroot`, ~14 GB) mountes
+   på den kørende Devuan, og hele rodfilsystemet rsync'es over:
+   `rsync -aAXH --delete --exclude=/proc --exclude=/sys --exclude=/run --exclude=/tmp --exclude=/mnt --exclude=/swapfile / /mnt/`
+   VIGTIGT: lav **ikke** mkfs på boksen — moderne e2fsprogs laver features 3.10 ikke kan
+   læse. Den eksisterende fs (fra 2016-imaget) genbruges, `--delete` rydder op.
+2. **Efter-ret:** fstab-label til `linuxroot`, swapfil genskabt (`dd` 2 GB).
+3. **Parameter:** ny variant med `root=/dev/mmcblk0p6` (`devuan/parameter_emmc.txt`).
+
+### Parameterens fysiske placering — og FTL-fælden
+
+Ved skrivning fra den kørende boks (uden loader-tilstand) viste `/dev/mmcblk0` sector 0
+sig at være **nuller** — rknand-FTL'en mapper blok-enheden med offset. Søgning med
+`grep -abo PARM` fandt magien ved **0x400000** og igen for hver 0,5 MB — præcis de 8
+redundante kopier (`PARAMETER_OFFSET=1024` sektorer) fra U-Boot-kilden. Kopi 1+2 var
+byte-identiske med output fra `devuan/make_parm_bin.py` (DI -p skriver samme format),
+så skrivningen blev: `dd if=parameter_emmc.bin of=/dev/mmcblk0 bs=1 seek=4194304 conv=notrunc`.
+De resterende kopier fungerer som fallback, hvis kopi 1 skulle afvises — næsten
+ubrickbar.
+
+### Boot-hastighed: mål først, trim bagefter
+
+**Værktøjerne:**
+- `dmesg` — kernel/initramfs-timestamps (kernel færdig ~3s, "Freeing unused kernel memory")
+- `/var/log/boot` — bootlogd logger rcS-scripts **med tidsstempler** (guld værd)
+- `/var/log/Xorg.0.log` — X-starttidspunkt (uptime-baseret)
+- egne epoch-markører i `myinit.sh` (`date +%s > /root/boottime.log` ved start og før
+  `exec /sbin/init`) samt mini-scripts i `/etc/rcS.d/S01boottime` og `/etc/rc2.d/`
+
+**Fund:** af ~47 sekunder til X stod **~31 sekunder** på én linje i `/var/log/boot`:
+eth0's dhclient genforsøgte uden kabel (`No DHCPOFFERS received`) før wlan0 fik lov.
+Resten var fine: kernel ~3s, initramfs ~9s, myinit 1s, rc2 ~3s.
+
+**Fix:** carrier-guard i `/etc/network/interfaces`, så ifup af eth0 afbrydes øjeblikkeligt
+uden link:
+```
+iface eth0 inet dhcp
+    pre-up sh -c "grep -q 1 /sys/class/net/eth0/carrier"
+```
+Resultat: ~47s → ~15-18s. (Ligger også i script 01 til fremtidige kort.)
+
+**Kosmetik:** mellem blåt boot-logo og desktop vistes logo-rester strakt/pixeleret
+(fb'en genfortolkes ved overgangen). Fix: myinit nulstiller fb0
+(`dd if=/dev/zero of=/dev/fb0`) → blå logo → sort → desktop.
 ```
