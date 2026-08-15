@@ -40,6 +40,10 @@ else
     sed -i "s/DefaultDepth .*/DefaultDepth 16/" /etc/X11/xorg.conf.d/fbdev.conf 2>/dev/null
 fi
 
+# ryd framebufferen (ellers vises boot-logoets rester strakt/pixeleret et øjeblik
+# mellem blåt logo og desktop)
+dd if=/dev/zero of=/dev/fb0 bs=4M 2>/dev/null
+
 {
   echo "=== myinit $(date) ==="
   echo "--- ip addr:"; ip addr
