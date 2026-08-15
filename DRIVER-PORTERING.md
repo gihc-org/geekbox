@@ -102,7 +102,7 @@ behøver nogen — man retter bare alle kaldere samtidigt.
 ### Domænet er ikke snævert — den vigtigste pointe for denne boks
 
 Du har ikke ét netkort. Du har clock-tree, power domains, pinmux, regulatorer,
-DDR-controller, thermal, eMMC, USB-PHY, HDMI-PHY, VPU og PowerVR SGX6110-GPU'en. Det er
+DDR-controller, thermal, eMMC, USB-PHY, HDMI-PHY, VPU og PowerVR G6110-GPU'en. Det er
 **on-chip-blokke uden nogen bus, der kan enumerere dem**, og de er uadskillelige fra
 platform-koden. Der er ikke noget lag at shimme *ved*.
 
@@ -166,9 +166,116 @@ GPU-driver.
 
 ---
 
+## 6. Sikkerhed: er 3.10 stadig vedligeholdt, og kan man bygge en sikrere kerne?
+
+### Nej — og vi er endda bagud inden for 3.10
+
+Linux 3.10 nåede end-of-life **4. november 2017** med `3.10.108`. Willy Tarreau, der
+vedligeholdt serien, erklærede den død efter 108 maintenance-releases. Siden da: ingen
+CVE-fixes, ingen backports.
+
+Men bemærk detaljen: **vores kerne er 3.10.79 fra 2015.** Der findes altså ~29
+stable-releases, som *blev* lavet, og som vi ikke har — alt fra 3.10.80 til 3.10.108,
+inklusive Dirty COW (CVE-2016-5195). Vi er ikke bare på en EOL-kerne; vi er tre år bagud
+*inden for* den EOL-kerne.
+
+Den eneste 3.10-linje, der stadig får opdateringer, er **RHEL 7's** kerne (Red Hats tungt
+patchede fork, ELS til juni 2028). Men det er en x86-fokuseret fork med sin egen
+patch-historie — at cherry-picke derfra til en Rockchip arm64-vendorfork er urealistisk.
+Til sammenligning laver CIP super-lang vedligeholdelse professionelt, men deres ældste
+træ er 4.4. 3.10 er under gulvet for alle.
+
+### Det er en klippe, ikke en bakke
+
+Her ligger den intuition, der er nem at gå glip af. "Nyere kerne" er **ikke** en glidende
+skala, hvor mere nyt = mere arbejde:
+
+| Fra → til | Intern ABI | Arbejde |
+|---|---|---|
+| 3.10.79 → **3.10.108** | **Stabil ved politik** | Dage. Driverne bygger nærmest uændret |
+| 3.10 → 4.4 | Brudt | År. Reelt uoverkommeligt |
+
+Grunden er stable-kernel-reglerne: en fix må kun optages i en stable-serie, hvis den
+*ikke* ændrer interne API'er eller struct-layout. **Inden for `3.10.x` har Linux altså
+præcis den stabile interne ABI, der ikke findes mellem major-versioner.** Det gør
+3.10.79 → 3.10.108 til et weekendprojekt frem for et livsværk.
+
+Kildekoden findes: [`geekboxzone/lollipop_kernel`](https://github.com/geekboxzone/lollipop_kernel)
+(branch `geekbox`), med mirror hos
+[`abhisit/rk3368-linux-3.10.79-lollipop-ubuntu`](https://github.com/abhisit/rk3368-linux-3.10.79-lollipop-ubuntu).
+Forbehold: Rockchip patchede kernens egne filer, så en merge op til 3.10.108 giver
+konflikter i `mm/` og `arch/arm64/` — men det er konflikter i kendt kode, ikke et redesign.
+
+### Hvad "sikrere" realistisk kan betyde, sorteret efter udbytte pr. indsats
+
+**a) Merge til 3.10.108.** Tre års stable-fixes gratis. Størst udbytte.
+
+**b) Skær attack surface væk i `.config`.** Bedste indsats/effekt-ratio, og ingen
+ABI-risiko. De klassiske local-privesc-CVE'er sidder i eksotiske protokolhandlere og
+filsystemer, vi aldrig bruger: DCCP, SCTP, AppleTalk, IPX, mærkelige `fs/`-drivere, USB
+gadget. Slå dem fra, så findes hullerne ikke. Plus `CONFIG_MODULE_SIG`, `kptr_restrict`,
+`dmesg_restrict`, `CONFIG_STRICT_DEVMEM`, `CONFIG_DEVKMEM=n`, Yama LSM (findes siden 3.4).
+
+**c) Slå den hardening til, der *findes* i 3.10** — og accepter, at det er skuffende lidt.
+Næsten al kernel-hardening blev opfundet efter 3.10:
+
+| Feature | Kom i |
+|---|---|
+| `HARDENED_USERCOPY` | 4.8 |
+| `SLAB_FREELIST_RANDOM` | 4.7 |
+| `FORTIFY_SOURCE` | 4.13 |
+| arm64 KASLR | 4.6 |
+| arm64 `STRICT_KERNEL_RWX` | ~4.11 |
+| `REFCOUNT_FULL` | 4.11 |
+| `STACKPROTECTOR_STRONG` | 3.14 (vi har kun almindelig stackprotector) |
+
+Seccomp er en undtagelse værd at forstå: *native arm64* seccomp-filter kom først i 3.19,
+men vores userland er **armhf**, og ARM32's seccomp-filter har eksisteret siden 3.5. Via
+`CONFIG_COMPAT` har vi derfor seccomp — og det er netop derfor OpenSSH's sandbox kunne
+dræbe preauth (se TODO.md, Spor A).
+
+**d) Cherry-picke enkelte CVE-fixes efter 2017.** Muligt for en håndfuld, men hver fix
+rører kode, der er refaktoreret siden — altså samme semantik-problematik som i §1, blot
+i småt format.
+
+### Realitetstjek på truslen
+
+"Sikker" afhænger af trusselsmodel, og vores er bedre end kerneversionen antyder:
+
+- **Det meste af attack surface er allerede moderne.** OpenSSL, TLS-stakken, alt der
+  møder netværket i userland, er Devuan Excalibur og bliver patchet. Det er projektets
+  reelle sikkerhedsgevinst, og den er stor.
+- **De fleste kernel-CVE'er er local privilege escalation** — de kræver, at nogen allerede
+  kan køre kode på boksen. Uden utroværdige lokale brugere er de andenordens.
+- **Cortex-A53 er in-order** og står ikke på ARMs liste over kerner ramt af
+  Meltdown/Spectre v2 (A15/A57/A72/A73/A75 gør). Den store 2018-panik gælder ikke denne
+  chip. Omvendt logik: Dirty Pipe (CVE-2022-0847) blev introduceret i 5.8 og findes slet
+  ikke her. Gammel ≠ sårbar over hele linjen.
+- **Den reelle bekymring: BCM4354-WiFi'en.** Broadcom-firmware fra den æra havde
+  remote-eksekverbare bugs (Broadpwn-familien), den parser fjendtlige frames før
+  authentication, og firmwaren er en blob, der ikke kan patches. Skal boksen stå et
+  utroværdigt sted, er kabel frem for WiFi en ægte mitigation.
+
+### Hvorfor det hænger sammen med resten af dokumentet
+
+Læg mærke til, at **begge** realistiske veje følger en søm:
+
+1. **syscall/uapi-grænsen** — bagudkompatibel for evigt. Det er den, Spor A bruger til at
+   sætte 2024-userland på en 2015-kernel.
+2. **inden for en stable-serie** — frosset ved politik. Det er den, en sikkerhedsopdatering
+   kan bruge til at komme fra 3.10.79 til 3.10.108.
+
+Alt andet i kernen er bevidst sømløst. Det er hele forklaringen på, hvorfor mainline er
+en mur, mens en sikkerhedsopdatering er et overkommeligt stykke arbejde.
+
+---
+
 ## Videre læsning
 
 - `Documentation/process/stable-api-nonsense.rst` — kernens eget rationale
+- `Documentation/process/stable-kernel-rules.rst` — reglerne der gør `3.10.x` ABI-stabil
 - `Documentation/driver-api/` — de nuværende driver-frameworks
+- [Linux 3.10.108 (EOL) — LWN](https://lwn.net/Articles/738167/) — annonceringen
+- [Willy Tarreau: Look back to an end-of-life LTS kernel: 3.10](http://wtarreau.blogspot.com/2017/11/look-back-to-end-of-life-lts-kernel-310.html)
 - DOKUMENTATION.md §2 — hvorfor Spor A blev valgt
 - TODO.md — Spor B (mainline), og hvorfor det er parkeret

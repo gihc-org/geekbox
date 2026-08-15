@@ -10,7 +10,7 @@ genskabe SD-kortet fra bunden.
 ## 1. Udgangspunktet
 
 - **Hardware:** GeekBox, Rockchip RK3368 (8×Cortex-A53 arm64, 2 GB RAM, eMMC, microSD,
-  HDMI, Ethernet, WiFi AP6354/BCM4354, GPU PowerVR SGX6110)
+  HDMI, Ethernet, WiFi AP6354/BCM4354, GPU PowerVR G6110)
 - **Problem:** producenten er væk, hjemmeside og fora døde, værktøjer fra 2015-16
 - **Mål:** skrot Android, kør en så ny Linux som mulig
 

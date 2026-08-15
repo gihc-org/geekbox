@@ -27,6 +27,24 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [ ] Klon SD til de øvrige bokse (dd af kortet — alt inklusive desktop + lyd følger med) — husk parameter-flash pr. boks (03)
 - [x] RTC: løst (aug 2026) — chrony installeret; synker fra NTP i runlevel 2 når netværket er oppe. Boksen har ingen batteri-backup, så uret starter i 2013 ved hver boot indtil chrony retter det (apt virker herefter)
 - [ ] Desktop med GPU: vendor's libhybris-stak (armhf blobs i vendor_root/usr/local/lib) — research, lav prioritet (fbdev dækker det meste)
+- [ ] **Kernel-sikkerhedsopdatering: 3.10.79 → 3.10.108** — se DRIVER-PORTERING.md §6.
+      Baggrund: 3.10 er EOL siden nov 2017, men vi er tre år bagud *inden for* serien, og
+      stable-reglerne forbyder ABI-ændringer i en stable-serie → driverne bygger nærmest
+      uændret. Dette er et weekendprojekt, i modsætning til Spor B.
+  - [ ] Hent vendor-kernekilden: `geekboxzone/lollipop_kernel` branch `geekbox`
+        (mirror: `abhisit/rk3368-linux-3.10.79-lollipop-ubuntu`)
+  - [ ] Reproducér den *nuværende* kerne først (samme `.config`, samme binær-adfærd) —
+        uden en verificeret baseline er alt videre gætværk
+  - [ ] Merge/rebase op til 3.10.108 — forvent konflikter i `mm/` og `arch/arm64/`,
+        hvor Rockchip patchede kernens egne filer
+  - [ ] Config-hærdning uden ABI-risiko: slå ubrugte protokoller/fs fra (DCCP, SCTP,
+        AppleTalk, IPX, USB gadget), `CONFIG_MODULE_SIG`, `CONFIG_STRICT_DEVMEM`,
+        `CONFIG_DEVKMEM=n`, Yama LSM, `kptr_restrict`, `dmesg_restrict`
+  - [ ] Test på SD først; eMMC-Lubuntu forbliver fallback (script 04)
+  - [ ] Bemærk: al moderne hardening (HARDENED_USERCOPY 4.8, FORTIFY_SOURCE 4.13,
+        arm64 KASLR 4.6, STRICT_KERNEL_RWX ~4.11) findes ikke i 3.10 og kan ikke fås
+- [ ] Overvej kabel frem for WiFi hvis boksen står utroværdigt: BCM4354-firmwaren er en
+      upatchbar blob fra Broadpwn-æraen, der parser frames før authentication
 
 ## Spor B (parket indtil videre): Mainline kernel + nyere Linux på GeekBox (RK3368)
 
