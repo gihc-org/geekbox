@@ -29,12 +29,14 @@ echo geekbox > "$ROOTFS/etc/hostname"
 echo 'root:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # SKIFT efter første login!
 
 # netværk: DHCP på ethernet + wifi (wpa-credentials udfyldes på boksen)
+# pre-up guard: uden kabel på eth0 afbrydes ifup med det samme (ellers ~30s dhclient-ventetid)
 cat > "$ROOTFS/etc/network/interfaces" <<'EOF'
 auto lo
 iface lo inet loopback
 
 auto eth0
 iface eth0 inet dhcp
+    pre-up sh -c "grep -q 1 /sys/class/net/eth0/carrier"
 
 auto wlan0
 iface wlan0 inet dhcp
