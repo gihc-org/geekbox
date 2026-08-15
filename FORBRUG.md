@@ -103,3 +103,6 @@ turn 526 (15/08): ~632.000   ← 30× større end turn 1
 tokens kontekst hver. Havde hver dag været en frisk session (kontekst ~20-50k), havde
 den dag kostet omtrent en tiendedel. Samme arbejde, samme resultat — det er prisen på
 aldrig at starte en ny session.
+
+**Gør-det-selv:** `./analyze_kimi_usage.py` (i dette repo) analyserer enhver session's
+`wire.jsonl` — uden argumenter tager den den senest ændrede session automatisk.
