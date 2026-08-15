@@ -68,3 +68,38 @@ Tjek forbruget live med **`/usage`** i CLI'en (eller Kimi Code Console på web).
 
 Kilder: [Membership Benefits](https://www.kimi.com/code/docs/en/kimi-code/membership.html) og
 [Sessions and context](https://www.kimi.com/code/docs/en/kimi-code-cli/guides/sessions.html)
+
+## Vores faktiske forbrug, målt (GeekBox-sessionen aug 2026)
+
+Udregnet fra sessionens egen event-stream
+(`~/.kimi-code/sessions/.../wire.jsonl`, hændelser af typen `usage.record` — præcise
+token-tal pr. request, ingen estimater):
+
+**Kontekst-vækst over tid** (input pr. request ≈ kontekst-størrelse):
+
+```
+turn 1   (07/08):  ~21.000 tokens
+turn 141 (08/08): ~214.000
+turn 281 (14/08): ~393.000
+turn 456 (14/08): ~560.000
+turn 526 (15/08): ~632.000   ← 30× større end turn 1
+```
+
+**Forbrug pr. dag** (faser fra git-log):
+
+| Dato | Fase | Requests | Tokens |
+|---|---|---|---|
+| 07/08 | Flash + research | 51 | 3,2 M |
+| 08/08 | Devuan-start, parameter-CRC | 92 | 14,4 M |
+| 09/08 | dmesg-fotos, fb-analyse | 33 | 8,1 M |
+| 13/08 | myinit-debug, dropbear, netværk | 67 | 22,1 M |
+| 14/08 | WiFi, X, lyd, swap, eMMC, docs | 237 | 112,4 M |
+| 15/08 | Boot-optimering, dokumentation | 44 | 26,9 M |
+| **Total** | | **530** | **~189 M** |
+
+94% af tokens var cache-reads (billigste kategori), 10,5 M uncached input, 0,4 M output.
+
+**Læren i tal:** 14/08 alene stod for 60% af forbruget — 237 requests med ~½ million
+tokens kontekst hver. Havde hver dag været en frisk session (kontekst ~20-50k), havde
+den dag kostet omtrent en tiendedel. Samme arbejde, samme resultat — det er prisen på
+aldrig at starte en ny session.
