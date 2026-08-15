@@ -42,5 +42,29 @@ Tjek forbruget live med **`/usage`** i CLI'en (eller Kimi Code Console på web).
   og trækkes først når abonnements-kvoten er brugt
 - Meget brug → overvej højere abonnement; det er typisk billigere end Extra Usage
 
+## Udvikling i dette projekt
+
+Én lang session
+
+┌─────────┬──────────────────────────────────────────────┬────────────────────────────────────────────┐                                                                                                                                   
+│ Periode │ Arbejde                                      │ Forbrugsdrivere                            │                                                                                                                                   
+├─────────┼──────────────────────────────────────────────┼────────────────────────────────────────────┤                                                                                                                                   
+│ 7-8/08  │ Flash Lubuntu, udpakning, parameter-research │ 2-timers søge-agent, mange foto-analyser   │                                                                                                                                   
+├─────────┼──────────────────────────────────────────────┼────────────────────────────────────────────┤                                                                                                                                   
+│ 13/08   │ Devuan-debug: myinit, dropbear, netværksrace │ Lang session, store log-dumps, mange turns │                                                                                                                                   
+├─────────┼──────────────────────────────────────────────┼────────────────────────────────────────────┤                                                                                                                                   
+│ 14/08   │ WiFi, X/LXDE, lyd, swap, eMMC                │ Billeder af skærme, strace/dmesg-output    │                                                                                                                                   
+├─────────┼──────────────────────────────────────────────┼────────────────────────────────────────────┤                                                                                                                                   
+│ 15/08   │ Boot-optimering, dokumentation               │ Kortere turns — billigere                  │                                                                                                                                   
+└─────────┴──────────────────────────────────────────────┴────────────────────────────────────────────┘
+
+╭ Usage ─────────────────────────────────────────────────────────╮
+│ Session usage                                                  │
+│   moonshot-ai/kimi-k3  input 176.7M  output 365k  total 177.1M │
+│                                                                │
+│ Context window                                                 │
+│   █████████░░░░░░░░░░░     61%  (618k / 1M)                    │
+╰────────────────────────────────────────────────────────────────╯
+
 Kilder: [Membership Benefits](https://www.kimi.com/code/docs/en/kimi-code/membership.html) og
 [Sessions and context](https://www.kimi.com/code/docs/en/kimi-code-cli/guides/sessions.html)
