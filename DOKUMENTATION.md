@@ -47,6 +47,12 @@ sysusers-låsefejlen og lyd-problemet — se §5.5, §5.9 og §5.11.
 Alternativet (Spor B, mainline kernel) er parkeret: mainline understøtter hverken
 HDMI, GPU eller WiFi på RK3368 — kun en headless server ville være realistisk.
 
+At porte vendor-driverne til en mainline-kernel er ikke bare besværligt, men reelt
+uoverkommeligt. Baggrunden — hvorfor kernens interne ABI ikke er stabil, og hvorfor
+ndiswrapper-tricket ikke kan gentages Linux → Linux — står i
+**[DRIVER-PORTERING.md](DRIVER-PORTERING.md)**. Samme dokument forklarer, hvorfor
+Spor A's grænseflade (syscall-ABI'en) er den ene, der faktisk holder.
+
 ## 3. Boot-arkitekturen — nøglen til alt det andet
 
 ```
