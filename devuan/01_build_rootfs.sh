@@ -29,14 +29,16 @@ echo geekbox > "$ROOTFS/etc/hostname"
 echo 'root:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # SKIFT efter første login!
 
 # netværk: DHCP på ethernet + wifi (wpa-credentials udfyldes på boksen)
-# pre-up guard: uden kabel på eth0 afbrydes ifup med det samme (ellers ~30s dhclient-ventetid)
+# pre-up guard: uden link på eth0 afbrydes ifup efter kort ventetid (ellers ~30s
+# dhclient-ventetid). Interfacet skal OP før carrier kan læses meningsfuldt —
+# på et down-interface er carrier 0/EINVAL, og eth0 ville aldrig komme op.
 cat > "$ROOTFS/etc/network/interfaces" <<'EOF'
 auto lo
 iface lo inet loopback
 
 auto eth0
 iface eth0 inet dhcp
-    pre-up sh -c "grep -q 1 /sys/class/net/eth0/carrier"
+    pre-up sh -c "ip link set eth0 up; for i in 1 2 3 4 5; do grep -q 1 /sys/class/net/eth0/carrier && exit 0; sleep 1; done; exit 1"
 
 auto wlan0
 iface wlan0 inet dhcp

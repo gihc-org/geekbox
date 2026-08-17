@@ -12,8 +12,14 @@ mount -t devpts devpts /dev/pts 2>/dev/null
 # netværk: eth0 med DHCP først, ellers statisk fallback — men KUN hvis der er link!
 # (ellers efterlades en død default-route på eth0, der kvalte wlan0)
 # wlan0 overlades til ifupdown/wpa_supplicant i rcS (undgår dobbelt-dhclient)
+# VIGTIGT: interfacet skal OP før carrier kan læses meningsfuldt — på et interface
+# der er DOWN læses carrier som 0/EINVAL, så testen alene ville slå eth0 permanent fra
+ip link set eth0 up
+for i in 1 2 3 4 5; do
+    [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ] && break
+    sleep 1
+done
 if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ]; then
-    ip link set eth0 up
     timeout 15 dhclient -1 eth0 2>/dev/null
     if ! ip addr show eth0 | grep -q "inet "; then
         ip addr add 192.168.1.50/24 dev eth0
@@ -28,11 +34,13 @@ grep -q nameserver /etc/resolv.conf 2>/dev/null || \
 # -s: kun nøgle-login, ingen kodeord
 dropbear -s -R -p 22
 
-# fb0-normalisering: vendor-driveren rapporterer tilfældig bpp ift. den faktisk
-# allokerede buffer (EDID-race ved boot). Mål reel størrelse, tving var-info til
-# at matche, og vælg X-depth derefter (ellers dobbeltbillede/pixelrod).
-n=$(dd if=/dev/fb0 of=/dev/null bs=1M 2>&1 | grep -oE "^[0-9]+")
-if [ "${n:-0}" -ge 8000000 ]; then
+# fb0-normalisering: EDID-race kan efterlade bpp og stride inkonsistente
+# (set: bpp=32 men stride=3840 dvs. 16-bit linjelængde → pixelrod/dobbeltbillede).
+# Ground truth er stride: stride/xres = bytes pr. pixel. Tving fb-bpp og X's
+# DefaultDepth til at følges ad — så er layout altid konsistent uanset racen.
+xres=$(cut -d, -f1 /sys/class/graphics/fb0/virtual_size 2>/dev/null)
+stride=$(cat /sys/class/graphics/fb0/stride 2>/dev/null)
+if [ "$(( ${stride:-0} / ${xres:-1920} ))" -ge 4 ]; then
     fbset -fb /dev/fb0 -depth 32 -xres 1920 -yres 1080 2>/dev/null
     sed -i "s/DefaultDepth .*/DefaultDepth 24/" /etc/X11/xorg.conf.d/fbdev.conf 2>/dev/null
 else

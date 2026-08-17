@@ -10,11 +10,25 @@ ROOTFS=$PROJ/devuan/rootfs
 cp /usr/bin/qemu-arm-static "$ROOTFS/usr/bin/"
 cp -L /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
-echo "== desktop- og lydpakker =="
-chroot "$ROOTFS" /usr/bin/apt-get update
-chroot "$ROOTFS" /usr/bin/apt-get install -y --no-install-recommends \
+echo "== desktop- og lydpakker (headless) =="
+# Ingen interaktive debconf-stop: noninteractive-frontend + preseed af de to
+# spørgsmål der ellers afbryder kørslen (tastatur-layout + valg af display manager)
+chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/debconf-set-selections <<'EOF'
+keyboard-configuration	keyboard-configuration/layoutcode	string	dk
+keyboard-configuration	keyboard-configuration/modelcode	string	pc105
+console-setup	console-setup/charmap47	select	UTF-8
+nodm	shared/default-x-display-manager	select	nodm
+lightdm	shared/default-x-display-manager	select	nodm
+EOF
+# ryd evt. halv-konfigurerede pakker fra en afbrudt kørsel
+chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/dpkg --configure -a
+chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get update
+chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get install -y --no-install-recommends \
     xserver-xorg xserver-xorg-video-fbdev xserver-xorg-legacy xinit \
     lxde-core nodm pulseaudio pavucontrol alsa-utils
+# nodm skal være default display manager, uanset debconf-defaults (lightdm's
+# logind-seat-detektion virker ikke på denne boks — derfor nodm)
+echo /usr/sbin/nodm > "$ROOTFS/etc/X11/default-display-manager"
 
 echo "== bruger + grupper + nøgler =="
 chroot "$ROOTFS" /usr/sbin/useradd -m -s /bin/bash kristian || true
@@ -23,7 +37,12 @@ echo 'kristian:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # midlertidig �
 for u in root kristian; do
     home=$([ "$u" = root ] && echo /root || echo /home/kristian)
     mkdir -p "$ROOTFS$home/.ssh"
-    cat "$PROJ"/devuan/authorized_keys >> "$ROOTFS$home/.ssh/authorized_keys" 2>/dev/null || true
+    touch "$ROOTFS$home/.ssh/authorized_keys"
+    # append kun nøgler der ikke allerede ligger der (ellers dubletter ved genkørsel)
+    while IFS= read -r key; do
+        [ -z "$key" ] && continue
+        grep -qxF "$key" "$ROOTFS$home/.ssh/authorized_keys" || echo "$key" >> "$ROOTFS$home/.ssh/authorized_keys"
+    done < "$PROJ"/devuan/authorized_keys
     chroot "$ROOTFS" chown -R "$u":"$u" "$home/.ssh" 2>/dev/null || true
     chroot "$ROOTFS" chmod 700 "$home/.ssh" 2>/dev/null || true
     chroot "$ROOTFS" chmod 600 "$home/.ssh/authorized_keys" 2>/dev/null || true

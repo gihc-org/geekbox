@@ -16,6 +16,8 @@ devuan/debootstrap-pkg/
 lollipop_u-boot/
 rkfwtools/
 devuan/rootfs_lubuntu_sd.img
+devuan/rootfs_devuan.img
+devuan/update_devuan.img
 
 # Genererede dokumenter — kilden er .md-filerne
 *.pdf
