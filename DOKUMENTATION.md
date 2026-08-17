@@ -183,6 +183,20 @@ Ingen RTC-backup → apt brokker sig ("Release file not valid yet"). **Løsning:
 3. **PulseAudio's udev-detect** lavede direkte hw-sinks (tavse). **Løsning:**
    `/etc/pulse/default.pa` bruger eksplicit `load-module module-alsa-sink device=dmixer`.
 
+### 5.12 NetworkManager til wifi
+Wifi-credentials lå håndkodet i `/etc/wpa_supplicant/wpa_supplicant.conf` — besværligt
+når boksen kommer på nye netværk. **Løsning: NetworkManager + nm-applet** (script 08,
+qemu-chroot mod det færdige kort i læseren). NM styrer *kun* wlan0; eth0 bliver på
+ifupdown + myinit's link-guard, så ssh-debugstien er uændret. Det kræver blot at
+wlan0-stanzen fjernes fra `/etc/network/interfaces` (Debians default
+`[ifupdown] managed=false` får NM til at lade filens interfaces være). 08 migrerer
+også eksisterende netværk fra wpa_supplicant.conf til NM-nøglefiler i
+`/etc/NetworkManager/system-connections/` — ellers ville boksen være faldet af
+nettet ved skiftet. `kristian` er i `netdev`-gruppen + polkit-regel i
+`/etc/polkit-1/rules.d/50-nm-netdev.rules`, så GUI'en kan ændre netværk uden en
+logind-session (nodm opretter ingen). Nye netværk tilføjes via nm-applet i
+LXDE-bakken eller `nmtui` i terminal (virker også over ssh).
+
 ## 6. Slutarkitekturen
 
 ```
@@ -198,7 +212,7 @@ SD-kort (hele systemet)                 eMMC (urørt undtagen 1 parameter)
 Boot-flow: BootROM → loader → U-Boot → parameter (SD + myinit) → vendor-kernel +
 initramfs fra eMMC → mount SD-partition → **myinit.sh** (mounts, netværk kun ved link,
 fb-normalisering, dropbear, bootlog) → **sysvinit** → rcS (eudev, netværk via
-ifupdown, fsck) → rc2 (chrony, **nodm**) → X fbdev → LXDE som `kristian`.
+ifupdown, fsck) → rc2 (chrony, network-manager, **nodm**) → X fbdev → LXDE som `kristian`.
 
 SSH: dropbear port 22, kun nøgle-login (`-s`).
 
@@ -215,13 +229,18 @@ sudo devuan/06_install_dropbear.sh
 # 3. Skriv SD-kortet (SLETTER kortet; ext4 uden 3.10-uvenlige features + swapfil)
 sudo devuan/02_write_sd.sh /dev/sdX
 # 4. Desktop + lyd: se devuan/07_desktop_audio.sh (pakkeliste + config ændret live)
+#    07 er headless (debconf preseeded: dansk tastatur, nodm som display manager)
+#    og idempotent — kan genkøres frit uden interaktion
 sudo devuan/07_desktop_audio.sh
+# 4b. (valgfri) NetworkManager til wifi — kortet i læseren, non-destruktiv:
+sudo devuan/08_network_manager.sh /dev/sdX1
 # 5. Boks i loader-tilstand, parameter på:
 sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool DI -p devuan/parameter_myinit.txt
 # 6. SD i boksen, strøm på. SSH: nøglen i devuan/authorized_keys (lægges ind af 06)
 ```
 
-Efter første boot: `passwd`, `passwd kristian`, WiFi-credentials via
+Efter første boot: `passwd`, `passwd kristian`. Wifi-credentials: med 08 kørt
+tilføjes netværk via nm-applet/`nmtui`; ellers manuelt via
 `wpa_passphrase "SSID" "kode" > /etc/wpa_supplicant/wpa_supplicant.conf`.
 
 Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
@@ -285,3 +304,109 @@ Resultat: ~47s → ~15-18s. (Ligger også i script 01 til fremtidige kort.)
 (fb'en genfortolkes ved overgangen). Fix: myinit nulstiller fb0
 (`dd if=/dev/zero of=/dev/fb0`) → blå logo → sort → desktop.
 ```
+
+## 10. eMMC-flash direkte fra PC — boks 2 (aug 2026)
+
+Boks 2 blev flashet helt fra laptopen (i modsætning til boks 1's SD-omvej i §9).
+Boksen var i loader-tilstand, og metoden er nu scriptet.
+
+### Metoden i korte træk
+
+`09_make_emmc_img.sh` bygger `devuan/update_devuan.img`: et ext4-image af
+`devuan/rootfs` laves med PRÆCIS samme størrelse som originalens `Image/rootfs.img`
+og dd'es ind på dens offset i en kopi af `update.img`. Headere, offsets og størrelser
+er dermed uændrede, og `UF` ser en struktur der er byte-identisk med originalen
+(scriptet sha256-verificerer alle entry'er). ext4 laves med samme feature-liste som
+script 02 (`^64bit,^metadata_csum`!). Da `WL` ikke virker i loader-tilstand på disse
+bokse, er `UF` af et sådant modificeret image den eneste rene USB-vej til at skrive
+en hel rootfs-partition.
+
+### Opskrift: ny boks fra laptop (komplet)
+
+Forudsætninger: `devuan/rootfs` er bygget (01+06+07 kørt), Devuan-SD-kortet fra
+boks 1 findes, og boksen er i loader-tilstand (USB i OTG; hold Update, tryk kort
+Reboot, slip Update).
+
+```bash
+# 1. Byg imaget (stopper selv med vejledning hvis rootfs'en er ufuldstændig;
+#    verificerer resultatet byte-for-byte mod originalen)
+sudo devuan/09_make_emmc_img.sh
+
+# 2. Flash boot-kæde + Devuan-rootfs i én kommando (~5-10 min; boksen rebooter bagefter)
+sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool uf devuan/update_devuan.img
+
+# 3. Loader-tilstand IGEN (Update+Reboot), derefter SD-boot-parameteren.
+#    (DI -p virker fint fra REN loader-tilstand — det var lige-efter-UF den fejlede.
+#    Uafprøvet genvej: DI -p devuan/parameter_emmc.txt her og spring 4-6 over hvis
+#    boksen booter fra eMMC bagefter)
+sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool DI -p devuan/parameter_myinit.txt
+
+# 4. SD-kort i boksen, strøm på → den booter Devuan fra SD og får DHCP.
+#    Find IP'en via routerens klientliste eller ping-sweep på 192.168.x.x.
+
+# 5. Skriv eMMC-parameteren med §9's dd-metode (den pålidelige vej), fra laptopen:
+ssh -i ~/.ssh/geekbox_key root@<IP> 'cat > /tmp/p.bin' < devuan/parameter_emmc.bin
+ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/tmp/p.bin of=/dev/mmcblk0 bs=1 seek=4194304 conv=notrunc && sync'
+# verificér at den sidder rigtigt:
+ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/dev/mmcblk0 bs=1 skip=4194304 count=600 2>/dev/null | grep -a root=/dev/mmcblk0p6'
+
+# 6. Strøm af/på, SD-kort ud → boksen booter Devuan fra eMMC og kommer på nettet.
+#    Derefter over ssh: resize2fs /dev/mmcblk0p6 + swapfil (se "Efter første
+#    eMMC-boot" nedenfor) + wifi-credentials + passwd x2.
+```
+
+### Fælder fundet undervejs (alle løst)
+
+1. **DI -p af emmc-parameteren slog tilsyneladende ikke igennem** (uforklaret): UF ok +
+   `DI -p parameter_emmc.txt` ok, men boksen fortsatte med den forrige parameter
+   (originalen: `init=/sbin/init` uden myinit → det kendte rcS-hæng: blåt logo, intet
+   netværk). Beviskæde: boksen nåede aldrig myinit (intet ARP-svar på daværende
+   myinit's statiske 192.168.1.50 trods link), mens en SENERE `DI -p` med
+   SD-parameteren fra ren loader-tilstand virkede fint. Første DI -p kørte lige efter
+   UF's auto-reboot — muligvis var boksen ikke i reel loader-tilstand trods "ok".
+   Løsning: fra en kørende boks (bootet fra SD) skrives parameteren med §9's
+   dd-metode: `dd if=parameter_emmc.bin of=/dev/mmcblk0 bs=1 seek=4194304 conv=notrunc`
+   — verificeret ved readback + efterfølgende eMMC-boot.
+2. **Forældet myinit i rootfs'en:** 06 kopierer `myinit.sh` ind i rootfs'en, men kopien
+   var fra fejlsøgningsfasen: statisk IP 192.168.1.50, ingen fb-rettelser, og en
+   blokerende `/usr/sbin/sshd -ddd`-linje til sidst (debug-sshd kører i forgrunden,
+   så `exec /sbin/init` ville aldrig blive nået → netværk oppe, men aldrig nogen
+   desktop). 09 kopierer nu altid den aktuelle `devuan/myinit.sh` ind umiddelbart før
+   bygning. Samme rootfs manglede også **isc-dhcp-client og fbset** (bygget før de kom
+   med i script 01) — 09's preflight tjekker nu for dem og printer fix-kommandoen.
+   Tip: skal en boks nås på den statiske fallback-IP, giv laptopen en sekundær adresse
+   på samme link: `sudo ip addr add 192.168.1.100/24 dev <interface>`.
+3. **Carrier-guard på nedfældet interface — eth0 kom aldrig op:** myinit og
+   `interfaces` testede `/sys/class/net/eth0/carrier` — men på et interface der er DOWN
+   læses carrier som 0/EINVAL, og da ingenting nåede at sætte eth0 op, kom den aldrig
+   op → boksen helt uden netværk (bevist via `/root/bootlog.txt`: eth0 DOWN uden MAC).
+   Ramte ikke boks 1 (anden PHY-timing; wifi-dækning). Fix i både myinit.sh og script
+   01's interfaces-skabelon: `ip link set eth0 up` FØR carrier-testen + venteløkke (5×1s).
+4. **fb-normalisering målte den forkerte størrelse:** bufferens byte-størrelse er ikke
+   ground truth — på boks 2 set: bpp=32 men stride=3840 (=16-bit linjelængde) → kraftig
+   pixelering. Ground truth er **stride**: `stride/xres` = bytes pr. pixel. myinit vælger
+   nu 16/24-bit efter stride (den gamle kode faldt pga. en parse-bug tilfældigvis altid
+   i 16-bit-grenen — derfor virkede boks 1). Bemærk: fbset manglede i den gamle rootfs
+   (kom med i script 01 senere) — efterinstalleret på boksen.
+5. **Truncerede bruger-configs efter hårde strøm-cyklinger under hængende boots:**
+   `~/.config/openbox/lxde-rc.xml` (0 bytes → openbox XML-fejl-popup ved login) og
+   `~/.config/lxsession/LXDE/autostart` (0 bytes → kun openbox startede: sort skærm
+   uden panel/desktop). Fix: kopiér system-defaults ind
+   (`/etc/xdg/openbox/LXDE/rc.xml` og `/etc/xdg/lxsession/LXDE/autostart`, chown 1000).
+   Lektie: sluk ikke boksen midt i første desktop-login — og tjek for 0-byte-filer i
+   `~/.config` ved mærkelig desktop-adfærd (`find ~/.config -size 0`).
+6. **ssh fra PC'en:** nøglen hedder `~/.ssh/geekbox_key` (ikke et standard-navn) →
+   `ssh -i ~/.ssh/geekbox_key root@<ip>`.
+
+### Efter første eMMC-boot (gjort på boks 2 over ssh)
+
+- `resize2fs /dev/mmcblk0p6` — 1,4 GB → 15 GB (online, på mountet root)
+- swapfil 2 GB (`dd`+`mkswap`+fstab-linje) + `swapon -a`
+
+### Status boks 2 (aug 2026)
+
+Booter Devuan fra eMMC: netværk via DHCP, desktop med korrekte farver og stabilt
+billede. Det observerede "blinken" (panel→sort→panel i loop) var den fysiske
+HDMI-forbindelse: kernellen registrerede ingen gentagne HDMI-hændelser, kun én
+EDID-læsefejl ved boot — signalet droppede på vej til TV'et. Løst ved at skifte
+HDMI-stik/ledning. Ikke software.

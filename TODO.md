@@ -3,8 +3,12 @@
 ## Spor A (aktivt): Devuan Excalibur med vendor-kernel — BOOTER ✅ (aug 2026)
 
 Moderne userspace (Devuan Excalibur/Trixie-base, armhf) på vendor-kernen 3.10.79.
-Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC, root på SD via
-ændret parameter (`DI -p` med tekst-parameter). Scripts i `devuan/`:
+Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC; root på eMMC
+(begge bokse) — parameter med `root=/dev/mmcblk0p6` + `init=/root/myinit.sh`.
+Ny boks flashes direkte fra laptop i loader-tilstand: `09` bygger en modificeret
+update.img med Devuan-rootfs (in-place patch, verificeret), derefter `UF` +
+parameter via dd-metoden (se DOKUMENTATION.md §10 — DI -p af emmc-parameteren
+slog ikke igennem på boks 2). Scripts i `devuan/`:
 
 - [x] Udpak update.img (rkfwtools) — analysér boot-flow: monolitisk kernel, initramfs mounter via LABEL
 - [x] Verificér parameter-format mod vendor U-Boot-kilde (`lollipop_u-boot`): sector 0, PARM+crc32_rk
@@ -21,10 +25,12 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)
+- [ ] NetworkManager til wifi: script `devuan/08_network_manager.sh` skrevet (aug 2026) — NM + nm-applet styrer wlan0 (nye netværk vælges i LXDE-bakken eller med `nmtui`), eth0 bliver på ifupdown/myinit så ssh-debugstien er uændret. Scriptet migrerer kendte netværk fra wpa_supplicant.conf til NM-nøglefiler, så boksen ikke falder af nettet ved skiftet. **Afventer test på boksen** — kør `sudo devuan/08_network_manager.sh /dev/sdX1` med kortet i læseren
 - [x] Grafisk miljø: VIRKER (aug 2026) — X + LXDE via **fbdev** med **nodm** autologin som `kristian`. Vigtige fælder løst: (1) fb0 rapporterer tilfældig bpp ift. reel buffer (EDID-race) → myinit normaliserer med fbset + vælger DefaultDepth 24/16 efter målt bufferstørrelse; (2) `xserver-xorg-legacy` + `allowed_users=anybody` kræves da der ikke er KMS; (3) bruger skal være i `input`-gruppen for at X kan åbne /dev/input/event*; (4) lightdm erstattet af nodm (lightdm's logind-seat-detektion virkede ikke her); (5) `systemd-sysusers` fejler på 3.10 (EINVAL på lock) → divert'ed væk så postinsts bruger adduser-stien; (6) adwaita-icon-theme .deb kunne ikke xz-dekomprimeres på boksen → ompakket til gzip på PC'en
 - [x] Desktop: VIRKER (X+LXDE via fbdev, nodm autologin, mus/tastatur)
 - [x] Lyd: VIRKER (aug 2026) — HDMI-lyd via YouTube verificeret. Tre lag af problemer: (1) trixies libasound2t64 bruger 64-bit-time ioctls som 3.10 ikke kender (ENOTTY ved open) → løst med **libasound2 fra Devuan daedalus** (32-bit time) i `/opt/alsa-da` + `LD_LIBRARY_PATH` via `/etc/profile.d/alsa-legacy.sh`; (2) vendor-driverens almindelige write-sti er i stykker (hw_ptr=0) — kun **mmap via dmix** virker → vendor's `/etc/asound.conf` (fra vendor_root) giver default-enheden `dmixer`; (3) PA's udev-detect lavede direkte hw-sinks (tavse) → `/etc/pulse/default.pa` bruger nu eksplicit `load-module module-alsa-sink device=dmixer`. NB: disse ændringer ligger på kortet, ikke i byggescripts — dokumenteres hvis kort genbygges
-- [ ] Klon SD til de øvrige bokse (dd af kortet — alt inklusive desktop + lyd følger med) — husk parameter-flash pr. boks (03)
+- [x] Boks 2 på eMMC (aug 2026) — flashet direkte fra laptop: `09` (in-place patch af update.img) + `UF`, parameter via dd-metoden. Fælder løst undervejs: forældet myinit i rootfs, carrier-guard på down-interface, fb stride/bpp-mismatch, truncerede lxde-configs efter hårde slukninger. Se DOK §10. Øvrige bokse: samme fremgangsmåde
+- [ ] Boks 1: opdatér `/root/myinit.sh` til repoets nuværende version ved lejlighed (`ssh -i ~/.ssh/geekbox_key root@<ip> 'cat > /root/myinit.sh' < devuan/myinit.sh`) — dens ældre myinit virker i dag, men kun fordi dens PHY-timing og EDID-race tilfældigvis opfører sig (se DOK §10, fælde 3+4)
 - [x] RTC: løst (aug 2026) — chrony installeret; synker fra NTP i runlevel 2 når netværket er oppe. Boksen har ingen batteri-backup, så uret starter i 2013 ved hver boot indtil chrony retter det (apt virker herefter)
 - [ ] Desktop med GPU: vendor's libhybris-stak (armhf blobs i vendor_root/usr/local/lib) — research, lav prioritet (fbdev dækker det meste)
 - [ ] **Kernel-sikkerhedsopdatering: 3.10.79 → 3.10.108** — se DRIVER-PORTERING.md §6.
