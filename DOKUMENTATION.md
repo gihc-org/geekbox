@@ -314,46 +314,41 @@ Boksen var i loader-tilstand, og metoden er nu scriptet.
 
 `09_make_emmc_img.sh` bygger `devuan/update_devuan.img`: et ext4-image af
 `devuan/rootfs` laves med PRÆCIS samme størrelse som originalens `Image/rootfs.img`
-og dd'es ind på dens offset i en kopi af `update.img`. Headere, offsets og størrelser
-er dermed uændrede, og `UF` ser en struktur der er byte-identisk med originalen
-(scriptet sha256-verificerer alle entry'er). ext4 laves med samme feature-liste som
-script 02 (`^64bit,^metadata_csum`!). Da `WL` ikke virker i loader-tilstand på disse
-bokse, er `UF` af et sådant modificeret image den eneste rene USB-vej til at skrive
-en hel rootfs-partition.
+og dd'es ind på dens offset i en kopi af `update.img`, og vores egen parameter
+(`root=/dev/mmcblk0p6` + `init=/root/myinit.sh`) skrives inden for parameter-
+entryens eksisterende størrelse som binær PARM (via `make_parm_bin.py`, nul-paddet).
+Headere, offsets og størrelser er dermed uændrede, og `UF` ser en struktur der er
+byte-identisk med originalen (scriptet sha256-verificerer alle entry'er). ext4
+laves med samme feature-liste som script 02 (`^64bit,^metadata_csum`!). Da `WL`
+ikke virker i loader-tilstand på disse bokse, er `UF` af et sådant modificeret
+image den eneste rene USB-vej til at skrive en hel rootfs-partition — og fordi
+parameteren er bagt ind, er `UF` ogsá det ENESTE skridt: hverken DI -p, SD-kort
+eller dd-omvej er nødvendig.
 
 ### Opskrift: ny boks fra laptop (komplet)
 
-Forudsætninger: `devuan/rootfs` er bygget (01+06+07 kørt), Devuan-SD-kortet fra
-boks 1 findes, og boksen er i loader-tilstand (USB i OTG; hold Update, tryk kort
-Reboot, slip Update).
+Forudsætninger: `devuan/rootfs` er bygget (01+06+07 kørt), og boksen er i
+loader-tilstand (USB i OTG; hold Update, tryk kort Reboot, slip Update).
+SD-kort er **ikke** nødvendigt — behold boks 1's gamle kort som redningsmedie.
 
 ```bash
-# 1. Byg imaget (stopper selv med vejledning hvis rootfs'en er ufuldstændig;
-#    verificerer resultatet byte-for-byte mod originalen)
+# 1. Byg imaget — Devuan-rootfs + eMMC-parameter bages begge ind. Scriptet
+#    verificerer resultatet byte-for-byte mod originalen og stopper selv med
+#    vejledning hvis rootfs'en er ufuldstændig.
 sudo devuan/09_make_emmc_img.sh
 
-# 2. Flash boot-kæde + Devuan-rootfs i én kommando (~5-10 min; boksen rebooter bagefter)
+# 2. Flash ALT i én kommando (~5-10 min; boksen rebooter undervejs/bagefter)
 sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool uf devuan/update_devuan.img
 
-# 3. Loader-tilstand IGEN (Update+Reboot), derefter SD-boot-parameteren.
-#    (DI -p virker fint fra REN loader-tilstand — det var lige-efter-UF den fejlede.
-#    Uafprøvet genvej: DI -p devuan/parameter_emmc.txt her og spring 4-6 over hvis
-#    boksen booter fra eMMC bagefter)
-sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool DI -p devuan/parameter_myinit.txt
-
-# 4. SD-kort i boksen, strøm på → den booter Devuan fra SD og får DHCP.
-#    Find IP'en via routerens klientliste eller ping-sweep på 192.168.x.x.
-
-# 5. Skriv eMMC-parameteren med §9's dd-metode (den pålidelige vej), fra laptopen:
-ssh -i ~/.ssh/geekbox_key root@<IP> 'cat > /tmp/p.bin' < devuan/parameter_emmc.bin
-ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/tmp/p.bin of=/dev/mmcblk0 bs=1 seek=4194304 conv=notrunc && sync'
-# verificér at den sidder rigtigt:
-ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/dev/mmcblk0 bs=1 skip=4194304 count=600 2>/dev/null | grep -a root=/dev/mmcblk0p6'
-
-# 6. Strøm af/på, SD-kort ud → boksen booter Devuan fra eMMC og kommer på nettet.
-#    Derefter over ssh: resize2fs /dev/mmcblk0p6 + swapfil (se "Efter første
-#    eMMC-boot" nedenfor) + wifi-credentials + passwd x2.
+# 3. Tag strømmen af/på — boksen booter Devuan direkte fra eMMC og får DHCP.
+#    Find IP'en via routerens klientliste eller ping-sweep; derefter over ssh
+#    (ssh -i ~/.ssh/geekbox_key root@<IP>): resize2fs /dev/mmcblk0p6 + swapfil
+#    (se "Efter første eMMC-boot" nedenfor) + wifi-credentials + passwd x2.
 ```
+
+Fallback hvis UF mod forventning ikke får parameteren med (vi har kun set den
+slags med `DI -p`, aldrig med `UF`): skriv den bagefter med §9's dd-metode fra
+en kørende boks — se fælde 1.
 
 ### Fælder fundet undervejs (alle løst)
 
@@ -366,7 +361,9 @@ ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/dev/mmcblk0 bs=1 skip=4194304 count=
    UF's auto-reboot — muligvis var boksen ikke i reel loader-tilstand trods "ok".
    Løsning: fra en kørende boks (bootet fra SD) skrives parameteren med §9's
    dd-metode: `dd if=parameter_emmc.bin of=/dev/mmcblk0 bs=1 seek=4194304 conv=notrunc`
-   — verificeret ved readback + efterfølgende eMMC-boot.
+   — verificeret ved readback + efterfølgende eMMC-boot. **Permanent fix bagefter:**
+   09 bager nu parameteren direkte ind i imaget, så hverken DI -p eller dd indgår
+   i opskriften længere — dd-metoden står som dokumenteret fallback.
 2. **Forældet myinit i rootfs'en:** 06 kopierer `myinit.sh` ind i rootfs'en, men kopien
    var fra fejlsøgningsfasen: statisk IP 192.168.1.50, ingen fb-rettelser, og en
    blokerende `/usr/sbin/sshd -ddd`-linje til sidst (debug-sshd kører i forgrunden,
@@ -398,10 +395,15 @@ ssh -i ~/.ssh/geekbox_key root@<IP> 'dd if=/dev/mmcblk0 bs=1 skip=4194304 count=
 6. **ssh fra PC'en:** nøglen hedder `~/.ssh/geekbox_key` (ikke et standard-navn) →
    `ssh -i ~/.ssh/geekbox_key root@<ip>`.
 
-### Efter første eMMC-boot (gjort på boks 2 over ssh)
+### Efter første eMMC-boot (boks 2+3, over ssh)
 
 - `resize2fs /dev/mmcblk0p6` — 1,4 GB → 15 GB (online, på mountet root)
 - swapfil 2 GB (`dd`+`mkswap`+fstab-linje) + `swapon -a`
+- **Hvis første boot efter flash kun viser sort skærm med musmarkør:** X nåede at
+  starte mens HDMI-forhandlingen stadig var i gang (EDID-racen) — fb-tilstanden X
+  målte på var midlertidig. Løsning: genstart X via ssh (`kill $(pidof Xorg)` —
+  nodm respawner det med det samme), eller strøm-cyklus. Set på både boks 2 og 3;
+  kun ved allerførste boot efter flash — efterfølgende boots er rene.
 
 ### Status boks 2 (aug 2026)
 
@@ -410,3 +412,10 @@ billede. Det observerede "blinken" (panel→sort→panel i loop) var den fysiske
 HDMI-forbindelse: kernellen registrerede ingen gentagne HDMI-hændelser, kun én
 EDID-læsefejl ved boot — signalet droppede på vej til TV'et. Løst ved at skifte
 HDMI-stik/ledning. Ikke software.
+
+### Status boks 3 (aug 2026)
+
+Første boks flashet med den SD-frie metode (09 med bagt parameter + `UF` — intet
+andre skridt). Virkede med det samme: boot fra eMMC, netværk via DHCP, desktop med
+korrekte farver efter én X-genstart ved første boot (se ovenfor). resize2fs +
+swapfil gjort over ssh. Metoden er dermed verificeret på hardware.

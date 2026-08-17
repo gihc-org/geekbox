@@ -1,13 +1,16 @@
 #!/bin/bash
 # 09: Bygger devuan/update_devuan.img — en update.img hvor Lubuntu-rootfs'en er
-# udskiftet med Devuan-rootfs'en (fra 01+06+07), klar til at flashe boksens eMMC
+# udskiftet med Devuan-rootfs'en (fra 01+06+07) OG parameteren med vores egen
+# (root=/dev/mmcblk0p6 + init=/root/myinit.sh), klar til at flashe boksens eMMC
 # direkte fra PC'en i loader-tilstand:  upgrade_tool UF devuan/update_devuan.img
+# — derefter er alt klart; ingen DI -p, SD-kort eller dd-omvej nødvendig.
 #
 # Metoden er et "in-place patch": den nye rootfs laves PRÆCIS lige så stor som
-# originalens Image/rootfs.img og dd'es ind på dens offset. Dermed er alle
-# headere, offsets og størrelser i image-filen uændrede, og UF ser en struktur
-# der er byte-identisk med den originale update.img (kun indholdet af to
-# partitioner skifter: rootfs nu, parameter bagefter via DI -p).
+# originalens Image/rootfs.img og dd'es ind på dens offset, og parameter-blobben
+# (PARM+crc32_rk, bygget af make_parm_bin.py) skrives inden for parameter-entryens
+# eksisterende størrelse (nul-paddet). Dermed er alle headere, offsets og
+# størrelser i image-filen uændrede, og UF ser en struktur der er byte-identisk
+# med den originale update.img — kun to entry'ers indhold skifter.
 #
 # Kræver at 01+06+07 er kørt. Kør: sudo devuan/09_make_emmc_img.sh
 set -euo pipefail
@@ -38,8 +41,13 @@ if [ -n "$missing" ]; then
     exit 1
 fi
 
-echo "== finder rootfs.img's offset/størrelse i originalen =="
-read -r OFF SIZE < <(python3 - "$ORIG" <<'PYEOF'
+echo "== finder entry-offsets/størrelser i originalen =="
+while read -r _name _off _size; do
+    case "$_name" in
+        Image/rootfs.img) OFF=$_off; SIZE=$_size;;
+        parameter)        POFF=$_off; PSIZE=$_size;;
+    esac
+done < <(python3 - "$ORIG" <<'PYEOF'
 import struct, sys
 f = open(sys.argv[1], 'rb')
 h = f.read(0x66)
@@ -47,20 +55,23 @@ assert h[0:4] == b'RKFW', "ikke et RKFW-image"
 upd_off = struct.unpack('<I', h[0x21:0x25])[0]
 f.seek(upd_off + 0x88)
 n = struct.unpack('<I', f.read(4))[0]
+found = {}
 for i in range(n):
     f.seek(upd_off + 0x8c + i*0x70)
     e = f.read(0x70)
     path = e[0x20:0x40].split(b'\0')[0].decode('latin1')
     off  = struct.unpack('<I', e[0x60:0x64])[0]
     size = struct.unpack('<I', e[0x6c:0x70])[0]
-    if path == 'Image/rootfs.img':
-        print(upd_off + off, size)
-        break
-else:
-    sys.exit("FEJL: fandt ikke Image/rootfs.img i imaget")
+    if path in ('Image/rootfs.img', 'parameter'):
+        found[path] = (upd_off + off, size)
+for want in ('Image/rootfs.img', 'parameter'):
+    if want not in found:
+        sys.exit(f"FEJL: fandt ikke {want} i imaget")
+    print(want, *found[want])
 PYEOF
 )
 echo "   Image/rootfs.img: offset=$OFF size=$SIZE"
+echo "   parameter:        offset=$POFF size=$PSIZE"
 
 echo "== fstab: root-label til linuxroot (eMMC-partitionens label) =="
 # Bemærk: ændrer devuan/rootfs/etc/fstab varigt. 01 genskriver den altid til
@@ -88,14 +99,37 @@ mkfs.ext4 -q -F -L linuxroot \
 echo "== kopierer update.img og patcher rootfs-regionen in-place =="
 cp "$ORIG" "$OUT"
 dd if="$ROOTIMG" of="$OUT" bs=1M oflag=seek_bytes seek="$OFF" conv=notrunc status=none
+
+echo "== bager eMMC-parameteren ind i imaget =="
+# Byg binær PARM (PARM + længde + tekst + crc32_rk) ud af tekstfilen.
+# Blobben skal være <= parameter-entryens størrelse; resten nul-paddes.
+PARMBIN=$PROJ/devuan/parameter_emmc.bin
+(cd "$PROJ" && python3 devuan/make_parm_bin.py devuan/parameter_emmc.txt devuan/parameter_emmc.bin)
+PARMBYTES=$(wc -c < "$PARMBIN")
+if [ "$PARMBYTES" -gt "$PSIZE" ]; then
+    echo "FEJL: parameter-blobben er $PARMBYTES bytes, men entryen har kun $PSIZE —"
+    echo "      forkort devuan/parameter_emmc.txt (fx fjern en kommentar-linje)"
+    exit 1
+fi
+python3 - "$OUT" "$POFF" "$PSIZE" "$PARMBIN" <<'PYEOF'
+import sys
+img, poff, psize, binf = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+blob = open(binf, 'rb').read()
+blob = blob + b'\0' * (psize - len(blob))
+f = open(img, 'r+b')
+f.seek(poff)
+f.write(blob)
+f.close()
+print(f"  parameter: {psize} bytes @ offset {poff}")
+PYEOF
 sync
 
 echo "== verificerer det patchede image mod originalen =="
-# Alle entry'er undtagen rootfs skal være byte-identiske med original-imaget;
-# rootfs-regionen skal matche det netop byggede image.
-python3 - "$OUT" "$ORIG" "$ROOTIMG" <<'PYEOF'
+# Alle entry'er undtagen rootfs og parameter skal være byte-identiske med
+# original-imaget; de to patchede sammenlignes mod deres nye kilder.
+python3 - "$OUT" "$ORIG" "$ROOTIMG" "$PARMBIN" <<'PYEOF'
 import struct, sys, hashlib
-img, orig, rootimg = sys.argv[1], sys.argv[2], sys.argv[3]
+img, orig, rootimg, parmbin = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 f = open(img, 'rb')
 o = open(orig, 'rb')
 h = f.read(0x66)
@@ -119,6 +153,9 @@ for i in range(n):
     if path == 'Image/rootfs.img':
         with open(rootimg, 'rb') as r:
             h_ref = hashlib.sha256(r.read()).hexdigest()
+    elif path == 'parameter':
+        blob = open(parmbin, 'rb').read()
+        h_ref = hashlib.sha256(blob + b'\0' * (size - len(blob))).hexdigest()
     else:
         o.seek(upd_off + off)
         h_ref = hashlib.sha256(o.read(size)).hexdigest()
@@ -128,8 +165,9 @@ for i in range(n):
 sys.exit(0 if ok else 1)
 PYEOF
 
-echo "== FÆRDIG: $OUT = original boot-kæde + Devuan-rootfs =="
+echo "== FÆRDIG: $OUT = original boot-kæde + Devuan-rootfs + eMMC-parameter =="
 echo
 echo "Flash boksen (den skal være i loader-tilstand, USB i OTG-porten):"
 echo "  sudo $PROJ/Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool uf $OUT"
-echo "  sudo $PROJ/Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool DI -p $PROJ/devuan/parameter_emmc.txt"
+echo "Tag derefter strømmen af/på — boksen booter Devuan direkte fra eMMC"
+echo "(parameteren er bagt ind i imaget; hverken DI -p, SD-kort eller dd nødvendig)."

@@ -6,9 +6,9 @@ Moderne userspace (Devuan Excalibur/Trixie-base, armhf) på vendor-kernen 3.10.7
 Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC; root på eMMC
 (begge bokse) — parameter med `root=/dev/mmcblk0p6` + `init=/root/myinit.sh`.
 Ny boks flashes direkte fra laptop i loader-tilstand: `09` bygger en modificeret
-update.img med Devuan-rootfs (in-place patch, verificeret), derefter `UF` +
-parameter via dd-metoden (se DOKUMENTATION.md §10 — DI -p af emmc-parameteren
-slog ikke igennem på boks 2). Scripts i `devuan/`:
+update.img med Devuan-rootfs OG eMMC-parameter bagt ind (in-place patch,
+verificeret) — derefter er `UF` det eneste skridt; hverken SD-kort, DI -p eller
+dd er nødvendig (se DOKUMENTATION.md §10). Scripts i `devuan/`:
 
 - [x] Udpak update.img (rkfwtools) — analysér boot-flow: monolitisk kernel, initramfs mounter via LABEL
 - [x] Verificér parameter-format mod vendor U-Boot-kilde (`lollipop_u-boot`): sector 0, PARM+crc32_rk
