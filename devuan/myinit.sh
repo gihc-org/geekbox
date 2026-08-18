@@ -21,6 +21,37 @@ mount -t devpts devpts /dev/pts 2>/dev/null
 # 206 poster, X hotpluggede musen med det samme, og PA fik sin alsa_output.dmixer.
 pkill -9 udevd 2>/dev/null
 
+# Udvid rodfilsystemet til hele partitionen, hvis det ikke allerede fylder den.
+# HVORFOR HER: imagets filsystem er kun ~1,4 GB (09 bygger det i samme størrelse som
+# originalens rootfs.img), mens partitionen er ~15 GB. Udvidelsen har hidtil været et
+# manuelt trin (emmc_first_boot.sh) — og et manuelt trin bliver glemt. Konsekvensen er
+# ubehagelig: browser-cache fylder de sidste MB på en aften, og en FULD DISK dræber
+# X-sessionen TAVST. Ingen fejl i Xorg.0.log, tom .xsession-errors, ingenting i loggene
+# (skrivninger fejler ju). Det ser ud som en helt anden fejl og kostede en aftens
+# fejlsøgning 18-19/8-2026. Se DOKUMENTATION.md §10.
+# Her, som PID 1 før init, skriver ingen andre processer på disken — det bedste tidspunkt.
+# Stateless: vi sammenligner størrelser hver boot i stedet for at føre en markør-fil, så
+# det også retter sig selv hvis partitionen en dag bliver større.
+# NB: /proc/mounts har TO poster for "/" på denne boks — først initramfs'ens egen
+# "rootfs", derefter den rigtige /dev/mmcblk0p6. Tag den SIDSTE der er en /dev-enhed,
+# ellers får man "rootfs" og guarden springer alt over (målt 19/8-2026).
+rootdev=$(awk '$2 == "/" && $1 ~ /^\/dev\// { d = $1 } END { print d }' /proc/mounts)
+if [ -b "$rootdev" ] && [ -r "/sys/class/block/${rootdev#/dev/}/size" ]; then
+    partsec=$(cat "/sys/class/block/${rootdev#/dev/}/size")           # 512-byte sektorer
+    fsinfo=$(dumpe2fs -h "$rootdev" 2>/dev/null)
+    fsblocks=$(echo "$fsinfo" | awk -F: '/^Block count:/  { print $2+0 }')
+    fsbs=$(echo "$fsinfo"     | awk -F: '/^Block size:/   { print $2+0 }')
+    if [ "${fsblocks:-0}" -gt 0 ] && [ "${fsbs:-0}" -ge 512 ] && [ "${partsec:-0}" -gt 0 ]; then
+        fssec=$(( fsblocks * (fsbs / 512) ))
+        # udvid kun ved reel forskel (>5 %), så vi ikke kalder resize2fs unødigt hver boot
+        if [ "$fssec" -lt $(( partsec / 100 * 95 )) ]; then
+            echo "myinit: udvider $rootdev: $(( fssec / 2048 )) MiB -> $(( partsec / 2048 )) MiB"
+            resize2fs "$rootdev" > /root/resize.log 2>&1 \
+                || echo "myinit: resize2fs fejlede, se /root/resize.log"
+        fi
+    fi
+fi
+
 # netværk: eth0 med DHCP først, ellers statisk fallback — men KUN hvis der er link!
 # (ellers efterlades en død default-route på eth0, der kvalte wlan0)
 # wlan0 overlades til ifupdown/wpa_supplicant i rcS (undgår dobbelt-dhclient)

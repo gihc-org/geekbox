@@ -20,6 +20,8 @@ EXTRA_PACKAGES=(
     console-setup   # dansk tastatur på konsollen (tty1-6); /etc/default/keyboard (dk) dækker kun X
     chrony          # NTP — boksen har ingen RTC-batteri; uret starter i 2013 ved hver boot uden denne
     sudo            # 07 lægger kristian i sudo-GRUPPEN, men pakken var aldrig installeret ("sudo: kommandoen ikke fundet")
+    sysklogd        # der var INGEN syslog-daemon: nodms fejlbeskeder gik i ingenting, og vi
+                    # fejlsøgte en aften i blinde (fuld disk + dødt udev) — se DOK §5.4b
 )
 # ────────────────────────────────────────────────────────────────────────
 

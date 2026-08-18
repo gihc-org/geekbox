@@ -47,6 +47,9 @@ missing=""
 # sudo: 07 lægger kristian i sudo-gruppen, men pakken skal også være der — ellers
 # svarer boksen "sudo: kommandoen ikke fundet" (fundet på boks 4, aug 2026)
 [ -e "$ROOTFS/usr/bin/sudo" ] || missing="$missing sudo"
+# syslog: uden en daemon går nodms og andres fejlbeskeder i ingenting, og så fejlsøger man
+# i blinde — det kostede en aften (fuld disk + dødt udev, begge tavse). Se DOK §5.4b.
+{ [ -e "$ROOTFS/usr/sbin/syslogd" ] || [ -e "$ROOTFS/usr/sbin/rsyslogd" ]; } || missing="$missing sysklogd"
 if [ -n "$missing" ]; then
     echo "FEJL: pakker mangler i $ROOTFS:$missing"
     echo "Læg dem i rootfs'en via devuan/extra_packages.sh (tilføj dem i EXTRA_PACKAGES"
