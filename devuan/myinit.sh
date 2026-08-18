@@ -9,6 +9,18 @@ mount -t devtmpfs dev /dev 2>/dev/null
 mkdir -p /run/sshd /dev/pts
 mount -t devpts devpts /dev/pts 2>/dev/null
 
+# Den gamle 14.04-initramfs starter sin EGEN udevd (/sbin/udevd --resolve-names=never),
+# og den overlever ind i vores rootfs. rcS starter derefter endnu en, og to daemoner slås
+# om netlink-socket'en: udev-databasen (/run/udev/data) bliver aldrig skrevet.
+# Følgerne er ubehagelige og ser ud som helt andre fejl:
+#   * X får INGEN input-enheder ("The server relies on udev to provide the list of input
+#     devices") — mus og tastatur virker ikke, uden en eneste fejlbesked i Xorg.0.log
+#   * PulseAudios ALSA-sink kan ikke finde lydkortet og falder tilbage til module-null-sink
+#     ("auto_null") — alt spiller lydløst
+# Målt på boks 5, 19/8-2026: efter `pkill -9 udevd` + én ren daemon gik databasen fra 0 til
+# 206 poster, X hotpluggede musen med det samme, og PA fik sin alsa_output.dmixer.
+pkill -9 udevd 2>/dev/null
+
 # netværk: eth0 med DHCP først, ellers statisk fallback — men KUN hvis der er link!
 # (ellers efterlades en død default-route på eth0, der kvalte wlan0)
 # wlan0 overlades til ifupdown/wpa_supplicant i rcS (undgår dobbelt-dhclient)

@@ -31,8 +31,20 @@ echo
 echo "== 3/3: flashning =="
 echo "Sæt boksen i loader-tilstand NU:"
 echo "  strøm fra → USB i OTG-porten → hold update-knappen → strøm på → slip knappen"
+echo "(Update-knappen giver loader-tilstand, ikke ægte Mask ROM — det er nok til UF.)"
 echo
-read -r -p "Tryk ENTER når boksen er i loader-tilstand (Ctrl+C for at afbryde) " _
+# Rockchip-enheder melder sig med vendor-id 2207. Vi tjekker FØR flashningen, så en
+# manglende loader-tilstand ikke først opdages når værktøjet hænger på "Loading firmware".
+while true; do
+    read -r -p "Tryk ENTER når boksen er i loader-tilstand (Ctrl+C for at afbryde) " _
+    if lsusb 2>/dev/null | grep -qi "2207:"; then
+        echo "   Rockchip-enhed fundet på USB:"
+        lsusb | grep -i "2207:" | sed "s/^/     /"
+        break
+    fi
+    echo "   INGEN Rockchip-enhed på USB (leder efter vendor-id 2207)."
+    echo "   Tjek kablet — det skal i boksens OTG-port — og gentag knap-proceduren."
+done
 echo
 if "$UPGRADE" uf "$IMG"; then
     echo

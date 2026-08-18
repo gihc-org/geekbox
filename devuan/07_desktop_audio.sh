@@ -103,8 +103,38 @@ rm -rf "$tmp"
 cp "$PROJ/vendor_root/etc/asound.conf" "$ROOTFS/etc/asound.conf"
 # PA skal bruge dmix-enheden, ikke de tavse direkte-hw sinks
 sed -i "s|^load-module module-udev-detect.*|load-module module-alsa-sink device=dmixer|" "$ROOTFS/etc/pulse/default.pa"
-echo 'export LD_LIBRARY_PATH=/opt/alsa-da/usr/lib/arm-linux-gnueabihf${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}' \
+ALSA_DA_LIB=/opt/alsa-da/usr/lib/arm-linux-gnueabihf
+# /etc/profile.d dækker kun login-shells (ssh, tty), IKKE skrivebordet. Beholdes alligevel:
+# den er nyttig når man tester over ssh.
+echo "export LD_LIBRARY_PATH=$ALSA_DA_LIB\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}" \
     > "$ROOTFS/etc/profile.d/alsa-legacy.sh"
+# Det sted der virker for skrivebordet: pulseaudios EGEN startlinje. Kun PA får det gamle
+# bibliotek, og resten af sessionen kører uberørt.
+# Verificeret på boks 5 (19/8-2026): PA's /proc/<pid>/maps viser libasound fra
+# /opt/alsa-da, og sinken er alsa_output.dmixer i stedet for auto_null.
+#
+# To andre steder blev prøvet og forkastet:
+#   * /etc/environment (pam_env): nodm's session får den ikke. Testen der "beviste" at den
+#     virkede var en måleartefakt — min egen `su kristian -c pactl` startede en NY
+#     pulseaudio, og `su` læser /etc/environment. Mål altid på den PA sessionen selv har
+#     startet: grep alsa-da /proc/$(pgrep -x pulseaudio)/maps
+#   * /etc/X11/Xsession.d/-snippet: FARLIG. Den tvinger det gamle bibliotek ned over hele
+#     sessionen, og biblioteket mangler symboler nyere programmer kræver (aplay:
+#     "undefined symbol: snd_pcm_subformat_value"). Sessionen døde af det.
+PA_AUTOSTART=$ROOTFS/etc/xdg/autostart/pulseaudio.desktop
+if [ -f "$PA_AUTOSTART" ]; then
+    grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
+        sed -i "s|^Exec=|Exec=env LD_LIBRARY_PATH=$ALSA_DA_LIB |" "$PA_AUTOSTART"
+    grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
+        { echo "FEJL: kunne ikke sætte LD_LIBRARY_PATH på PA's Exec-linje"; exit 1; }
+else
+    echo "FEJL: $PA_AUTOSTART findes ikke — er pulseaudio installeret?"; exit 1
+fi
+# NB: lyd kræver OGSÅ at udev virker. Er der to udevd'er (initramfs + rcS), bliver
+# udev-databasen tom, og PA's alsa-sink falder tilbage til auto_null uanset biblioteksstien.
+# myinit.sh dræber initramfs-udevd af netop den grund — se DOKUMENTATION.md §5.4b.
+# Test lyden med PA, ikke med aplay (som ikke kan køre mod det gamle bibliotek):
+#   pactl list sinks short   →  skal vise alsa_output.dmixer, ikke auto_null
 
 echo "== diverse rettelser lært undervejs =="
 # systemd-sysusers fejler på 3.10 (EINVAL lock) — postinsts skal bruge adduser-stien

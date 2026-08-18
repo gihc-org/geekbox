@@ -124,6 +124,29 @@ root → sysvinit hænger tidligt i rcS (usynligt, da der ikke er framebuffer-ko
 der mounter proc/sys/dev selv, starter netværk + ssh *før* init, logger til kortet, og
 til sidst `exec /sbin/init`. Bonus: tidlig ssh-adgang ved alle fremtidige problemer.
 
+### 5.4b To udevd'er slås — mus, tastatur og lyd dør tavst
+
+Den gamle 14.04-initramfs starter sin egen `udevd` (`/sbin/udevd --daemon
+--resolve-names=never`), og den overlever ind i vores rootfs. `rcS` starter derefter endnu
+en. To daemoner om samme netlink-socket betyder at **udev-databasen aldrig bliver skrevet**:
+`/run/udev/data` står tom, og `udevadm info` kan ikke slå nogen enhed op.
+
+Følgerne ser ud som to helt andre fejl:
+
+- **Mus og tastatur virker ikke.** X spørger udev om input-enheder og får ingenting.
+  `Xorg.0.log` siger kun *"The server relies on udev to provide the list of input
+  devices"* og tilføjer aldrig en enhed. Ingen fejlbesked, ingen (EE)-linje.
+- **Lyden forsvinder.** PulseAudios ALSA-sink kan ikke finde lydkortet og falder tilbage
+  til `module-null-sink` ("auto_null"), så alt spiller lydløst — også selvom
+  `/etc/asound.conf` og `default.pa` er helt rigtige.
+
+Diagnose (målt på boks 5, 19. aug 2026): `pgrep -a udevd` viste tre processer, heraf pid
+162 med `--resolve-names=never` fra initramfs'en. Efter `pkill -9 udevd` + én ren daemon +
+`udevadm trigger --action=add` gik databasen fra 0 til 206 poster, `ID_INPUT_MOUSE=1` kom
+frem, X hotpluggede musen med det samme, og PA fik sin `alsa_output.dmixer`.
+
+**Fix:** `myinit.sh` dræber initramfs-udevd før `exec /sbin/init`, så rcS starter præcis én.
+
 ### 5.5 OpenSSH 10 dræbes af sin egen sandbox
 ssh-forbindelser lukkede med det samme. Debug-log viste: preauth-child **SIGABRT** lige
 efter "attaching seccomp filter". dmesg viste `sshd: syscall 397` (statx, kræver 4.11)
