@@ -234,6 +234,9 @@ sudo devuan/02_write_sd.sh /dev/sdX
 sudo devuan/07_desktop_audio.sh
 # 4b. (valgfri) NetworkManager til wifi — kortet i læseren, non-destruktiv:
 sudo devuan/08_network_manager.sh /dev/sdX1
+# 4c. (valgfri) ekstra pakker i rootfs — rediger EXTRA_PACKAGES-listen i scriptet
+#     (pt. kun lxterminal) og genkør det ved behov; idempotent:
+sudo devuan/extra_packages.sh
 # 5. Boks i loader-tilstand, parameter på:
 sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool DI -p devuan/parameter_myinit.txt
 # 6. SD i boksen, strøm på. SSH: nøglen i devuan/authorized_keys (lægges ind af 06)
@@ -327,7 +330,8 @@ eller dd-omvej er nødvendig.
 
 ### Opskrift: ny boks fra laptop (komplet)
 
-Forudsætninger: `devuan/rootfs` er bygget (01+06+07 kørt), og boksen er i
+Forudsætninger: `devuan/rootfs` er bygget (01+06+07 kørt, plus evt.
+`extra_packages.sh` for ekstra pakker som lxterminal), og boksen er i
 loader-tilstand (USB i OTG; hold Update, tryk kort Reboot, slip Update).
 SD-kort er **ikke** nødvendigt — behold boks 1's gamle kort som redningsmedie.
 
@@ -394,11 +398,33 @@ en kørende boks — se fælde 1.
    `~/.config` ved mærkelig desktop-adfærd (`find ~/.config -size 0`).
 6. **ssh fra PC'en:** nøglen hedder `~/.ssh/geekbox_key` (ikke et standard-navn) →
    `ssh -i ~/.ssh/geekbox_key root@<ip>`.
+7. **09's verifikations-script OOM-dræbt (RAM-travlt PC, aug 2026):** sha256-kontrollen
+   læste hele entry'er ind i RAM ad gangen — ved `Image/rootfs.img` to kopier á ~1,4 GB
+   samtidig (imaget + referencefilen) → kernelens OOM-killer dræbte python midt i
+   kontrollen. Vigtigt at vide: imaget var alligevel komplet og brugbart — verifikationen
+   kører EFTER dd, parm-bagning og sync, så et drab her betyder kun at kontrollen ikke
+   nåede at bekræfte, ikke at imaget er defekt. Et allerede-bygget image kan derfor nøjes
+   med at blive efter-verificeret (samme python-logik, standalone) uden genbygning.
+   Fix: hashing i 8 MiB-bidder, konstant lavt hukommelsesforbrug.
 
 ### Efter første eMMC-boot (boks 2+3, over ssh)
 
-- `resize2fs /dev/mmcblk0p6` — 1,4 GB → 15 GB (online, på mountet root)
-- swapfil 2 GB (`dd`+`mkswap`+fstab-linje) + `swapon -a`
+Kør `devuan/emmc_first_boot.sh` på boksen (pipes ind over ssh, kører som root,
+idempotent) — den udfører begge efter-trin:
+
+```bash
+ssh -i ~/.ssh/geekbox_key root@<IP> 'bash -s' < devuan/emmc_first_boot.sh
+```
+
+1. `resize2fs /dev/mmcblk0p6` — rootfs 1,4 GB → 15 GB (online, på mountet root)
+2. swapfil 2 GB (`dd`+`mkswap`+fstab-linje) + `swapon -a`
+
+Swapfilen kan ikke bages ind i `update_devuan.img`: 09 bygger rootfs-imaget med
+præcis samme størrelse som originalens `Image/rootfs.img` (~1,4 GB), og
+filsystemet er kun 1,4 GB stort indtil resize2fs efter første boot — en 2 GB
+swapfil kan hverken ligge i imaget eller oprettes før udvidelsen. Uden swap
+crasher boksen under tunge apps (firefox), så trinnet er ikke valgfrit.
+
 - **Hvis første boot efter flash kun viser sort skærm med musmarkør:** X nåede at
   starte mens HDMI-forhandlingen stadig var i gang (EDID-racen) — fb-tilstanden X
   målte på var midlertidig. Løsning: genstart X via ssh (`kill $(pidof Xorg)` —

@@ -25,14 +25,17 @@ ROOTIMG=$PROJ/devuan/rootfs_devuan.img
 [ -d "$ROOTFS/etc/pulse" ] || { echo "FEJL: desktop/lyd mangler i $ROOTFS — kør 07 først"; exit 1; }
 
 # Pakker der viste sig at mangle i ældre rootfs-byg (boks 2 fik dem efterinstalleret
-# direkte på p6 — uden dem ender en ny boks uden netværk/fb-korrektion):
+# direkte på p6 — uden dem ender en ny boks uden netværk/fb-korrektion; og uden
+# lxterminal står desktoppen uden terminal-emulator):
 missing=""
 { [ -e "$ROOTFS/usr/sbin/dhclient" ] || [ -e "$ROOTFS/sbin/dhclient" ]; } || missing="$missing isc-dhcp-client"
 { [ -e "$ROOTFS/usr/bin/fbset" ] || [ -e "$ROOTFS/bin/fbset" ]; } || missing="$missing fbset"
 [ -e "$ROOTFS/usr/sbin/wpa_supplicant" ] || missing="$missing wpasupplicant"
+[ -e "$ROOTFS/usr/bin/lxterminal" ] || missing="$missing lxterminal"
 if [ -n "$missing" ]; then
     echo "FEJL: pakker mangler i $ROOTFS:$missing"
-    echo "Ret dem med (qemu-chroot):"
+    echo "Læg dem i rootfs'en via devuan/extra_packages.sh (tilføj dem i EXTRA_PACKAGES"
+    echo "og genkør det) — eller manuelt med qemu-chroot:"
     echo "  sudo cp /usr/bin/qemu-arm-static $ROOTFS/usr/bin/"
     echo "  sudo cp -L /etc/resolv.conf $ROOTFS/etc/resolv.conf"
     echo "  sudo chroot $ROOTFS /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get update"
@@ -127,9 +130,25 @@ sync
 echo "== verificerer det patchede image mod originalen =="
 # Alle entry'er undtagen rootfs og parameter skal være byte-identiske med
 # original-imaget; de to patchede sammenlignes mod deres nye kilder.
+# Hashing sker i bidder — entry'erne er op til ~1.5 GB, og læses de ind hele
+# ad gangen (to kopier af rootfs samtidig) bliver processen OOM-dræbt.
 python3 - "$OUT" "$ORIG" "$ROOTIMG" "$PARMBIN" <<'PYEOF'
 import struct, sys, hashlib
 img, orig, rootimg, parmbin = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+CHUNK = 8 * 1024 * 1024  # 8 MiB ad gangen — konstant, lavt hukommelsesforbrug
+
+def sha256_region(fobj, size):
+    h = hashlib.sha256()
+    left = size
+    while left > 0:
+        chunk = fobj.read(min(CHUNK, left))
+        if not chunk:
+            sys.exit("FEJL: uventet EOF under hashing")
+        h.update(chunk)
+        left -= len(chunk)
+    return h.hexdigest()
+
 f = open(img, 'rb')
 o = open(orig, 'rb')
 h = f.read(0x66)
@@ -148,17 +167,16 @@ for i in range(n):
     if path == 'RESERVED':
         continue  # tom pladsholder (backup-partitionen)
     f.seek(upd_off + off)
-    data = f.read(size)
-    h_img = hashlib.sha256(data).hexdigest()
+    h_img = sha256_region(f, size)
     if path == 'Image/rootfs.img':
         with open(rootimg, 'rb') as r:
-            h_ref = hashlib.sha256(r.read()).hexdigest()
+            h_ref = sha256_region(r, size)
     elif path == 'parameter':
         blob = open(parmbin, 'rb').read()
         h_ref = hashlib.sha256(blob + b'\0' * (size - len(blob))).hexdigest()
     else:
         o.seek(upd_off + off)
-        h_ref = hashlib.sha256(o.read(size)).hexdigest()
+        h_ref = sha256_region(o, size)
     same = h_img == h_ref
     ok &= same
     print(f"  {'OK  ' if same else 'FEJL'} {path} ({size} bytes)")
