@@ -336,19 +336,37 @@ loader-tilstand (USB i OTG; hold Update, tryk kort Reboot, slip Update).
 SD-kort er **ikke** nødvendigt — behold boks 1's gamle kort som redningsmedie.
 
 ```bash
-# 1. Byg imaget — Devuan-rootfs + eMMC-parameter bages begge ind. Scriptet
-#    verificerer resultatet byte-for-byte mod originalen og stopper selv med
-#    vejledning hvis rootfs'en er ufuldstændig.
-sudo devuan/09_make_emmc_img.sh
+# 1+2. Byg og flash i én kommando. Scriptet bygger imaget (09), kontrollerer DTB'en,
+#      og VENTER derefter på ENTER — så har du tid til at sætte boksen i loader-
+#      tilstand først. Derefter flasher det (~5-10 min).
+sudo devuan/testflash.sh
 
-# 2. Flash ALT i én kommando (~5-10 min; boksen rebooter undervejs/bagefter)
-sudo Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool uf devuan/update_devuan.img
+# 3. Tag strømmen af/på. Boksen booter Devuan direkte fra eMMC.
+#    Bemærk: der er INTET blåt boot-logo mere hvis DTB_PATCH har været brugt —
+#    skærmen er sort de første 15-30 sekunder, det er normalt.
 
-# 3. Tag strømmen af/på — boksen booter Devuan direkte fra eMMC og får DHCP.
-#    Find IP'en via routerens klientliste eller ping-sweep; derefter over ssh
-#    (ssh -i ~/.ssh/geekbox_key root@<IP>): resize2fs /dev/mmcblk0p6 + swapfil
-#    (se "Efter første eMMC-boot" nedenfor) + wifi-credentials + passwd x2.
+# 4. Find boksen på nettet (dens MAC er tilfældig ved hver boot, så søg ikke på den)
+devuan/find_box.sh
+
+# 5. Efterbehandling: filsystem 1,4 GB -> 15 GB + 2 GB swapfil
+ssh -i ~/.ssh/geekbox_key root@<IP> 'bash -s' < devuan/emmc_first_boot.sh
+
+# 6. Til sidst: passwd for både kristian og root (07 sætter midlertidigt 'geekbox'),
+#    og evt. wifi-credentials.
 ```
+
+**Kontrollér at det lykkedes** (verificeret på boks 4, 19. aug 2026):
+
+```bash
+ssh -i ~/.ssh/geekbox_key root@<IP> '
+  /usr/local/bin/fb_overscan.py --show   # skal vise et vindue, ikke "fuld skærm"
+  id kristian | grep -o video            # skal findes, ellers fejler ovenstående tavst
+  readlink /etc/alternatives/desktop-background   # skal pege på et tapet
+  command -v sudo                        # skal findes
+  date                                   # skal være rigtig (chrony)'
+```
+
+På skærmen: blåt LXDE-tapet og en synlig bjælke i bunden med startmenu og ur.
 
 Fallback hvis UF mod forventning ikke får parameteren med (vi har kun set den
 slags med `DI -p`, aldrig med `UF`): skriv den bagefter med §9's dd-metode fra
@@ -425,11 +443,17 @@ filsystemet er kun 1,4 GB stort indtil resize2fs efter første boot — en 2 GB
 swapfil kan hverken ligge i imaget eller oprettes før udvidelsen. Uden swap
 crasher boksen under tunge apps (firefox), så trinnet er ikke valgfrit.
 
-- **Hvis første boot efter flash kun viser sort skærm med musmarkør:** X nåede at
-  starte mens HDMI-forhandlingen stadig var i gang (EDID-racen) — fb-tilstanden X
-  målte på var midlertidig. Løsning: genstart X via ssh (`kill $(pidof Xorg)` —
-  nodm respawner det med det samme), eller strøm-cyklus. Set på både boks 2 og 3;
-  kun ved allerførste boot efter flash — efterfølgende boots er rene.
+- **Hvis første boot efter flash kun viser sort skærm med musmarkør:** løst aug 2026, og
+  årsagen var to trivielle ting oven i hinanden — ikke displayet, som hele tiden tegnede
+  et korrekt 1920x1080-billede. (1) Skrivebordsbaggrunden manglede
+  (`/etc/alternatives/desktop-background` ejes af `desktop-base`, som vi ikke
+  installerer) → sort skrivebord. (2) TV'et beskærer ~2,3 % på alle fire kanter, så
+  lxpanel på 26 px i bunden forsvandt helt. Fix i både 07 og 09: tapet-symlink +
+  `devuan/fb_overscan.py`, der skrumper billedet til 95 % centreret via fb-var'ens
+  `grayscale`/`nonstd` (kernens egen `rk_fb_disp_scale()` er død kode) og hænges op i
+  lxsession-autostart. Vigtigste fælde undervejs: `/dev/mem` på `fb0/phys_addr` rammer
+  ikke framebufferen — adressen er en IOVA, fordi VOP'ens IOMMU er slået til. Fuld
+  beviskæde og fældeliste: **DEBUG-SORT-SKAERM.md**.
 
 ### Status boks 2 (aug 2026)
 

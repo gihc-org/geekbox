@@ -16,6 +16,10 @@ ROOTFS=$PROJ/devuan/rootfs
 # ── Pakkelisten — tilføj flere pakkenavne her ──────────────────────────
 EXTRA_PACKAGES=(
     lxterminal      # terminal-emulator; lxde-core (07) trækker ikke selv en med
+    locales         # da_DK.UTF-8 — i C-localet dropper X ikke-ASCII ved indtastning (æ/ø/å "virker ikke")
+    console-setup   # dansk tastatur på konsollen (tty1-6); /etc/default/keyboard (dk) dækker kun X
+    chrony          # NTP — boksen har ingen RTC-batteri; uret starter i 2013 ved hver boot uden denne
+    sudo            # 07 lægger kristian i sudo-GRUPPEN, men pakken var aldrig installeret ("sudo: kommandoen ikke fundet")
 )
 # ────────────────────────────────────────────────────────────────────────
 
@@ -33,5 +37,31 @@ chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get up
 chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get install -y --no-install-recommends \
     "${EXTRA_PACKAGES[@]}"
 chroot "$ROOTFS" /usr/bin/apt-get clean
+
+# dansk locale — samme blok som i 01. Denne rootfs er bygget før 01 fik
+# locales-pakken, så blokken har aldrig kørt her; ved friske 01-byg er den
+# allerede udført (sed/chroot er idempotente). Skal køres i dette script,
+# fordi qemu-arm-static stadig ligger i rootfs'en her (fjernes først ved exit).
+if [ -x "$ROOTFS/usr/sbin/locale-gen" ]; then
+    echo "== genererer da_DK.UTF-8 og sætter det som standard-locale =="
+    sed -i "s/^# *da_DK.UTF-8 UTF-8/da_DK.UTF-8 UTF-8/" "$ROOTFS/etc/locale.gen"
+    chroot "$ROOTFS" /usr/sbin/locale-gen
+    chroot "$ROOTFS" /usr/sbin/update-locale LANG=da_DK.UTF-8
+    # konsollens charset skal følge det nye UTF-8-locale (ellers dansk keymap
+    # men forkert font/charset på tty1-6). nodm's pam_env læser selv
+    # /etc/default/locale, så X-sessionen får LANG automatisk.
+    if [ -e "$ROOTFS/usr/bin/setupcon" ]; then
+        chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/sbin/dpkg-reconfigure console-setup
+    fi
+fi
+
+# varm fontconfig-cache: uden den scanner hver GUI-app alle fonte ved FØRSTE
+# boot på den flashed'e boks (langsom eMMC + flere apps på én gang = desktop
+# står sort i minutter — set som "kun muse-markør efter flash"). Køres her
+# fordi qemu-arm-static stadig ligger i rootfs'en (fjernes ved script-exit).
+if [ -x "$ROOTFS/usr/bin/fc-cache" ]; then
+    echo "== bygger fontconfig-cache (fc-cache -f) =="
+    chroot "$ROOTFS" /usr/bin/fc-cache -f
+fi
 
 echo "== FÆRDIG: ${EXTRA_PACKAGES[*]} er i rootfs'en. Kør 09 for at få dem med i eMMC-imaget. =="

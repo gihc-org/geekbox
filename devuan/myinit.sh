@@ -56,7 +56,11 @@ dd if=/dev/zero of=/dev/fb0 bs=4M 2>/dev/null
   echo "=== myinit $(date) ==="
   echo "--- ip addr:"; ip addr
   echo "--- ip route:"; ip route
-  echo "--- dmesg tail:"; dmesg | tail -40
+  # FULD dmesg (ikke tail): 3.10's compat-lag logger et registerdump pr.
+  # clock_gettime64-kald (syscall 403) fra hver 32-bit proces — så snart
+  # brugerfladen starter, skylles boot-beskederne ud af dmesg-ringen.
+  # Her, før /sbin/init, er loggen endnu intakt (se DEBUG-SORT-SKAERM.md).
+  echo "--- dmesg (fuld):"; dmesg
   echo "=== MYINIT-END ==="
 } > /root/bootlog.txt 2>&1
 sync

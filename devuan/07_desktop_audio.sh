@@ -32,7 +32,9 @@ echo /usr/sbin/nodm > "$ROOTFS/etc/X11/default-display-manager"
 
 echo "== bruger + grupper + nøgler =="
 chroot "$ROOTFS" /usr/sbin/useradd -m -s /bin/bash kristian || true
-chroot "$ROOTFS" /usr/sbin/usermod -aG sudo,input,audio kristian
+# video: /dev/fb0 er root:video, og uden gruppen kan sessionens fb_overscan.py ikke
+# åbne framebufferen — den fejler tavst i autostart (fundet 18. aug 2026)
+chroot "$ROOTFS" /usr/sbin/usermod -aG sudo,input,audio,video kristian
 echo 'kristian:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # midlertidig — SKIFT!
 for u in root kristian; do
     home=$([ "$u" = root ] && echo /root || echo /home/kristian)
@@ -64,7 +66,31 @@ Section "Screen"
     Device "Framebuffer"
     DefaultDepth 16
 EndSection
+
+Section "ServerFlags"
+    # vendor-driverens blank-sti er brød: efter DPMS-powerdown (hdmi remove fra
+    # lcdc0) vågner billedet ikke igen — sort skærm med kun markør
+    Option "BlankTime" "0"
+    Option "StandbyTime" "0"
+    Option "SuspendTime" "0"
+    Option "OffTime" "0"
+EndSection
 EOF
+
+# pcmanfm's standard-wallpaper (/etc/xdg/pcmanfm/LXDE/pcmanfm.conf) peger på
+# /etc/alternatives/desktop-background, som ejes af desktop-base — uden den
+# pakke bliver skrivebordsbaggrunden sort. Peg linket på LXDE's egen baggrund.
+ln -sf /usr/share/lxde/wallpapers/lxde_blue.jpg "$ROOTFS/etc/alternatives/desktop-background"
+
+# overscan-kompensation: TV'et beskærer ~2,3 % på alle fire kanter, så panelet i
+# bunden forsvinder. Kernens egen kompensation er død kode; fb-var'ens grayscale/nonstd
+# virker. Se devuan/fb_overscan.py. Skal køre EFTER X, derfor lxsession-autostart —
+# uden @, den skal kun køre én gang.
+install -D -m 755 "$PROJ/devuan/fb_overscan.py" "$ROOTFS/usr/local/bin/fb_overscan.py"
+AUTOSTART=$ROOTFS/etc/xdg/lxsession/LXDE/autostart
+mkdir -p "$(dirname "$AUTOSTART")"
+grep -q fb_overscan "$AUTOSTART" 2>/dev/null || \
+    echo "/usr/local/bin/fb_overscan.py --percent 95" >> "$AUTOSTART"
 
 echo "== lyd: legacy libasound (32-bit time) + vendor dmix + PA-sink =="
 # daedalus' libasound2: trixies t64-variant bruger ioctls 3.10 ikke kender (ENOTTY)

@@ -1,19 +1,26 @@
 #!/bin/bash
 # 09: Bygger devuan/update_devuan.img — en update.img hvor Lubuntu-rootfs'en er
-# udskiftet med Devuan-rootfs'en (fra 01+06+07) OG parameteren med vores egen
-# (root=/dev/mmcblk0p6 + init=/root/myinit.sh), klar til at flashe boksens eMMC
+# udskiftet med Devuan-rootfs'en (fra 01+06+07), parameteren med vores egen
+# (root=/dev/mmcblk0p6 + init=/root/myinit.sh) og DTB'ens uboot-logo-flag slået fra
+# (fixer sort skærm/manglende panel efter flash), klar til at flashe boksens eMMC
 # direkte fra PC'en i loader-tilstand:  upgrade_tool UF devuan/update_devuan.img
 # — derefter er alt klart; ingen DI -p, SD-kort eller dd-omvej nødvendig.
 #
 # Metoden er et "in-place patch": den nye rootfs laves PRÆCIS lige så stor som
-# originalens Image/rootfs.img og dd'es ind på dens offset, og parameter-blobben
+# originalens Image/rootfs.img og dd'es ind på dens offset, parameter-blobben
 # (PARM+crc32_rk, bygget af make_parm_bin.py) skrives inden for parameter-entryens
-# eksisterende størrelse (nul-paddet). Dermed er alle headere, offsets og
+# eksisterende størrelse (nul-paddet), og DTB-patchen skifter ét FDT-ord i
+# Image/ramfs.img og Image/resource.img. Dermed er alle headere, offsets og
 # størrelser i image-filen uændrede, og UF ser en struktur der er byte-identisk
-# med den originale update.img — kun to entry'ers indhold skifter.
+# med den originale update.img — kun fire entry'ers indhold skifter.
 #
 # Kræver at 01+06+07 er kørt. Kør: sudo devuan/09_make_emmc_img.sh
 set -euo pipefail
+# Hvilken DT-ændring bages ind i imagets to DTB-kopier? (se blokken længere nede)
+#   policy = rockchip,disp-policy 2 -> 0   (standard; kernen kalder selv load_screen)
+#   logo   = rockchip,uboot-logo-on 1 -> 0  ADVARSEL: boksen booter IKKE (målt 18/8-2026)
+#   none   = ingen DTB-ændring (som originalen)
+DTB_PATCH=${DTB_PATCH:-policy}
 PROJ=$(cd "$(dirname "$0")/.." && pwd)
 ROOTFS=$PROJ/devuan/rootfs
 ORIG=$PROJ/Geekbox_Lubuntu_V160309/Geekbox_Lubuntu_V160309/update.img
@@ -32,6 +39,14 @@ missing=""
 { [ -e "$ROOTFS/usr/bin/fbset" ] || [ -e "$ROOTFS/bin/fbset" ]; } || missing="$missing fbset"
 [ -e "$ROOTFS/usr/sbin/wpa_supplicant" ] || missing="$missing wpasupplicant"
 [ -e "$ROOTFS/usr/bin/lxterminal" ] || missing="$missing lxterminal"
+# dansk locale: uden den dropper X æ/ø/å ved indtastning (C-locale). /etc/default/locale
+# skrives af extra_packages.sh når locales installeres (rootfs fra før 01's locales-pakke).
+[ -e "$ROOTFS/etc/default/locale" ] || missing="$missing locales console-setup"
+# chrony: boksen har ingen RTC-batteri — uden NTP starter uret i 2013 ved hver boot
+[ -e "$ROOTFS/usr/sbin/chronyd" ] || missing="$missing chrony"
+# sudo: 07 lægger kristian i sudo-gruppen, men pakken skal også være der — ellers
+# svarer boksen "sudo: kommandoen ikke fundet" (fundet på boks 4, aug 2026)
+[ -e "$ROOTFS/usr/bin/sudo" ] || missing="$missing sudo"
 if [ -n "$missing" ]; then
     echo "FEJL: pakker mangler i $ROOTFS:$missing"
     echo "Læg dem i rootfs'en via devuan/extra_packages.sh (tilføj dem i EXTRA_PACKAGES"
@@ -47,8 +62,10 @@ fi
 echo "== finder entry-offsets/størrelser i originalen =="
 while read -r _name _off _size; do
     case "$_name" in
-        Image/rootfs.img) OFF=$_off; SIZE=$_size;;
-        parameter)        POFF=$_off; PSIZE=$_size;;
+        Image/rootfs.img)   OFF=$_off;  SIZE=$_size;;
+        parameter)          POFF=$_off; PSIZE=$_size;;
+        Image/ramfs.img)    BOFF=$_off; BSIZE=$_size;;
+        Image/resource.img) ROFF=$_off; RSIZE=$_size;;
     esac
 done < <(python3 - "$ORIG" <<'PYEOF'
 import struct, sys
@@ -59,22 +76,25 @@ upd_off = struct.unpack('<I', h[0x21:0x25])[0]
 f.seek(upd_off + 0x88)
 n = struct.unpack('<I', f.read(4))[0]
 found = {}
+WANTED = ('Image/rootfs.img', 'parameter', 'Image/ramfs.img', 'Image/resource.img')
 for i in range(n):
     f.seek(upd_off + 0x8c + i*0x70)
     e = f.read(0x70)
     path = e[0x20:0x40].split(b'\0')[0].decode('latin1')
     off  = struct.unpack('<I', e[0x60:0x64])[0]
     size = struct.unpack('<I', e[0x6c:0x70])[0]
-    if path in ('Image/rootfs.img', 'parameter'):
+    if path in WANTED:
         found[path] = (upd_off + off, size)
-for want in ('Image/rootfs.img', 'parameter'):
+for want in WANTED:
     if want not in found:
         sys.exit(f"FEJL: fandt ikke {want} i imaget")
     print(want, *found[want])
 PYEOF
 )
-echo "   Image/rootfs.img: offset=$OFF size=$SIZE"
-echo "   parameter:        offset=$POFF size=$PSIZE"
+echo "   Image/rootfs.img:   offset=$OFF size=$SIZE"
+echo "   parameter:          offset=$POFF size=$PSIZE"
+echo "   Image/ramfs.img:    offset=$BOFF size=$BSIZE"
+echo "   Image/resource.img: offset=$ROFF size=$RSIZE"
 
 echo "== fstab: root-label til linuxroot (eMMC-partitionens label) =="
 # Bemærk: ændrer devuan/rootfs/etc/fstab varigt. 01 genskriver den altid til
@@ -89,6 +109,56 @@ echo "== myinit.sh: altid den aktuelle version fra devuan/ =="
 # en forældet myinit satte fx statisk IP 192.168.1.50 (fejlsøgnings-version).
 cp "$PROJ/devuan/myinit.sh" "$ROOTFS/root/myinit.sh"
 chmod 755 "$ROOTFS/root/myinit.sh"
+
+echo "== skrivebordsbaggrund: symlink til LXDE's tapet =="
+# pcmanfm's wallpaper peger på /etc/alternatives/desktop-background, som ejes af
+# desktop-base — en pakke vi ikke installerer. Uden linket er skrivebordet SORT, og et
+# sort skrivebord kan ikke skelnes fra et defekt display: det sendte en hel
+# fejlsøgningsdag efter et "afkortet billede" der ikke fandtes (DEBUG-SORT-SKAERM.md).
+# 07 sætter linket i nye byg; her sikres det også for ældre rootfs'er. Idempotent.
+echo "== overscan-kompensation i sessionen =="
+# TV'et beskærer ~2,3 % på alle fire kanter (~25 linjer top/bund, ~48 px i siderne), så
+# lxpanel i bunden forsvinder helt. Kernens egen kompensation er død kode
+# (rk_fb_disp_scale returnerer straks når HDMI er primær skærm), men fb-var'ens
+# grayscale/nonstd virker — se devuan/fb_overscan.py. SKAL køre efter X er startet,
+# derfor lxsession-autostart (uden @: den skal kun køre én gang).
+install -D -m 755 "$PROJ/devuan/fb_overscan.py" "$ROOTFS/usr/local/bin/fb_overscan.py"
+# /dev/fb0 er root:video — uden gruppen fejler scriptet tavst i autostart.
+# 07 sætter gruppen ved useradd; her sikres det også for ældre rootfs'er (idempotent).
+python3 - "$ROOTFS/etc/group" <<'PYEOF'
+import sys
+sti = sys.argv[1]
+linjer = open(sti).read().splitlines()
+ud = []
+for linje in linjer:
+    felt = linje.split(":")
+    if felt[0] == "video" and len(felt) == 4:
+        medlemmer = [m for m in felt[3].split(",") if m]
+        if "kristian" not in medlemmer:
+            medlemmer.append("kristian")
+        felt[3] = ",".join(medlemmer)
+        linje = ":".join(felt)
+    ud.append(linje)
+open(sti, "w").write("\n".join(ud) + "\n")
+PYEOF
+grep -q "^video:.*kristian" "$ROOTFS/etc/group" || \
+    { echo "FEJL: kunne ikke føje kristian til video-gruppen i rootfs'en"; exit 1; }
+AUTOSTART=$ROOTFS/etc/xdg/lxsession/LXDE/autostart
+if [ -f "$AUTOSTART" ]; then
+    grep -q fb_overscan "$AUTOSTART" || \
+        echo "/usr/local/bin/fb_overscan.py --percent 95" >> "$AUTOSTART"
+else
+    echo "FEJL: $AUTOSTART findes ikke — er lxsession installeret? (kør 07)"; exit 1
+fi
+
+WALLPAPER=/usr/share/lxde/wallpapers/lxde_blue.jpg
+# NB: kontrollér målet MED $ROOTFS-præfiks. Symlinket er absolut inde i rootfs'en, så
+# `test -e` på selve linket følger stien på VÆRTEN og fejler altid herfra.
+[ -e "$ROOTFS$WALLPAPER" ] || \
+    { echo "FEJL: $WALLPAPER mangler i rootfs'en (lxde-common ikke installeret?)"; exit 1; }
+ln -sf "$WALLPAPER" "$ROOTFS/etc/alternatives/desktop-background"
+[ -L "$ROOTFS/etc/alternatives/desktop-background" ] || \
+    { echo "FEJL: symlinket til skrivebordsbaggrunden blev ikke oprettet"; exit 1; }
 
 echo "== bygger ext4-image af rootfs (label linuxroot, uden features 3.10 ikke kender) =="
 rm -f "$ROOTIMG"
@@ -125,16 +195,51 @@ f.write(blob)
 f.close()
 print(f"  parameter: {psize} bytes @ offset {poff}")
 PYEOF
+
+echo "== DTB-patch: $DTB_PATCH (begge kopier) =="
+# Formålet: få vendor-kernen til selv at programmere skærm-timingen. Uden en af disse
+# ændringer kalder den ALDRIG load_screen() på den primære LCDC — den arver U-Boots
+# registre og retter dem kun hvis HDMI'ens opløsning tilfældigvis afviger.
+# Se devuan/patch_uboot_logo.py (kildehenvisninger) og DEBUG-SORT-SKAERM.md.
+#
+# ADVARSEL, målt 18. aug 2026: rockchip,uboot-logo-on = 0 gør at boksen IKKE BOOTER
+# (LED'en bliver lilla og aldrig blå — hænger i U-Boot eller meget tidligt i kernen).
+# Samme flag styrer nemlig OGSÅ loaderens egen display-init via board_fbt_preboot(),
+# hvis definition ikke findes i vores U-Boot-kildetræ. Brug derfor policy-varianten:
+# rockchip,disp-policy 2 (BOX_TEMP) -> 0 (SDK) rammer kun kernens beslutning
+# (rk_fb.c:3559's tredje betingelse) og lader loaderens logo-sti i fred.
+#
+# To kopier af DTB'en findes: U-Boot bruger BOOT-partitionens (Image/ramfs.img,
+# second-arealet) og falder tilbage til resource-partitionen — begge patches.
+BOOTIMG=$PROJ/devuan/ramfs_patched.img
+RESIMG=$PROJ/devuan/resource_patched.img
+case "$DTB_PATCH" in
+    policy) PATCHARGS=(--prop rockchip,disp-policy --value 0);;
+    logo)   PATCHARGS=(--prop rockchip,uboot-logo-on --value 0)
+            echo "   ADVARSEL: 'logo'-varianten gav en boks der ikke booter (18. aug 2026)";;
+    none)   PATCHARGS=();;
+    *)      echo "FEJL: DTB_PATCH skal være policy, logo eller none (er: $DTB_PATCH)"; exit 1;;
+esac
+dd if="$ORIG" of="$BOOTIMG" bs=1M iflag=skip_bytes,count_bytes skip="$BOFF" count="$BSIZE" status=none
+dd if="$ORIG" of="$RESIMG"  bs=1M iflag=skip_bytes,count_bytes skip="$ROFF" count="$RSIZE" status=none
+if [ ${#PATCHARGS[@]} -gt 0 ]; then
+    python3 "$PROJ/devuan/patch_uboot_logo.py" "$BOOTIMG" "${PATCHARGS[@]}"
+    python3 "$PROJ/devuan/patch_uboot_logo.py" "$RESIMG"  "${PATCHARGS[@]}"
+fi
+dd if="$BOOTIMG" of="$OUT" bs=1M oflag=seek_bytes seek="$BOFF" conv=notrunc status=none
+dd if="$RESIMG"  of="$OUT" bs=1M oflag=seek_bytes seek="$ROFF" conv=notrunc status=none
 sync
 
 echo "== verificerer det patchede image mod originalen =="
-# Alle entry'er undtagen rootfs og parameter skal være byte-identiske med
-# original-imaget; de to patchede sammenlignes mod deres nye kilder.
+# Alle entry'er undtagen de fire patchede skal være byte-identiske med
+# original-imaget; de patchede sammenlignes mod deres nye kilder.
 # Hashing sker i bidder — entry'erne er op til ~1.5 GB, og læses de ind hele
 # ad gangen (to kopier af rootfs samtidig) bliver processen OOM-dræbt.
-python3 - "$OUT" "$ORIG" "$ROOTIMG" "$PARMBIN" <<'PYEOF'
+python3 - "$OUT" "$ORIG" "$ROOTIMG" "$PARMBIN" "$BOOTIMG" "$RESIMG" <<'PYEOF'
 import struct, sys, hashlib
-img, orig, rootimg, parmbin = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+img, orig, rootimg, parmbin, bootimg, resimg = sys.argv[1:7]
+PATCHED = {'Image/rootfs.img': rootimg, 'Image/ramfs.img': bootimg,
+           'Image/resource.img': resimg}
 
 CHUNK = 8 * 1024 * 1024  # 8 MiB ad gangen — konstant, lavt hukommelsesforbrug
 
@@ -168,8 +273,8 @@ for i in range(n):
         continue  # tom pladsholder (backup-partitionen)
     f.seek(upd_off + off)
     h_img = sha256_region(f, size)
-    if path == 'Image/rootfs.img':
-        with open(rootimg, 'rb') as r:
+    if path in PATCHED:
+        with open(PATCHED[path], 'rb') as r:
             h_ref = sha256_region(r, size)
     elif path == 'parameter':
         blob = open(parmbin, 'rb').read()
@@ -183,7 +288,7 @@ for i in range(n):
 sys.exit(0 if ok else 1)
 PYEOF
 
-echo "== FÆRDIG: $OUT = original boot-kæde + Devuan-rootfs + eMMC-parameter =="
+echo "== FÆRDIG: $OUT = original boot-kæde + Devuan-rootfs + eMMC-parameter + DTB uden uboot-logo =="
 echo
 echo "Flash boksen (den skal være i loader-tilstand, USB i OTG-porten):"
 echo "  sudo $PROJ/Linux_Upgrade_Tool_v1.23/Linux_Upgrade_Tool_v1.23/upgrade_tool uf $OUT"

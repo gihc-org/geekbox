@@ -18,6 +18,8 @@ rkfwtools/
 devuan/rootfs_lubuntu_sd.img
 devuan/rootfs_devuan.img
 devuan/update_devuan.img
+devuan/*_patched.img
+devuan/*_nologo.img
 
 # Genererede dokumenter — kilden er .md-filerne
 *.pdf
