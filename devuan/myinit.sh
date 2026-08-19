@@ -88,24 +88,38 @@ dropbear -s -R -p 22
 # NB: test IKKE med [ -s /proc/swaps ] — procfs rapporterer altid størrelse 0, så den test
 # er altid sand. Kig på indholdet: uden aktiv swap er der kun overskriftslinjen.
 if ! grep -q "^/" /proc/swaps 2>/dev/null; then
-    if [ ! -e /swapfile ]; then
+    ONSKET=$((2048 * 1024 * 1024))
+    rm -f /swapfile.tmp                       # rester fra en afbrudt boot
+    faktisk=$(stat -c %s /swapfile 2>/dev/null || echo 0)
+    if [ "${faktisk:-0}" -ne "$ONSKET" ]; then
+        # VIGTIGT: en HALV swapfil må aldrig blive stående. Tager man strømmen midt i
+        # dd'en (og det gør man, for den kører netop ved første boot), efterlader den en
+        # ufuldstændig fil UDEN swap-signatur. Tjekker man kun om filen findes, springer
+        # næste boot oprettelsen over og swapon fejler tavst for evigt — målt på boks 9,
+        # hvor der stod en 136 MiB rest. Derfor: sammenlign størrelsen, og byg i en
+        # .tmp-fil der først omdøbes når mkswap er lykkedes.
+        [ "${faktisk:-0}" -gt 0 ] && \
+            echo "myinit: /swapfile er ufuldstændig ($(( faktisk / 1048576 )) MiB) — laver den forfra"
+        rm -f /swapfile
         fri_kb=$(df -k / | awk 'NR==2 {print $4}')
         if [ "${fri_kb:-0}" -gt $((6 * 1024 * 1024)) ]; then     # kræv >6 GB fri
             echo "myinit: laver 2 GB swapfil (engangsarbejde, 1-2 minutter)"
-            if dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null; then
-                chmod 600 /swapfile
-                mkswap /swapfile >/dev/null 2>&1
-                grep -q "^/swapfile " /etc/fstab 2>/dev/null || \
-                    echo "/swapfile none swap sw 0 0" >> /etc/fstab
+            if dd if=/dev/zero of=/swapfile.tmp bs=1M count=2048 2>/dev/null &&
+               chmod 600 /swapfile.tmp && mkswap /swapfile.tmp >/dev/null 2>&1; then
+                mv /swapfile.tmp /swapfile
             else
-                echo "myinit: kunne ikke lave swapfilen — sletter rest"
-                rm -f /swapfile
+                echo "myinit: kunne ikke lave swapfilen — rydder op"
+                rm -f /swapfile.tmp
             fi
         else
             echo "myinit: for lidt plads til swapfil ($(( fri_kb / 1024 )) MiB fri)"
         fi
     fi
-    [ -e /swapfile ] && swapon /swapfile 2>/dev/null
+    if [ -e /swapfile ]; then
+        grep -q "^/swapfile " /etc/fstab 2>/dev/null || \
+            echo "/swapfile none swap sw 0 0" >> /etc/fstab
+        swapon /swapfile 2>/dev/null
+    fi
 fi
 
 # fb0-normalisering: EDID-race kan efterlade bpp og stride inkonsistente

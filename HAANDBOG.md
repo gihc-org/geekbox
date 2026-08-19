@@ -395,8 +395,18 @@ nogen. Det tager 1-2 minutter én gang, og det sker efter at ssh er startet, så
 komme ind imens. Fælde-mønsteret var det samme som med `resize2fs`: et manuelt efter-trin
 der bliver glemt.
 
-**Fælde i fælden:** test ikke om der er swap med `[ -s /proc/swaps ]`. Procfs rapporterer
-altid størrelse 0, så testen er altid sand. Kig på indholdet i stedet.
+**To fælder i fælden**, begge fundet ved at implementeringen fejlede i praksis:
+
+*Test ikke om der er swap med `[ -s /proc/swaps ]`.* Procfs rapporterer altid størrelse 0,
+så testen er altid sand. Kig på indholdet i stedet: `grep -q "^/" /proc/swaps`.
+
+*En halv swapfil må aldrig blive stående.* Filen laves ved første boot, og det er præcis
+dér man tager strømmen — fordi man tror boksen er færdig. Så står der en ufuldstændig fil
+uden swap-signatur, og tjekker koden kun **om filen findes**, springer næste boot
+oprettelsen over og `swapon` fejler tavst for evigt. Det skete: en 136 MiB rest, og en boks
+der troede den havde swap. Rettelsen er at sammenligne **størrelsen** med den ønskede, og
+at bygge i en `.tmp`-fil der først omdøbes når `mkswap` er lykkedes. Så er en afbrudt boot
+harmløs.
 
 ### Fælde 13: Logningen æder eMMC'en, når den endelig virker
 
