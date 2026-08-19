@@ -1,5 +1,12 @@
 #!/bin/bash
-# 08: Installerer NetworkManager + nm-applet på SD-kortets Devuan.
+# 08: Installerer NetworkManager + nm-applet på et FÆRDIGT SD-KORT i læseren.
+#
+# TIL eMMC-FLOWET SKAL DU IKKE BRUGE DETTE SCRIPT: der kommer NetworkManager med via
+# devuan/extra_packages.sh (pakkerne), og 09 sætter netdev-gruppen + polkit-reglen.
+# Dette script bruges nu kun til to ting:
+#   1. et eksisterende SD-kort man ikke vil genopbygge
+#   2. MIGRERING af kendte wifi-netværk fra wpa_supplicant.conf til NM-nøglefiler
+#      (den logik findes kun her — se python-blokken nedenfor)
 # Formål: wifi kan vælges/ændres fra LXDE-skrivebordet (eller nmtui via ssh) —
 # ikke længere håndkodede netværk i /etc/wpa_supplicant/wpa_supplicant.conf.
 #

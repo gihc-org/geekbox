@@ -181,6 +181,83 @@ grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
 grep -q "^Exec=env LD_LIBRARY_PATH=/opt/alsa-da" "$PA_AUTOSTART" || \
     { echo "FEJL: kunne ikke sætte LD_LIBRARY_PATH på pulseaudios Exec-linje"; exit 1; }
 
+echo "== syslog: filtrér 3.10's syscall-403-flod fra =="
+# 3.10's compat-lag logger et KOMPLET registerdump for HVERT kald til clock_gettime64
+# (armhf-syscall 403), som glibc 2.41 kalder konstant fra alle 32-bit processer.
+# Målt uden filter: ~30 MB/time skrevet til eMMC'en (syslog + kern.log), og alle rigtige
+# beskeder druknede. Med filteret: 0 linjer på 45 sekunder, og `logger` kommer stadig igennem.
+if [ -e "$ROOTFS/usr/sbin/rsyslogd" ]; then
+    mkdir -p "$ROOTFS/etc/rsyslog.d"
+    cat > "$ROOTFS/etc/rsyslog.d/05-drop-compat-syscall-flood.conf" <<'EOF'
+# Se DOKUMENTATION.md og HAANDBOG.md: 3.10 dumper alle registre ved hvert kald til den
+# ukendte syscall 403 (clock_gettime64). Det er KERN_WARNING, så prioritet kan ikke bruges
+# til at filtrere. Vi dropper de linjeformer dumpet består af.
+# NB: ereregex, IKKE regex — rsyslogs "regex" er POSIX BRE, hvor + er et almindeligt tegn
+# og (a|b) ikke virker. Det kostede en runde at opdage.
+# Rigtige oops beholdes: "BUG:", "Internal error", "Unable to handle kernel" rammes ikke.
+:msg, contains, "syscall 403" stop
+:msg, contains, "do_ni_syscall" stop
+:msg, contains, "PC is at " stop
+:msg, contains, "LR is at " stop
+:msg, contains, "Code: " stop
+:msg, ereregex, "\] *x[0-9]+ *:" stop
+:msg, ereregex, "\] *(pc|lr|sp|pstate) *:" stop
+:msg, ereregex, "\] *task: [0-9a-f]+" stop
+:msg, ereregex, "\] *CPU: [0-9]+ PID: [0-9]+ Comm:" stop
+:msg, ereregex, "^ *\[[0-9]+:[^]]*\] *$" stop
+EOF
+    echo "   filteret er på plads"
+else
+    echo "   (rsyslog er ikke i rootfs'en — springer over)"
+fi
+
+echo "== netværk: NetworkManager må styres uden root =="
+# Uden dette kan brugeren se wifi-netværk i nm-applet, men ikke tilslutte sig: polkit
+# afviser, fordi nodm starter X UDEN en logind-session, og polkits standardregler kræver
+# en "aktiv session". Løsningen er en regel der giver ja ud fra gruppemedlemskab i stedet.
+# eth0 bliver på ifupdown (myinit's tidlige bring-up + ssh-stien er uændret); wlan0 står
+# ikke i /etc/network/interfaces, og NM overtager derfor selv den.
+if [ -e "$ROOTFS/usr/sbin/NetworkManager" ]; then
+    python3 - "$ROOTFS/etc/group" <<'PYEOF'
+import sys
+sti = sys.argv[1]
+ud = []
+fundet = False
+for linje in open(sti).read().splitlines():
+    felt = linje.split(":")
+    if felt[0] == "netdev" and len(felt) == 4:
+        fundet = True
+        medlemmer = [m for m in felt[3].split(",") if m]
+        if "kristian" not in medlemmer:
+            medlemmer.append("kristian")
+        felt[3] = ",".join(medlemmer)
+        linje = ":".join(felt)
+    ud.append(linje)
+if not fundet:
+    ud.append("netdev:x:104:kristian")
+open(sti, "w").write("\n".join(ud) + "\n")
+PYEOF
+    grep -q "^netdev:.*kristian" "$ROOTFS/etc/group" || \
+        { echo "FEJL: kunne ikke føje kristian til netdev-gruppen"; exit 1; }
+    mkdir -p "$ROOTFS/etc/polkit-1/rules.d"
+    cat > "$ROOTFS/etc/polkit-1/rules.d/50-nm-netdev.rules" <<'EOF'
+// Lad medlemmer af netdev styre NetworkManager uden adgangskode.
+// Nødvendigt fordi nodm starter X uden logind-session: polkit ser ingen aktiv session,
+// og standardreglerne kræver netop en sådan. Se DOKUMENTATION.md og HAANDBOG.md.
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 &&
+        subject.isInGroup("netdev")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
+    grep -q "wlan0" "$ROOTFS/etc/network/interfaces" && \
+        echo "   ADVARSEL: wlan0 står i /etc/network/interfaces — NM lader den så i fred"
+    echo "   netdev-gruppen og polkit-reglen er på plads"
+else
+    echo "   (NetworkManager er ikke i rootfs'en — springer over. Læg den i extra_packages.sh)"
+fi
+
 echo "== pladsvagt: kan rootfs'en være i imaget? =="
 # Imagets rootfs er LÅST til originalens størrelse (~1408 MiB) — den kan ikke gøres større
 # uden at bryde in-place-metoden. Med firefox-esr er den fyldt ~84 %, så næste store pakke

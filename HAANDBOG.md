@@ -345,7 +345,83 @@ skete tre gange på én aften: tapet-genvejen, `video`-gruppen og pulseaudios st
 stopper bygningen hvis det mangler. Regel fremover: **hvis en boks ikke kan undvære det,
 skal `09` sikre det.**
 
-### Fælde 11: Småting der koster timer
+### Fælde 11: Wifi kan ses men ikke tilsluttes — polkit mangler en session
+
+**Du ser:** netværks-ikonet er i bjælken, wifi-netværkene står på listen, men når du vælger
+et, sker der ingenting — eller du bliver spurgt om en adgangskode der ikke bliver godtaget.
+
+**Hvad der sker:** polkit er det system der afgør om en bruger må ændre systemindstillinger.
+Dets standardregler kræver at brugeren har en "aktiv session", og den slags session laves
+normalt af logind. Vores `nodm` logger ind uden at lave en, så polkit kan ikke se nogen
+aktiv bruger og siger nej til alt.
+
+**Løsningen** er en regel der giver ja ud fra **gruppemedlemskab** i stedet — brugeren skal
+være i gruppen `netdev`, og en fil i `/etc/polkit-1/rules.d/` giver den gruppe lov:
+
+```javascript
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 &&
+        subject.isInGroup("netdev")) {
+        return polkit.Result.YES;
+    }
+});
+```
+
+**Gjort:** `09` sætter både gruppen og reglen, hvis NetworkManager er i rootfs'en. Bemærk
+også at `wlan0` **ikke** må stå i `/etc/network/interfaces` — gør den det, lader NM den
+være (Debians `[ifupdown] managed=false`). `eth0` bliver derimod med vilje i den fil, så
+den tidlige netværksopsætning og ssh-adgangen er uændret.
+
+### Fælde 12: Firefox dør uden swap — men boksen bliver ved at køre
+
+**Du ser:** firefox lukker ned af sig selv, eller et faneblad bliver til en fejlside. Resten
+af maskinen kører videre: du kan pinge, browse i en ny fane, bruge terminalen.
+
+**Hvad der sker:** boksen har 2 GB RAM. Firefox med YouTube bruger let 500-800 MB, og når
+hukommelsen er brugt op og der ikke er nogen swapfil at falde tilbage på, mislykkes en
+hukommelsesanmodning. Firefox opdager det selv og lukker den ramte proces ned — derfor
+"fanebladet gik ned" frem for at hele maskinen frøs. Der står **intet** i kernens log om
+det, fordi det ikke er kernens OOM-dræber der har været i gang: der er ingen
+"Killed process"-linjer at finde.
+
+Beviset ligger i stedet hos firefox selv: en fil under
+`~/.mozilla/firefox/*/minidumps/*.dmp` med tidsstempel fra nedbruddet.
+
+**Sådan afgør du det:** `swapon --show`. Er den tom, er der ingen swap. `free -h` viser om
+hukommelsen er ved at være brugt op.
+
+**Gjort:** `myinit.sh` laver nu selv en 2 GB swapfil ved første boot, hvis der ikke er
+nogen. Det tager 1-2 minutter én gang, og det sker efter at ssh er startet, så man kan
+komme ind imens. Fælde-mønsteret var det samme som med `resize2fs`: et manuelt efter-trin
+der bliver glemt.
+
+**Fælde i fælden:** test ikke om der er swap med `[ -s /proc/swaps ]`. Procfs rapporterer
+altid størrelse 0, så testen er altid sand. Kig på indholdet i stedet.
+
+### Fælde 13: Logningen æder eMMC'en, når den endelig virker
+
+**Du ser:** `/var/log/syslog` og `/var/log/kern.log` vokser med 15 MB i timen hver, og
+begge er fyldt med registerdumps.
+
+**Hvad der sker:** kernen er fra 2013 og kender ikke systemkaldet `clock_gettime64`, som
+alle moderne programmer bruger. Hver gang det kaldes, skriver kernen et **komplet
+registerdump** i loggen. Det er harmløst i sig selv — men da vi installerede rsyslog for at
+kunne fejlsøge, begyndte alt det at blive skrevet til eMMC'en: cirka 30 MB i timen,
+700 MB om dagen, oveni at det drukner alle rigtige beskeder.
+
+Dumpet er markeret KERN_WARNING, så man kan ikke filtrere det væk på prioritet uden også at
+miste rigtige advarsler. Løsningen er et filter på de linjeformer dumpet består af:
+`syscall 403`, `do_ni_syscall`, `PC is at`, `LR is at`, `Code:`, registerlinjerne (`x0 :`,
+`pc :`, `sp :`), `task:` og `CPU: n PID: n Comm:`.
+
+**En detalje der kostede en runde:** rsyslogs `:msg, regex,` bruger POSIX **BRE**, hvor `+`
+er et almindeligt tegn og `(a|b)` ikke betyder noget. Skriv `:msg, ereregex,` i stedet.
+
+**Gjort:** `09` lægger filteret i `/etc/rsyslog.d/`. Målt effekt: fra ~950 linjer pr. 45
+sekunder til **0**, mens `logger` stadig kommer igennem, og rigtige oops-linjer (`BUG:`,
+`Internal error`) ikke rammes af filteret.
+
+### Fælde 14: Småting der koster timer
 
 - **`uboot-logo-on = 0` i DTB'en gør at boksen ikke booter.** Lysdioden bliver lilla og
   aldrig blå. Flaget styrer også bootloaderens egen skærmopsætning, i kode vi ikke har.
@@ -397,6 +473,7 @@ fjernsyn. Er det heller ikke i billedet, er det skrivebordet der er noget i veje
 | `devuan/09_make_emmc_img.sh` | bygger imaget og sikrer alt det en boks ikke kan undvære |
 | `devuan/testflash.sh` | bygger + flasher, med pause til loader-tilstand |
 | `devuan/find_box.sh` | finder boksen på netværket (dens IP skifter hver boot) |
+| `devuan/08_network_manager.sh` | NetworkManager på et **SD-kort** i læseren, og migrering af kendte wifi-netværk. eMMC-flowet får NM via `extra_packages.sh` + `09` |
 | `devuan/emmc_first_boot.sh` | swapfil på 2 GB efter flash |
 | `devuan/fb_overscan.py` | skrumper billedet, så fjernsynets beskæring ikke rammer noget |
 | `devuan/patch_uboot_logo.py` | ændrer DT-flag i imaget (til eksperimenter) |

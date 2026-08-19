@@ -20,6 +20,13 @@ EXTRA_PACKAGES=(
     console-setup   # dansk tastatur på konsollen (tty1-6); /etc/default/keyboard (dk) dækker kun X
     chrony          # NTP — boksen har ingen RTC-batteri; uret starter i 2013 ved hver boot uden denne
     sudo            # 07 lægger kristian i sudo-GRUPPEN, men pakken var aldrig installeret ("sudo: kommandoen ikke fundet")
+    network-manager       # wifi grafisk: nm-applet i LXDE-bakken, og nmtui over ssh.
+    network-manager-gnome # 16 MiB for begge inkl. 16 afhængigheder — billigt.
+                          # 09 sørger for netdev-gruppen + polkit-reglen, som er det der
+                          # gør at brugeren kan skifte netværk UDEN root (nodm starter X
+                          # uden logind-session, så polkit kan ikke se en "aktiv session").
+                          # wlan0 skal IKKE i /etc/network/interfaces — står den ikke der,
+                          # overtager NM den selv (Debians [ifupdown] managed=false).
     firefox-esr     # browser. STOR: 247 MiB inkl. libevent + libnspr4. Imagets rootfs er
                     # låst til 1408 MiB (09 bygger den i originalens størrelse), og med
                     # firefox er den fyldt ~84 %. 09 har en pladsvagt der stopper i god tid

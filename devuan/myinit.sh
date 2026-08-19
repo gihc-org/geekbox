@@ -77,6 +77,37 @@ grep -q nameserver /etc/resolv.conf 2>/dev/null || \
 # -s: kun nøgle-login, ingen kodeord
 dropbear -s -R -p 22
 
+# Swapfil på 2 GB, hvis der ikke er nogen. LIGGER HER, EFTER dropbear, med vilje: dd'en
+# tager 1-2 minutter på eMMC ved første boot, og i den tid skal ssh være tilgængelig.
+# HVORFOR AUTOMATISK: boksen har 2 GB RAM. Firefox med YouTube kan fylde det, og uden swap
+# låser hele maskinen — ikke bare firefox, HELE boksen, så den heller ikke svarer på ssh
+# (målt 19/8-2026). Det var hidtil et manuelt efter-trin (emmc_first_boot.sh), og det blev
+# glemt, ligesom resize2fs blev det. Swapfilen kan ikke ligge i imaget: den er større end
+# den ledige plads i det låste 1408 MiB-image.
+# Kører kun når der reelt mangler swap, og kun hvis der er rigelig plads bagefter.
+# NB: test IKKE med [ -s /proc/swaps ] — procfs rapporterer altid størrelse 0, så den test
+# er altid sand. Kig på indholdet: uden aktiv swap er der kun overskriftslinjen.
+if ! grep -q "^/" /proc/swaps 2>/dev/null; then
+    if [ ! -e /swapfile ]; then
+        fri_kb=$(df -k / | awk 'NR==2 {print $4}')
+        if [ "${fri_kb:-0}" -gt $((6 * 1024 * 1024)) ]; then     # kræv >6 GB fri
+            echo "myinit: laver 2 GB swapfil (engangsarbejde, 1-2 minutter)"
+            if dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null; then
+                chmod 600 /swapfile
+                mkswap /swapfile >/dev/null 2>&1
+                grep -q "^/swapfile " /etc/fstab 2>/dev/null || \
+                    echo "/swapfile none swap sw 0 0" >> /etc/fstab
+            else
+                echo "myinit: kunne ikke lave swapfilen — sletter rest"
+                rm -f /swapfile
+            fi
+        else
+            echo "myinit: for lidt plads til swapfil ($(( fri_kb / 1024 )) MiB fri)"
+        fi
+    fi
+    [ -e /swapfile ] && swapon /swapfile 2>/dev/null
+fi
+
 # fb0-normalisering: EDID-race kan efterlade bpp og stride inkonsistente
 # (set: bpp=32 men stride=3840 dvs. 16-bit linjelængde → pixelrod/dobbeltbillede).
 # Ground truth er stride: stride/xres = bytes pr. pixel. Tving fb-bpp og X's
