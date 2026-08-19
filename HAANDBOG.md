@@ -431,7 +431,74 @@ er et almindeligt tegn og `(a|b)` ikke betyder noget. Skriv `:msg, ereregex,` i 
 sekunder til **0**, mens `logger` stadig kommer igennem, og rigtige oops-linjer (`BUG:`,
 `Internal error`) ikke rammes af filteret.
 
-### Fælde 14: Småting der koster timer
+### Fælde 14: Firefox afbrydes med "stack smashing" — og sporet er lukket
+
+**Du ser:** firefox lukker af sig selv, eller et faneblad bliver til en fejlside, efter
+nogle minutter på YouTube. Det sker også på andre tunge sider, fx dr.dk. Det ser ud som
+hukommelsesmangel, men er det ikke.
+
+**Hvad der sker:** i firefox' udskrift står linjen
+
+```
+*** stack smashing detected ***: terminated
+```
+
+Det er glibcs stak-beskyttelse. Hver funktion lægger en kontrolværdi ("canary") på stakken,
+og opdager glibc at den er overskrevet, afbryder den programmet med `SIGABRT` frem for at
+lade det køre videre med ødelagt hukommelse. Kernen bekræfter det med *"potentially
+unexpected fatal signal 6"* (6 = SIGABRT), og angiver hvilken proces det var —
+hos os `Comm: Isolated Web Co`, altså en sandkasse-isoleret indholdsproces.
+
+Det er altså **ægte hukommelseskorruption**, ikke pladsmangel. Målt samtidig: 1 GiB fri
+hukommelse, og swappen aldrig rørt. Så mere RAM eller mere swap havde ikke hjulpet.
+
+**Hvorfor vi ikke fandt stedet.** Begge veje til et stakspor er lukkede på denne boks:
+
+- **Kernedumps findes ikke.** `/proc/sys/kernel/core_pattern` eksisterer ikke — vendor-kernen
+  er bygget uden `CONFIG_COREDUMP`. Man kan altså ikke få processens hukommelse på disken
+  og læse den med `gdb` bagefter.
+- **Firefox' egen nedbrudsrapport fejler.** Loggen siger `ExceptionHandler::GenerateDump
+  minidump generation failed`, og minidumps-mappen er tom. Derfor ingen signatur, ingen
+  funktionsnavne.
+- `gdb` kan hænges på hovedprocessen, men nedbruddene rammer mest indholdsprocesserne, som
+  starter og stopper hele tiden.
+
+**Arbejdshypotesen** (læs: ikke bevist): firefox' sandkasse bruger seccomp til at fange
+systemkald, og **emulerer** dem den ikke lader passere. Vores kerne mangler
+`clock_gettime64`, som moderne biblioteker kalder konstant — vi har målt tusindvis i
+minuttet. Hvert kald går gennem sandkassens signalhåndtering, der kører på en separat stak.
+Går noget skævt dér, ser resultatet ud præcis som det målte: ødelagt stak i tilfældige
+processer, mest de sandkasse-isolerede.
+
+**Gjort** — fire indstillinger i `/etc/firefox-esr/firefox-esr.js`, som `09` lægger ind:
+
+```javascript
+pref("security.sandbox.content.level", 0);   // hovedmistænkte
+pref("fission.autostart", false);            // ingen proces per website
+pref("dom.ipc.processCount", 1);
+pref("browser.sessionstore.resume_from_crash", true);
+```
+
+Efter det kørte YouTube syv minutter uden nedbrud, hvor den før døde inden for få minutter,
+og procestypen der crashede (`isolatedWebContent`) findes slet ikke længere.
+
+**Det ærlige forbehold:** fire indstillinger blev ændret på én gang, så vi ved **ikke**
+hvilken der var afgørende. Vil man vide det, findes der én test: sæt
+`security.sandbox.content.level` tilbage til `2` og lad resten være. Vender nedbruddene
+tilbage, er sandkassen synderen — og så kan site-isolation tændes igen, som er en reel
+sikkerhedsfunktion man ellers giver væk.
+
+**To ting der er værd at bruge næste gang noget crasher uforklarligt:**
+
+```bash
+echo 1 > /proc/sys/debug/exception-trace      # kernen logger uhåndterede signaler
+echo 1 > /proc/sys/kernel/print-fatal-signals # med procesnavn og registre
+```
+
+Begge nulstilles ved boot. Uden dem er et nedbrud i en almindelig proces helt tavst i
+kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
+
+### Fælde 15: Småting der koster timer
 
 - **`uboot-logo-on = 0` i DTB'en gør at boksen ikke booter.** Lysdioden bliver lilla og
   aldrig blå. Flaget styrer også bootloaderens egen skærmopsætning, i kode vi ikke har.

@@ -181,6 +181,52 @@ grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
 grep -q "^Exec=env LD_LIBRARY_PATH=/opt/alsa-da" "$PA_AUTOSTART" || \
     { echo "FEJL: kunne ikke sætte LD_LIBRARY_PATH på pulseaudios Exec-linje"; exit 1; }
 
+echo "== firefox: stabilitets-indstillinger =="
+# Firefox afbrydes med "*** stack smashing detected ***" (SIGABRT) på denne boks — ægte
+# hukommelseskorruption, IKKE pladsmangel: swappen blev aldrig rørt, og der var 1 GiB fri.
+# Det ramte både hovedprocessen og isolerede indholdsprocesser (kernens log: "Comm:
+# Isolated Web Co", "potentially unexpected fatal signal 6"), på både youtube.com og dr.dk.
+#
+# Vejene til et stakspor er lukkede på denne boks: vendor-kernen er bygget UDEN
+# CONFIG_COREDUMP (/proc/sys/kernel/core_pattern findes ikke), og firefox' egen
+# minidump-generering fejler ("minidump generation failed"). Derfor kunne vi ikke finde
+# stedet, kun mekanismen.
+#
+# ARBEJDSHYPOTESE (ikke bevist): firefox' seccomp-sandkasse fanger og EMULERER systemkald
+# kernen ikke har. Vores 3.10 mangler clock_gettime64, som moderne glibc kalder konstant —
+# tusindvis pr. minut. Hvert kald går gennem sandkassens signalhåndtering på en separat
+# stak, og det passer med korruption i netop de sandkasse-isolerede processer.
+#
+# ÆRLIGT FORBEHOLD: vi ændrede fire indstillinger på én gang, og isolerede IKKE hvilken der
+# var afgørende. Efter ændringen kørte YouTube 7 minutter uden nedbrud, hvor den før døde
+# inden for få minutter, og procestypen der crashede (isolatedWebContent) findes ikke
+# længere. Vil man vide det med sikkerhed: sæt security.sandbox.content.level tilbage til 2
+# og se om nedbruddene vender tilbage. Se HAANDBOG.md fælde 14.
+FFPREFS=$ROOTFS/etc/firefox-esr/firefox-esr.js
+if [ -f "$FFPREFS" ]; then
+    if ! grep -q "GeekBox-stabilitet" "$FFPREFS"; then
+        cat >> "$FFPREFS" <<'EOF'
+
+// ── GeekBox-stabilitet ────────────────────────────────────────────────────────
+// Se 09_make_emmc_img.sh og HAANDBOG.md fælde 14 for baggrunden: firefox afbrydes
+// med "stack smashing detected" på 3.10-kernen. Disse fire dæmper det.
+// Sandkassen er hovedmistænkte (den emulerer systemkald kernen ikke har).
+pref("security.sandbox.content.level", 0);
+// Site-isolation laver en proces PER WEBSITE uanset processCount — og det var netop en
+// "Isolated Web Content"-proces der blev afbrudt.
+pref("fission.autostart", false);
+pref("dom.ipc.processCount", 1);
+// Så et dødt faneblad ikke koster arbejdet
+pref("browser.sessionstore.resume_from_crash", true);
+EOF
+    fi
+    grep -q "security.sandbox.content.level" "$FFPREFS" || \
+        { echo "FEJL: kunne ikke skrive firefox-indstillingerne"; exit 1; }
+    echo "   fire indstillinger på plads i /etc/firefox-esr/firefox-esr.js"
+else
+    echo "   (firefox-esr er ikke i rootfs'en — springer over)"
+fi
+
 echo "== syslog: filtrér 3.10's syscall-403-flod fra =="
 # 3.10's compat-lag logger et KOMPLET registerdump for HVERT kald til clock_gettime64
 # (armhf-syscall 403), som glibc 2.41 kalder konstant fra alle 32-bit processer.
