@@ -49,7 +49,7 @@ missing=""
 [ -e "$ROOTFS/usr/bin/sudo" ] || missing="$missing sudo"
 # syslog: uden en daemon går nodms og andres fejlbeskeder i ingenting, og så fejlsøger man
 # i blinde — det kostede en aften (fuld disk + dødt udev, begge tavse). Se DOK §5.4b.
-{ [ -e "$ROOTFS/usr/sbin/syslogd" ] || [ -e "$ROOTFS/usr/sbin/rsyslogd" ]; } || missing="$missing sysklogd"
+{ [ -e "$ROOTFS/usr/sbin/syslogd" ] || [ -e "$ROOTFS/usr/sbin/rsyslogd" ]; } || missing="$missing rsyslog"
 if [ -n "$missing" ]; then
     echo "FEJL: pakker mangler i $ROOTFS:$missing"
     echo "Læg dem i rootfs'en via devuan/extra_packages.sh (tilføj dem i EXTRA_PACKAGES"
@@ -119,6 +119,15 @@ echo "== skrivebordsbaggrund: symlink til LXDE's tapet =="
 # sort skrivebord kan ikke skelnes fra et defekt display: det sendte en hel
 # fejlsøgningsdag efter et "afkortet billede" der ikke fandtes (DEBUG-SORT-SKAERM.md).
 # 07 sætter linket i nye byg; her sikres det også for ældre rootfs'er. Idempotent.
+WALLPAPER=/usr/share/lxde/wallpapers/lxde_blue.jpg
+# NB: kontrollér målet MED $ROOTFS-præfiks. Symlinket er absolut inde i rootfs'en, så
+# `test -e` på selve linket følger stien på VÆRTEN og fejler altid herfra.
+[ -e "$ROOTFS$WALLPAPER" ] || \
+    { echo "FEJL: $WALLPAPER mangler i rootfs'en (lxde-common ikke installeret?)"; exit 1; }
+ln -sf "$WALLPAPER" "$ROOTFS/etc/alternatives/desktop-background"
+[ -L "$ROOTFS/etc/alternatives/desktop-background" ] || \
+    { echo "FEJL: symlinket til skrivebordsbaggrunden blev ikke oprettet"; exit 1; }
+
 echo "== overscan-kompensation i sessionen =="
 # TV'et beskærer ~2,3 % på alle fire kanter (~25 linjer top/bund, ~48 px i siderne), så
 # lxpanel i bunden forsvinder helt. Kernens egen kompensation er død kode
@@ -153,15 +162,6 @@ if [ -f "$AUTOSTART" ]; then
 else
     echo "FEJL: $AUTOSTART findes ikke — er lxsession installeret? (kør 07)"; exit 1
 fi
-
-WALLPAPER=/usr/share/lxde/wallpapers/lxde_blue.jpg
-# NB: kontrollér målet MED $ROOTFS-præfiks. Symlinket er absolut inde i rootfs'en, så
-# `test -e` på selve linket følger stien på VÆRTEN og fejler altid herfra.
-[ -e "$ROOTFS$WALLPAPER" ] || \
-    { echo "FEJL: $WALLPAPER mangler i rootfs'en (lxde-common ikke installeret?)"; exit 1; }
-ln -sf "$WALLPAPER" "$ROOTFS/etc/alternatives/desktop-background"
-[ -L "$ROOTFS/etc/alternatives/desktop-background" ] || \
-    { echo "FEJL: symlinket til skrivebordsbaggrunden blev ikke oprettet"; exit 1; }
 
 echo "== bygger ext4-image af rootfs (label linuxroot, uden features 3.10 ikke kender) =="
 rm -f "$ROOTIMG"
