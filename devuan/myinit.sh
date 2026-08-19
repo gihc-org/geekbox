@@ -79,11 +79,13 @@ dropbear -s -R -p 22
 
 # Swapfil på 2 GB, hvis der ikke er nogen. LIGGER HER, EFTER dropbear, med vilje: dd'en
 # tager 1-2 minutter på eMMC ved første boot, og i den tid skal ssh være tilgængelig.
-# HVORFOR AUTOMATISK: boksen har 2 GB RAM. Firefox med YouTube kan fylde det, og uden swap
-# låser hele maskinen — ikke bare firefox, HELE boksen, så den heller ikke svarer på ssh
-# (målt 19/8-2026). Det var hidtil et manuelt efter-trin (emmc_first_boot.sh), og det blev
-# glemt, ligesom resize2fs blev det. Swapfilen kan ikke ligge i imaget: den er større end
-# den ledige plads i det låste 1408 MiB-image.
+# HVORFOR AUTOMATISK: boksen har 2 GB RAM. Firefox med YouTube fylder det, og uden swap
+# mislykkes en hukommelsesanmodning. Firefox lukker så selv den ramte proces — fanebladet
+# eller hele browseren dør, mens MASKINEN kører videre og stadig svarer på ssh. Der står
+# derfor INTET i kernens log (ingen "Killed process"); beviset ligger i
+# ~/.mozilla/firefox/*/minidumps/. Målt 19/8-2026. Det var hidtil et manuelt efter-trin
+# (emmc_first_boot.sh), og det blev glemt, ligesom resize2fs blev det. Swapfilen kan ikke
+# ligge i imaget: den er større end den ledige plads i det låste 1408 MiB-image.
 # Kører kun når der reelt mangler swap, og kun hvis der er rigelig plads bagefter.
 # NB: test IKKE med [ -s /proc/swaps ] — procfs rapporterer altid størrelse 0, så den test
 # er altid sand. Kig på indholdet: uden aktiv swap er der kun overskriftslinjen.
@@ -103,14 +105,23 @@ if ! grep -q "^/" /proc/swaps 2>/dev/null; then
         rm -f /swapfile
         fri_kb=$(df -k / | awk 'NR==2 {print $4}')
         if [ "${fri_kb:-0}" -gt $((6 * 1024 * 1024)) ]; then     # kræv >6 GB fri
-            echo "myinit: laver 2 GB swapfil (engangsarbejde, 1-2 minutter)"
-            if dd if=/dev/zero of=/swapfile.tmp bs=1M count=2048 2>/dev/null &&
-               chmod 600 /swapfile.tmp && mkswap /swapfile.tmp >/dev/null 2>&1; then
-                mv /swapfile.tmp /swapfile
-            else
-                echo "myinit: kunne ikke lave swapfilen — rydder op"
-                rm -f /swapfile.tmp
-            fi
+            # I BAGGRUNDEN, med vilje: dd'en tager 1-2 minutter, og kører den synkront her,
+            # kommer skrivebordet først bagefter. Så sidder man foran en sort skærm og tror
+            # boksen er død — og tager strømmen, præcis midt i arbejdet. Det skete på boks 9.
+            # Baggrundsjobbet arves af init når vi exec'er, og swappen er klar kort efter
+            # skrivebordet. Den atomiske .tmp-metode gør en afbrudt boot harmløs.
+            echo "myinit: laver 2 GB swapfil i baggrunden (klar om 1-2 minutter)"
+            (
+                if dd if=/dev/zero of=/swapfile.tmp bs=1M count=2048 2>/dev/null &&
+                   chmod 600 /swapfile.tmp && mkswap /swapfile.tmp >/dev/null 2>&1; then
+                    mv /swapfile.tmp /swapfile
+                    grep -q "^/swapfile " /etc/fstab 2>/dev/null || \
+                        echo "/swapfile none swap sw 0 0" >> /etc/fstab
+                    swapon /swapfile 2>/dev/null
+                else
+                    rm -f /swapfile.tmp
+                fi
+            ) >/root/swapfile.log 2>&1 &
         else
             echo "myinit: for lidt plads til swapfil ($(( fri_kb / 1024 )) MiB fri)"
         fi
