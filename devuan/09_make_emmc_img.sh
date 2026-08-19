@@ -163,6 +163,24 @@ else
     echo "FEJL: $AUTOSTART findes ikke — er lxsession installeret? (kør 07)"; exit 1
 fi
 
+echo "== lyd: pulseaudio startes med daedalus-libasound =="
+# 3.10 kender ikke de 64-bit-time ioctls som trixies libasound2t64 bruger (ENOTTY ved
+# open), så PA kan ikke åbne ALSA og falder tilbage til module-null-sink ("auto_null") —
+# alt spiller lydløst. Stien til det gamle bibliotek skal sidde på PA's EGEN startlinje;
+# /etc/profile.d og /etc/environment rækker ikke (sessionen får dem ikke), og en
+# Xsession.d-snippet er farlig (tvinger det gamle bibliotek ned over hele sessionen, som
+# så dør — biblioteket mangler symboler nyere programmer kræver).
+# 07 sætter linjen i nye byg; her sikres det også for ældre rootfs'er (idempotent).
+# NB: lyd kræver OGSÅ at udev virker — se myinit's pkill af initramfs-udevd.
+PA_AUTOSTART=$ROOTFS/etc/xdg/autostart/pulseaudio.desktop
+[ -f "$PA_AUTOSTART" ] || { echo "FEJL: $PA_AUTOSTART mangler — er pulseaudio installeret? (kør 07)"; exit 1; }
+[ -e "$ROOTFS/opt/alsa-da/usr/lib/arm-linux-gnueabihf/libasound.so.2" ] || \
+    { echo "FEJL: daedalus-libasound mangler i $ROOTFS/opt/alsa-da — kør 07"; exit 1; }
+grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
+    sed -i "s|^Exec=|Exec=env LD_LIBRARY_PATH=/opt/alsa-da/usr/lib/arm-linux-gnueabihf |" "$PA_AUTOSTART"
+grep -q "^Exec=env LD_LIBRARY_PATH=/opt/alsa-da" "$PA_AUTOSTART" || \
+    { echo "FEJL: kunne ikke sætte LD_LIBRARY_PATH på pulseaudios Exec-linje"; exit 1; }
+
 echo "== bygger ext4-image af rootfs (label linuxroot, uden features 3.10 ikke kender) =="
 rm -f "$ROOTIMG"
 truncate -s "$SIZE" "$ROOTIMG"
