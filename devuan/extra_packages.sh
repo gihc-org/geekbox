@@ -20,6 +20,11 @@ EXTRA_PACKAGES=(
     console-setup   # dansk tastatur på konsollen (tty1-6); /etc/default/keyboard (dk) dækker kun X
     chrony          # NTP — boksen har ingen RTC-batteri; uret starter i 2013 ved hver boot uden denne
     sudo            # 07 lægger kristian i sudo-GRUPPEN, men pakken var aldrig installeret ("sudo: kommandoen ikke fundet")
+    firefox-esr     # browser. STOR: 247 MiB inkl. libevent + libnspr4. Imagets rootfs er
+                    # låst til 1408 MiB (09 bygger den i originalens størrelse), og med
+                    # firefox er den fyldt ~84 %. 09 har en pladsvagt der stopper i god tid
+                    # hvis en fremtidig pakke ikke kan være der. Efter flash er pladsen
+                    # ikke et problem — myinit udvider til partitionens 15 GB
     rsyslog         # der var INGEN syslog-daemon: nodms fejlbeskeder gik i ingenting, og vi
                     # fejlsøgte en aften i blinde (fuld disk + dødt udev) — se DOK §5.4b.
                     # NB: sysklogd findes IKKE i excalibur ("Unable to locate package").

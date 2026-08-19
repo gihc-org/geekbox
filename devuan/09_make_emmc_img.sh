@@ -181,6 +181,25 @@ grep -q "^Exec=env LD_LIBRARY_PATH" "$PA_AUTOSTART" || \
 grep -q "^Exec=env LD_LIBRARY_PATH=/opt/alsa-da" "$PA_AUTOSTART" || \
     { echo "FEJL: kunne ikke sætte LD_LIBRARY_PATH på pulseaudios Exec-linje"; exit 1; }
 
+echo "== pladsvagt: kan rootfs'en være i imaget? =="
+# Imagets rootfs er LÅST til originalens størrelse (~1408 MiB) — den kan ikke gøres større
+# uden at bryde in-place-metoden. Med firefox-esr er den fyldt ~84 %, så næste store pakke
+# kan vælte den. Uden denne vagt fejler mkfs.ext4 midt i bygningen med et kryptisk
+# "No space left on device"; her får man tallene i stedet.
+# 64 MiB holdes fri til ext4-metadata (inode-tabeller, journal) og root-reserve.
+brugt=$(du -sxb "$ROOTFS" | awk '{print $1}')
+margin=$((64 * 1024 * 1024))
+printf "   rootfs-indhold: %d MiB   image: %d MiB   margin: %d MiB\n" \
+    $((brugt / 1048576)) $((SIZE / 1048576)) $((margin / 1048576))
+if [ "$brugt" -gt "$((SIZE - margin))" ]; then
+    echo "FEJL: rootfs'en fylder $((brugt / 1048576)) MiB og kan ikke være i et image på"
+    echo "      $((SIZE / 1048576)) MiB (mindst $((margin / 1048576)) MiB skal være fri til ext4-metadata)."
+    echo "      Fjern pakker i devuan/extra_packages.sh, eller ryd op i rootfs'en:"
+    echo "        sudo chroot $ROOTFS apt-get clean"
+    echo "        sudo du -sxh $ROOTFS/* | sort -h | tail"
+    exit 1
+fi
+
 echo "== bygger ext4-image af rootfs (label linuxroot, uden features 3.10 ikke kender) =="
 rm -f "$ROOTIMG"
 truncate -s "$SIZE" "$ROOTIMG"
