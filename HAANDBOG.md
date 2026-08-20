@@ -49,9 +49,25 @@ symlinks i `/etc/rc2.d/`. Devuan bruger den — i modsætning til de fleste andr
 distributioner, der bruger systemd.
 
 **Framebuffer.** Et stykke hukommelse hvor billedet står, pixel for pixel. 1920 × 1080
-punkter i 16-bit farve = cirka 4 MB. Grafikchippen læser den 60 gange i sekundet og sender
-indholdet ud gennem HDMI. Vil du vide hvad boksen *forsøger* at vise, kigger du der. Den
-heder `/dev/fb0`.
+punkter i 16-bit farve = cirka 4 MB. Display-controlleren (VOP) læser den 60 gange i
+sekundet og sender indholdet ud gennem HDMI. Vil du vide hvad boksen *forsøger* at vise,
+kigger du der. Den heder `/dev/fb0`. (VOP og GPU'en er to forskellige ting — se nedenfor.)
+
+**VOP (display-controlleren).** Den del af chippen der læser framebufferen og sender
+billedet ud af HDMI'en. Det er VOP'en der viser vores skrivebord — ikke GPU'en.
+
+**GPU (PowerVR G6110).** En separat regneenhed til 3D. Den tegner ingenting af sig selv:
+den renderer kun ind i buffere, når et program beder om det gennem hele driver-stakken —
+kernel-driver + proprietære blobs + integration mod skærmen. Af de tre dele har vores
+boks kun den første, og derfor virker WebGL ikke (fælde 16).
+
+**KMS/DRM og DRI.** Den moderne vej, grafikprogrammer får billeder på skærmen ad.
+Kræver kernens KMS-grænseflade (`/dev/dri`) og en X-driver der bruger den. Vendor-kernen
+har ingen af delene — derfor er fbdev den eneste X-driver der findes.
+
+**GLX og EGL.** De to døre, et GL-program (fx firefox' WebGL) kan bruge til at tale med
+skærmen. Firefox kræver den ene eller den anden; vores X-server tilbyder kun en tredje,
+forældet dør (IGLX), som Firefox ikke bruger.
 
 **X (Xorg).** Programmet der styrer skærm, mus og tastatur. Alle vinduer tegnes af X ned i
 framebufferen.
@@ -517,6 +533,45 @@ kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
 - **`cat /dev/fb0` viser kun den øverste halvdel** af skærmen. Brug `mmap`.
 - **`y_vir=960` i driverens statusfil er ikke en højde.** Det er linjelængden målt i
   4-byte-ord: 1920 × 2 ÷ 4 = 960. Helt normalt.
+
+### Fælde 16: WebGL virker ikke — og det kan ikke installeres
+
+**Du ser:** et webspil melder "browseren understøtter ikke WebGL". Firefox er ny
+(140-esr) og har ikke slået WebGL fra i indstillingerne. Alligevel nægter den.
+
+**Hvad der sker:** WebGL kræver en dør ind i grafikken, og den dør findes ikke i vores
+opsætning. En GPU-driver er tre lag, og vi har kun det nederste:
+
+1. **Kerne-driveren** (`pvrsrvkm`) er loadet — `/dev/pvrsrvkm` findes. Men den er bare
+   døren: den tager imod kommandoer, den udfører ingenting selv.
+2. **De proprietære blobs** — laget der faktisk forstår 3D-kommandoer — er lukkede,
+   Android-byggede fra 2016 og ligger ikke i vores Devuan.
+3. **Integrationen mod skærmen** — den moderne vej (KMS/DRI) mangler i vendor-kernen,
+   og den gamle vej (libhybris) er aldrig bygget.
+
+Værre: selv **software-GL** (CPU-rendering, som ellers redder maskiner uden GPU) er
+spærret her. Det skal nemlig også gennem DRI, og vores X-server (fbdev) har ingen DRI.
+X-serverens log siger det lige ud: *"Screen 0 is not DRI2 capable"*. Det eneste den
+byder på, er en forældet nødløsning (IGLX), som Firefox ikke bruger.
+
+**Derfor var fbdev ikke rigtig et valg.** Boksen har to grafikdele: VOP'en sender
+billedet ud af HDMI, og GPU'en renderer 3D. Uden KMS i kernen er den eneste X-driver
+den der tegner i hukommelsen med CPU'en — fbdev. Producenten gjorde præcis det samme i
+deres egen Lubuntu.
+
+**Sådan afgør du det:** fire linjer, alle skal ramme:
+
+```bash
+ls /sys/class/drm                          # tomt = ingen KMS
+grep AIGLX /var/log/Xorg.0.log             # "Screen 0 is not DRI2 capable"
+ls /dev/pvrsrvkm                           # findes = kerne-driveren er der
+dpkg -l | grep mesa                        # installeret = bibliotekerne fejler ikke noget
+```
+
+**Gjort:** intet — det kan ikke gøres. Hvis WebGL-spil er et mål, er `chromium` vejen:
+den har sin egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den
+findes til armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som
+fælde 14) og lav fart — alt renderes på CPU'en.
 
 ---
 

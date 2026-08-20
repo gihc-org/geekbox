@@ -220,6 +220,47 @@ nettet ved skiftet. `kristian` er i `netdev`-gruppen + polkit-regel i
 logind-session (nodm opretter ingen). Nye netværk tilføjes via nm-applet i
 LXDE-bakken eller `nmtui` i terminal (virker også over ssh).
 
+### 5.13 WebGL: browseren er frisk — grafikstakken er lukket (aug 2026)
+
+Webspil melder "browseren understøtter ikke WebGL" i firefox-esr. Det er hverken
+browseren (140.12esr, fuld WebGL2-støtte — og `webgl.disabled` står ikke i
+`firefox-esr.js`) eller manglende GL-biblioteker (Mesa 25.0.7 ER installeret som
+afhængighed af firefox, med swrast/zink/kms_swrast). En GPU-stak er tre lag, og kun
+det nederste findes på boksen:
+
+1. **Kernel-driver (`pvrsrvkm`)** — loadet: `/dev/pvrsrvkm` findes, og `pvrsrvkm`
+   står i `/proc/modules` (README'ens "GPU er indbygget" holder altså). Men den er
+   kun døren til 3D-motoren; den udfører intet uden de to næste lag.
+2. **Userspace-DDK** — de lukkede PowerVR-blobs der implementerer GLES
+   (shader-kompiler, kommando-afsendelse). Lå i Android-`/system` på eMMC'en og blev
+   i vendor-Lubuntu kun nået via libhybris-broer i `/usr/local/lib` (libEGL/libGLESv2
+   + `libhybris`, bl.a. til Kodi). Aldrig taget med i Devuan.
+3. **Integration mod skærmen** — KMS/DRI (kernel + X-driver) eller libhybris+Gralloc.
+   Ingen af delene: `/sys/class/drm` findes ikke, og X kører fbdev.
+
+To ting forklarer hvorfor fbdev ikke bare var et valg (§5.10):
+
+- **Displayet og GPU'en er to forskellige stykker hardware.** VOP'en
+  (display-controlleren) sender pixels ud af HDMI; den drives her af `rk_fb` som dum
+  framebuffer (`/proc/fb`: 5 fb'er). GPU'en renderer kun ind i buffere, når lag 2+3
+  beder om det. Uden KMS er den eneste X-driver fbdev — vendor gjorde præcis det
+  samme i deres egen Lubuntu.
+- **Selv software-GL er spærret.** Firefox kræver EGL-X11 eller direkte (DRI-baseret)
+  GLX. `Xorg.0.log`: *"AIGLX: Screen 0 is not DRI2 capable"* → kun IGLX (server-side
+  swrast) initialiseres, og den vej bruger Firefox ikke. Derfor fejler WebGL, selvom
+  llvmpipe står klar: GL mangler både en dør ind i X (DRI) og en dør ud til skærmen
+  (KMS).
+
+Diagnose på en kørende boks: `ls /sys/class/drm` (tomt), `ls /dev/pvrsrvkm` (findes),
+`grep -E "AIGLX|IGLX" /var/log/Xorg.0.log`, `dpkg -l | grep mesa`, `apt-cache policy
+chromium` (150.x findes til armhf).
+
+Vej ud af webspil-dødvandet: **chromium** med sin egen software-GL (SwiftShader) —
+behøver ingen system-GL. Forbehold: sandsynligvis `--no-sandbox` (samme
+seccomp/syscall-403-klasse som §5.5 og HAANDBOG fælde 14), installeret i qemu-chroot
+(§5.9), og alt renderes på CPU'en (8×A53) — simple spil har en chance, tunge ikke.
+Hardware-vejen er libhybris-stakken (§8) — fortsat vurderet "lav værdi".
+
 ## 6. Slutarkitekturen
 
 ```
@@ -275,7 +316,8 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 
 - OpenSSH-server (seccomp vs. 3.10) — brug dropbear
 - systemd-sysusers på boksen — divert'ed; pakkeinstallation foregår bedst i qemu-chroot på PC'en
-- Hardware video-decode/GPU-acceleration (PowerVR-blobs + libhybris) — urørt, lav værdi
+- WebGL i firefox-esr — umuligt på fbdev-stakken: ingen KMS/DRI, kun IGLX (§5.13)
+- Hardware video-decode/GPU-acceleration — `pvrsrvkm` er loadet i kernen, men PowerVR-blobs'ene (Android-`/system`) og integrationen mangler; libhybris-stien urørt, lav værdi (§5.13)
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 
