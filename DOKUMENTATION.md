@@ -369,6 +369,13 @@ Fælderne fundet undervejs (alle målt og løst):
   dokumentationen). NB: ikke isoleret om dette var nødvendigt efter cma-fixet.
 - **`/dev/graphics` forsvinder ved boot** — symlinkene skal oprettes igen hver gang
   (`devuan/gpu/gpu_up.sh` gør det).
+- **Efter hwc-sessionen kommer HDMI ikke tilbage uden strøm-cyklus.** Målt (aug 2026):
+  efter testen + X-genstart loggede kernen fint `sucess output HDMI` ved hver
+  re-enable (display-dansen), men TV'et modtog intet signal ("Kontrollér
+  enhedsstrøm"), og ~4 s senere faldt linket (`cec_set_pa 0` + `hdmi remove from
+  lcdc0`). Transmitteren leverer altså ikke TMDS-signal efter hwc-overtagelsen —
+  software-dansen kan ikke vække den. Kur: strøm-cyklus (boks OG evt. TV — jf.
+  boks 2's HDMI-erfaring i §10).
 
 Trin 2 (nyttiggørelse) — stadig åbent: vendor-kodi-binæren fra 2016 til lokal video
 (muligvis kørbar direkte nu), eller portér en moderne browser — den lange vej:
