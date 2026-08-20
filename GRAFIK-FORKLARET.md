@@ -85,6 +85,31 @@ engang under en installation, og det viste sig at være **strømforsyningen**, d
 om sine 2 ampere — bevist med et A/B-forsøg og en stress-test (DOK §5.14, HAANDBOG
 fælde 17, `devuan/stress_test.sh`).
 
+### Hvad laver Android-laget egentlig?
+
+GPU'ens programmer (blobs'ene) er maskiner, bygget til at stå i en Android-fabrikshal —
+og de er forseglede, så vi kan ikke bygge dem om. Når de kører, forventer de hallens
+omgivelser:
+
+- **bionic** (`/system/lib`) — hallens eget sprog: Androids egen lille udgave af
+  C-biblioteket, anderledes end Linux'. Maskinerne taler kun dét.
+- **logd** — hallens opslagstavle, hvor maskinerne skriver deres beskeder (vi fangede
+  selv CMA-fejlen på tavlen under fejlsøgningen).
+- **servicemanager** — hallens reception: et register, maskinerne spørger om tjenester ved.
+- **build.prop** — hallens opslag med indstillinger.
+- **ION + gralloc** — hallens lagerhal: Androids måde at uddele hukommelsesblokke på.
+- **pvrsrvctl** — værkføreren, der tænder fabrikkens hovedafbryder.
+
+`system.img` er et stykke af den fabrikshal, stillet ind i vores Linux-bygning — og
+**libhybris er gangen mellem de to bygninger**: den lader et Linux-program læsse de
+Android-byggede maskiner ind i sin egen proces, med en indbygget Android-tolk (linker),
+der finder maskinernes bionic-afhængigheder. Vi kan ikke springe laget over, fordi
+maskinerne er lukkede — det eneste mulige er at genskabe deres hjemlige omgivelser.
+
+Kæden: **dit program → libhybris → Android-maskinerne → pvrsrvkm (kernens dør) →
+GPU'en**. Der kører altså ikke "et helt Android" — kun de dele af hallen, maskinerne
+ikke kan undvære.
+
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
 **Det vi kan:**
@@ -92,6 +117,9 @@ fælde 17, `devuan/stress_test.sh`).
   almindelig GLES 3.1-programmering er nu åben. (Opskriften og programmet:
   `devuan/gpu/`, DOK §5.15)
 - Vække stakken med én kommando (`gpu_up.sh`) og teste, måle og lege med den.
+- Bygge et lille grafisk system: en Python-frontend der tegner sin egen UI direkte på
+  `/dev/fb0` (som `fb_overscan.py` gør) og taler med en GLES-daemon i baggrunden over
+  en unix-socket — daemonen renderer offscreen og blitter billederne til skærmen.
 - Forklare præcis, hvorfor noget virker eller ikke virker — hver fælde er målt og
   skrevet ned, så intet behøver gættes igen.
 
