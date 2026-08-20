@@ -9,6 +9,16 @@ mount -t devtmpfs dev /dev 2>/dev/null
 mkdir -p /run/sshd /dev/pts
 mount -t devpts devpts /dev/pts 2>/dev/null
 
+# GPU-stak (hvis installeret, se DOK §5.15 + devuan/gpu/gpu_setup.sh): vendors
+# Android-system.img indeholder wifi-firmwaren OG PowerVR-blobs'ene — derfor skal
+# den monteres TIDLIGT: bcmdhd læser /system/etc/firmware når wlan0 kommer op.
+# Er filen der ikke (boks uden GPU-stak), er hele blokken en harmløs no-op.
+if [ -f /usr/local/share/libhybris/system.img ]; then
+    mkdir -p /system
+    mount -o loop,ro /usr/local/share/libhybris/system.img /system 2>/dev/null
+    ln -sfn /system/vendor /vendor 2>/dev/null
+fi
+
 # Den gamle 14.04-initramfs starter sin EGEN udevd (/sbin/udevd --resolve-names=never),
 # og den overlever ind i vores rootfs. rcS starter derefter endnu en, og to daemoner slås
 # om netlink-socket'en: udev-databasen (/run/udev/data) bliver aldrig skrevet.

@@ -383,6 +383,25 @@ firefox/chromium taler kun EGL-X11/DRI, som kræver KMS. Vendors egen Chromium 4
 beviser at en browser *kan* køre på stakken — men den er 10 år gammel, kan ikke
 moderne web, og rammer 3.10's seccomp/syscall-problemer (fælde 14).
 
+### Ny boks i samme tilstand
+
+**Firefox skal IKKE fjernes** — GPU-stakken bor uden for imaget. Regnestykket:
+imagets rootfs er låst til ~1,4 GB og er 84 % fuld *med* firefox (~225 MB fri), mens
+stakken fylder ~205 MB (system.img 198 MB + broer/headere ~7 MB). Stakken røres
+derfor ikke i 09 — den lægges på efter flash:
+
+```bash
+sudo devuan/testflash.sh                      # image med cma=128M (parameter_emmc.txt)
+devuan/gpu/gpu_setup.sh <ny-boks-ip>          # system.img + broer + færdige binærer
+# → strøm-cykl boksen
+```
+
+`gpu_setup.sh` kopierer vendors system.img og hybris-broerne fra repoet, patcher
+usage-konstanten (0x1800→0x1000 via `patch_hwc_usage.py`), og henter de
+færdigkompilerede binærer fra boks 1 — så den nye boks ikke behøver gcc/gdb/strace.
+myinit (i imaget siden aug 2026) monterer `/system` automatisk, når system.img
+findes, og er en no-op på bokse uden stakken.
+
 **Værdi-vurdering (opdateret):** G6110 er 2016-mobil-klasse (GLES 3.1, 1080p
 H.264-decode). GPU-adgangen er nu LØST og verificeret (trin 0-1, en aften med
 målinger) — det, der stadig koster uger-måneder, er alene browser-integrationen
