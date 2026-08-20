@@ -261,6 +261,35 @@ seccomp/syscall-403-klasse som §5.5 og HAANDBOG fælde 14), installeret i qemu-
 (§5.9), og alt renderes på CPU'en (8×A53) — simple spil har en chance, tunge ikke.
 Hardware-vejen er libhybris-stakken (§8) — fortsat vurderet "lav værdi".
 
+### 5.14 Chromium-forsøget der afslørede en svag strømforsyning (aug 2026)
+
+Friskt flashet boks (første boot: `resize2fs` i kern.log), derefter
+`apt-get install chromium` direkte på boksen — trods §5.9's anbefaling om qemu-chroot.
+Installationen døde brat ~100 s inde i dpkg-udpakningen (17:28:57), boksen genstartede
+sig selv 3 s senere. Fundene:
+
+- **Ingen OOM, panic eller BUG i loggene** — og `/proc/sys/kernel/panic=0`, så en
+  panik ville have *hængt* boksen, ikke genstartet den.
+- **Logfilerne ender i NUL-blokke** (`dpkg.log`, `history.log`, `syslog`, `kern.log`):
+  filstørrelsen var journalført, men data nåede aldrig ud af page-cachen — hård død
+  midt i skrivning. Sidste ext4-commit 17:29:01 (dpkg.log og bootlog.txt med identisk
+  mtime ned til nanosekundet).
+- **RTC'en beholdt 2026-tiden** gennem nedbruddet → selv-reset uden strømtab
+  (PMIC-klassen), ikke strømsvigt på stikket.
+- dpkg efterladt i stykker: chromium `iHR` (manglende kontrolfiler) + 23 pakker
+  ukonfigurerede.
+
+Reproduceret med en stress-test (samme .deb-filer + 8 travle CPU'er + 600 MB dd):
+død igen på samme "5V 2A"-adapter. **A/B mod en 2,4A-lader: samme test overlevet**
+(load ~10 på 8 kerner i 4½ min, vdd_arm 1,3V ved 1,2 GHz). Dom: adapteren leverer
+ikke 2A under belastning → brownout → PMIC-reset. Mærkaten på en stikforsyning er
+ikke en garanti.
+
+Løsning: boksen kører nu på 2,4A. dpkg repareret med force-remove + `apt-get -f
+install` + autoremove. Værktøj til genskabelse: `devuan/stress_test.sh`
+(overvågningslog i `/root/stress_mon.log` — `/tmp` ryddes ved boot). Hele beviskæden
+i pædagogisk form: HAANDBOG.md fælde 17.
+
 ## 6. Slutarkitekturen
 
 ```

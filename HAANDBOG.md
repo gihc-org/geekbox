@@ -573,6 +573,47 @@ den har sin egen software-GL (SwiftShader) indbygget og behøver ingen system-GL
 findes til armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som
 fælde 14) og lav fart — alt renderes på CPU'en.
 
+### Fælde 17: Boksen dør brat under belastning — strømforsyningen løj om 2A
+
+**Du ser:** boksen genstarter sig selv midt i tunge opgaver — første gang under
+`apt-get install chromium`, siden under en bevidst stress-test. Ingen fejlbesked nogen
+steder, hverken i syslog eller kern.log. Efter nedbruddet booter den fint igen.
+
+**Hvad der sker:** strømforsyningen kan ikke levere det, mærkaten lover ("5V 2A"). Når
+CPU'en og eMMC'en arbejder samtidig, dykker spændingen, og PMIC'en (rk808) resetter
+SoC'en — **uden at strømmen tages helt**. Derfor er der hverken panik eller OOM i
+loggene: kernen nåede aldrig at fejle noget.
+
+Beviskæden (alt målt aug 2026):
+
+- **Logfilerne ender i NUL-byte-blokke.** De var vokset i størrelse, men data nåede
+  aldrig ud af page-cachen. Klassisk hård død midt i skrivning.
+- **Uret beholdt tiden.** Ved hver boot efter et nedbrud stod kernel-uret allerede på
+  2026 — RTC'en (i PMIC'en) havde aldrig mistet strømmen. Havde nogen trukket stikket,
+  var uret startet i 2013.
+- **A/B-forsøget:** `devuan/stress_test.sh` dræbte boksen på 2A-adapteren (to gange)
+  og blev overlevet på en 2,4A-lader (fuld test, 4½ minut med load ~10 på 8 kerner).
+
+**Sådan afgør du det:** kør `devuan/stress_test.sh` på boksen (udpakker de cachede
+.deb'er tre gange + 8 travle CPU'er + 600 MB disk-skrivning; overvågningsloggen havner
+i `/root/stress_mon.log`). Dør boksen, skift strømforsyning og kør igen — overlever den
+på den nye, er adapteren dømt. Antallet af genstarter ses med
+`grep -ac "Linux version" /var/log/kern.log`.
+
+**Gjort:** boksen kører på 2,4A-laderen. Mærk 2A-adapteren, så den ikke havner på en
+boks igen. Et multimeter på 5V-stikket under belastning ville sætte sidste punktum
+(spændingen skal holde sig over ~4,75V), men A/B-forsøget er allerede overbevisende.
+
+**Fælde i fælden:** nedbruddet efterlod dpkg i en brudt tilstand (pakken halvt
+udpakket, 23 pakker ukonfigurerede). Reparation — og rækkefølgen betyder noget, for
+`apt-get -f install` kan ikke konfigurere en pakke, hvis kontrolfiler mangler:
+
+```bash
+dpkg --remove --force-remove-reinstreq chromium
+apt-get -f install          # konfigurerer resten
+apt-get --purge autoremove  # rydder de pakker chromium trak med
+```
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer
