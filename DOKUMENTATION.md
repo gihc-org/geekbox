@@ -232,9 +232,12 @@ det nederste findes på boksen:
    står i `/proc/modules` (README'ens "GPU er indbygget" holder altså). Men den er
    kun døren til 3D-motoren; den udfører intet uden de to næste lag.
 2. **Userspace-DDK** — de lukkede PowerVR-blobs der implementerer GLES
-   (shader-kompiler, kommando-afsendelse). Lå i Android-`/system` på eMMC'en og blev
-   i vendor-Lubuntu kun nået via libhybris-broer i `/usr/local/lib` (libEGL/libGLESv2
-   + `libhybris`, bl.a. til Kodi). Aldrig taget med i Devuan.
+   (shader-kompiler, kommando-afsendelse). De findes **ikke** på dagens boks:
+   V160309-imaget har ingen `/system`-partition (målt i den originale parameter og i
+   `vendor_root`), og blobs'ene lå kun i dualOS-imagets Android-partition (V151129).
+   Vendor-Lubuntu havde kun libhybris-broerne til dem i `/usr/local/lib`
+   (libEGL/libGLESv2 + `libhybris`, bl.a. til Kodi og en Chromium 47). Aldrig taget
+   med i Devuan — se §5.15 for vejene ind.
 3. **Integration mod skærmen** — KMS/DRI (kernel + X-driver) eller libhybris+Gralloc.
    Ingen af delene: `/sys/class/drm` findes ikke, og X kører fbdev.
 
@@ -289,6 +292,57 @@ Løsning: boksen kører nu på 2,4A. dpkg repareret med force-remove + `apt-get 
 install` + autoremove. Værktøj til genskabelse: `devuan/stress_test.sh`
 (overvågningslog i `/root/stress_mon.log` — `/tmp` ryddes ved boot). Hele beviskæden
 i pædagogisk form: HAANDBOG.md fælde 17.
+
+### 5.15 GPU-vejene: hvad kan PowerVR'en bruges til (aug 2026)
+
+Status: `pvrsrvkm` er loadet og fuldt initialiseret (kernel-tråde kører: `pvr_timer`,
+`pvr_sync_check_` m.fl.), men resten af stakken mangler. Tre veje ind:
+
+**Vej 1 — CPU + `/dev/fb0` (virker i dag).** `mmap` på `/dev/fb0` giver fuld
+pixelkontrol uden om X — det er hvad `fb_overscan.py` gør. Rækker til 2D, demoer,
+kiosk-programmer; ikke til 3D/WebGL.
+
+**Vej 2 — pvrsrvkm-broen direkte.** Bridge-protokollens ABI er dokumenteret i
+vendor-kernens GPL-kilde (`geekboxzone/lollipop_kernel`: `pvrsrv_bridge.h`,
+`pvrsrv_ioctl.h`). Et C-program kan åbne `/dev/pvrsrvkm`, lave
+`PVRSRV_BRIDGE_DEVINFO`, allokere og mappe GPU-hukommelse. Men shader-kompileren
+(USC) og kommando-strømmens format er lukkede — uden blobs kan der ikke køres
+shaders. Resten er reverse-engineering i åre-klassen.
+
+**Vej 3 — libhybris + vendor-brikkerne (eneste vej til ægte GLES).** Målt opgørelse
+(aug 2026):
+
+- **På boksen i dag: intet.** Der er ingen `/system`-partition (V160309-parameteren:
+  uboot/trust/resource/boot/backup/linuxroot) og ingen blobs nogen steder — `UF`-flashen
+  af det rene Lubuntu-image skrev partitionstabellen om, så den gamle Android-partition
+  (med blobs'ene) er overskrevet.
+- **I repoet (`vendor_root`): hele vendors integrationsværktøj** — libhybris med fire
+  EGL-platforme (`eglplatform_fbdev/hwcomposer/null/surfaceflinger.so`), libEGL- og
+  libGLESv2-broer, `test_hwcomposer`, `kodi.bin` med custom cmake, og en Chromium 47
+  med GLES2-ozone-lag (`/usr/lib/chromium-browser/libs/libgles2_c_lib.so`). Alt — bortset
+  fra selve blobs'ene.
+- **Blobs'ene:** lå i dualOS-imaget V151129's Android-`/system` (libGLESv2_POWERVR_ROGUE,
+  gralloc/hwc-HAL'erne, libsrv_um, libusc, PVR-tjenesterne). Download-URL i README,
+  verificeret fungerende.
+
+Trin-stigen (vurderet aug 2026):
+
+0. **Hent dualOS-imaget og udtræk blobs'ene** + kopiér hybris-broerne fra
+   `vendor_root` til boksen. En aften.
+1. **Få vendors eget `test_hwcomposer` til at tegne en trekant** på vores Devuan.
+   Samme kerne → pvrsrvkm-ABI'en matcher, og 2016-glibc-binærer kører normalt på ny
+   glibc. En weekend med ægte fejlsøgning. Beviset: trekant på skærmen.
+2. **Nyttiggør:** vendor-kodi-binæren fra 2016 til lokal video (muligvis kørbar
+   direkte med brikkerne fra trin 0) — eller portér en moderne browser. Det sidste er
+   den lange vej: firefox/chromium taler kun EGL-X11/DRI, som kræver KMS. Vendors egen
+   Chromium 47 beviser at en browser *kan* køre på stakken — men den er 10 år gammel,
+   kan ikke moderne web, og rammer 3.10's seccomp/syscall-problemer (fælde 14).
+
+**Værdi-vurdering (begrundet — erstatter den bare "lav værdi"):** G6110 er
+2016-mobil-klasse (GLES ~3.1, 1080p H.264-decode). For browser-WebGL: lav værdi —
+trin 2 er uger-måneder og skrøbeligt. For video-decode og GPU-demo: trin 0-1 er et
+overskueligt weekendprojekt med reel gevinst — CPU'en er på grænsen til 1080p-decode
+uden GPU.
 
 ## 6. Slutarkitekturen
 
@@ -346,7 +400,7 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 - OpenSSH-server (seccomp vs. 3.10) — brug dropbear
 - systemd-sysusers på boksen — divert'ed; pakkeinstallation foregår bedst i qemu-chroot på PC'en
 - WebGL i firefox-esr — umuligt på fbdev-stakken: ingen KMS/DRI, kun IGLX (§5.13)
-- Hardware video-decode/GPU-acceleration — `pvrsrvkm` er loadet i kernen, men PowerVR-blobs'ene (Android-`/system`) og integrationen mangler; libhybris-stien urørt, lav værdi (§5.13)
+- Hardware video-decode/GPU-acceleration — `pvrsrvkm` er loadet, men PowerVR-blobs'ene findes kun i dualOS-imaget (V151129), og integrationen mangler. Nuanceret vurdering (§5.15): GPU-demo/video-decode er et weekendprojekt (trin 0-1), browser-WebGL er uger-måneder — "lav værdi" gælder browser-målet, ikke demo-vejen
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 
