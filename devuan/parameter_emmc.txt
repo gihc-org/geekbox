@@ -10,5 +10,5 @@ PWR_HLD: 0,0,A,0,1
 #KERNEL_IMG: 0x00280000
 #FDT_NAME: rk-kernel.dtb
 #RECOVER_KEY: 1,1,0,20,0
-CMDLINE: console=ttyS2 root=/dev/mmcblk0p6 rootwait rw rootfstype=ext4 init=/root/myinit.sh mtdparts=rk29xxnand:0x00002000@0x00002000(uboot),0x00002000@0x00004000(trust),0x00008000@0x00006000(resource),0x00010000@0x0000E000(boot),0x00002000@0x0001E000(backup),-@0x00020000(linuxroot)
+CMDLINE: console=ttyS2 cma=128M root=/dev/mmcblk0p6 rootwait rw rootfstype=ext4 init=/root/myinit.sh mtdparts=rk29xxnand:0x00002000@0x00002000(uboot),0x00002000@0x00004000(trust),0x00008000@0x00006000(resource),0x00010000@0x0000E000(boot),0x00002000@0x0001E000(backup),-@0x00020000(linuxroot)
 

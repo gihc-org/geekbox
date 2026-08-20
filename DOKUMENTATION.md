@@ -321,28 +321,65 @@ shaders. Resten er reverse-engineering i åre-klassen.
   libGLESv2-broer, `test_hwcomposer`, `kodi.bin` med custom cmake, og en Chromium 47
   med GLES2-ozone-lag (`/usr/lib/chromium-browser/libs/libgles2_c_lib.so`). Alt — bortset
   fra selve blobs'ene.
-- **Blobs'ene:** lå i dualOS-imaget V151129's Android-`/system` (libGLESv2_POWERVR_ROGUE,
-  gralloc/hwc-HAL'erne, libsrv_um, libusc, PVR-tjenesterne). Download-URL i README,
-  verificeret fungerende.
+- **Blobs'ene:** findes i TO kilder: (a) **vendors egen `system.img`-FIL** i
+  `vendor_root/usr/local/share/libhybris/system.img` (207 MB, 10. jan 2016 — samme
+  æra som kernen, den BEDSTE match) og (b) dualOS-imaget V151129's Android-`/system`
+  (nov 2015 — ældre DDK, men virkede også). Det er (a), der bruges i opskriften
+  nedenfor.
 
-Trin-stigen (vurderet aug 2026):
+### Trin 0-1: UDFØRT og VERIFICERET (aug 2026)
 
-0. **Hent dualOS-imaget og udtræk blobs'ene** + kopiér hybris-broerne fra
-   `vendor_root` til boksen. En aften.
-1. **Få vendors eget `test_hwcomposer` til at tegne en trekant** på vores Devuan.
-   Samme kerne → pvrsrvkm-ABI'en matcher, og 2016-glibc-binærer kører normalt på ny
-   glibc. En weekend med ægte fejlsøgning. Beviset: trekant på skærmen.
-2. **Nyttiggør:** vendor-kodi-binæren fra 2016 til lokal video (muligvis kørbar
-   direkte med brikkerne fra trin 0) — eller portér en moderne browser. Det sidste er
-   den lange vej: firefox/chromium taler kun EGL-X11/DRI, som kræver KMS. Vendors egen
-   Chromium 47 beviser at en browser *kan* køre på stakken — men den er 10 år gammel,
-   kan ikke moderne web, og rammer 3.10's seccomp/syscall-problemer (fælde 14).
+Resultatet målt på boks 1: `GL_VERSION=OpenGL ES 3.1 build 1.4@3632227`,
+`GL_RENDERER=PowerVR Rogue G6110`, 500 frames renderet gennem
+program→hybris→Android-EGL→blobs→pvrsrvkm→G6110→gralloc/ION→hwcomposer→HDMI.
+Opskriften (scriptet: `devuan/gpu/`):
 
-**Værdi-vurdering (begrundet — erstatter den bare "lav værdi"):** G6110 er
-2016-mobil-klasse (GLES ~3.1, 1080p H.264-decode). For browser-WebGL: lav værdi —
-trin 2 er uger-måneder og skrøbeligt. For video-decode og GPU-demo: trin 0-1 er et
-overskueligt weekendprojekt med reel gevinst — CPU'en er på grænsen til 1080p-decode
-uden GPU.
+0. **Læg stakken til rette** (alle brikker fra repoet): vendors `system.img` loop-montes
+   ved `/system` (myinit-patchen nedenfor gør det automatisk), `ln -s /system/vendor
+   /vendor`, hybris-broerne fra `vendor_root/usr/local/lib` i `/opt/hybris` (inkl.
+   `libhybris/`-eglplatformerne og `test_hwcomposer`), platformerne OGSÅ i
+   `/usr/local/lib/libhybris/` (hårdkodet sti i broen), og `/dev/graphics/fb*`-symlinks
+   (devtmpfs nulstiller dem ved hver boot!).
+1. **Start mini-Android'en:** `/system/bin/logd` + `/system/bin/servicemanager
+   --standalone` + **`/system/vendor/bin/pvrsrvctl --start`** — den sidste ER
+   init-processen; uden den svarer kernen "Driver initialisation not completed yet"
+   for evigt (målt: bridge-ABI'en matcher, men ingen init-forbindelse).
+2. **Kør GL** med `LD_PRELOAD=system_shim.so LD_LIBRARY_PATH=/opt/hybris
+   EGL_PLATFORM=hwcomposer` — se `devuan/gpu/test_triangle.cpp` (vores eget program;
+   vendors platform SEGV'er, hvis man giver `eglCreateWindowSurface` et nul-vindue,
+   så programmet laver vinduet selv via `HWCNativeWindowCreate` + hwc-present-callback).
+
+Fælderne fundet undervejs (alle målt og løst):
+
+- **`cma=128M` på cmdlinen er afgørende.** CMA-heapen (ion-heap 4) kan som standard
+  kun holde ÉN 1920×1080-buffer; den næste allokering fejler med **EPERM** (ikke
+  ENOMEM!), gralloc returnerer -12, og vinduet dør med "allocated only 0 buffers".
+  Løst ved at tilføje `cma=128M` til `parameter_emmc.txt` (skrevet med §9's
+  dd-metode på den kørende boks — ingen reflash nødvendig).
+- **glibc 2.41's `system()` fejler med EFAULT i hybris-processen** (environ-blokken
+  ødelægges når bionic-bibliotekerne loader — execve kan ikke læse den). Vendors kode
+  kalder `system("chvt ...")` og `system("find /sys/class/display ...")` under init.
+  Løsning: `devuan/gpu/system_shim.c` — en LD_PRELOAD-shim der overtager `system()`
+  og fork/exec'er med et rent env.
+- **Hele bionic-`/system/lib` skal med** (ikke kun blobs'ene): libstlport,
+  libbacktrace, libutils-kaskaden — hybris' indlejrede Android-linker resolver dem
+  fra `/system/lib`.
+- **Vinduets usage 0x1800 (HW_COMPOSER|HW_FB) patchet til 0x1000** i
+  `libhybris-hwcomposerwindow.so` (to mov/orr-instruktioner; GAS-encodings i
+  dokumentationen). NB: ikke isoleret om dette var nødvendigt efter cma-fixet.
+- **`/dev/graphics` forsvinder ved boot** — symlinkene skal oprettes igen hver gang
+  (`devuan/gpu/gpu_up.sh` gør det).
+
+Trin 2 (nyttiggørelse) — stadig åbent: vendor-kodi-binæren fra 2016 til lokal video
+(muligvis kørbar direkte nu), eller portér en moderne browser — den lange vej:
+firefox/chromium taler kun EGL-X11/DRI, som kræver KMS. Vendors egen Chromium 47
+beviser at en browser *kan* køre på stakken — men den er 10 år gammel, kan ikke
+moderne web, og rammer 3.10's seccomp/syscall-problemer (fælde 14).
+
+**Værdi-vurdering (opdateret):** G6110 er 2016-mobil-klasse (GLES 3.1, 1080p
+H.264-decode). GPU-adgangen er nu LØST og verificeret (trin 0-1, en aften med
+målinger) — det, der stadig koster uger-måneder, er alene browser-integrationen
+(trin 2).
 
 ## 6. Slutarkitekturen
 

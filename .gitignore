@@ -23,3 +23,9 @@ devuan/*_nologo.img
 
 # Genererede dokumenter — kilden er .md-filerne
 *.pdf
+
+# GPU-eksperiment (aug 2026)
+extracted_dualos/
+dualos_blobs/
+lollipop_kernel_src/
+Geekbox_Lollipop_Lubuntu_dualOS_V151129/
