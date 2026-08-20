@@ -680,6 +680,6 @@ uden logning kan ikke fejlsøges — kun gættes på.
 - `DEBUG-SORT-SKAERM.md` — hele fejlsøgningen af den sorte skærm, med beviskæden og de
   kildehenvisninger der hører til.
 - `DRIVER-PORTERING.md` — hvorfor vi ikke bare kan bruge en moderne Linux-kerne.
-- `GRAFIK-FORKLARET.md` — grafikhistorien i hverdagssprog (god at læse højt for en 13-årig).
+- `GRAFIK-FORKLARET.md` — grafikhistorien i hverdagssprog (god at læse selv eller højt).
 - `TODO.md` — hvad der mangler.
 - `git log` — hver commit forklarer hvad der blev rettet og hvorfor.

@@ -1,9 +1,10 @@
-# Grafikken på GeekBox — forklaret så en 13-årig kan følge med
+# Grafikken på GeekBox — forklaret i hverdagssprog
 
 Dette dokument fortæller historien om boksens grafik: hvorfor WebGL ikke virkede,
-hvad vi gik igennem for at finde ud af det, og hvad vi kan i dag. Det er skrevet så
-det kan læses højt — de tekniske detaljer og beviserne står i de dokumenter, der
-henvises til undervejs.
+hvad vi gik igennem for at finde ud af det, og hvad vi kan i dag. Forklaringerne
+bruger hverdagssprog og billeder i stedet for fagudtryk — de tekniske detaljer og
+beviserne står i de dokumenter, der henvises til undervejs. Det er skrevet til at
+læse selv, læse højt eller give videre.
 
 ---
 
