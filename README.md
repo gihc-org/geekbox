@@ -6,6 +6,9 @@
 >
 > **[DOKUMENTATION.md](DOKUMENTATION.md)** er den fulde tekniske historie: arkitektur,
 > beslutninger, blindgyder og hvordan hele Devuan-systemet genskabes.
+>
+> **[GRAFIK-FORKLARET.md](GRAFIK-FORKLARET.md)** fortæller historien om boksens grafik —
+> hvorfor WebGL ikke virkede, og hvordan vi vækkede GPU'en — skrevet så en 13-årig kan følge med.
 
 Metode til at flashe GeekBox-boksen med Lubuntu Linux fra en moderne Linux-maskine
 (testet på Linux Mint 22.3, august 2026). Erstatter boksens Android helt.
