@@ -99,8 +99,12 @@ fælde 17, `devuan/stress_test.sh`).
 - **WebGL-spil i browseren.** Browseren skal bruge den moderne transportvej
   (KMS/DRI), som vores 2013-kerne ikke har. Man skulle bygge en ny oversætter til
   browseren — et stort projekt (uger-måneder), selvom fabrikken nu kører.
-- **Skrivebord og GPU samtidig.** De to kan ikke deles om skærmen lige nu — og efter
-  en GPU-session skal boksen strøm-cykles for at få HDMI tilbage.
+- **Skrivebord og GPU samtidig — næsten.** Konflikten handler kun om SKÆRMEN (et
+  lærred, to malere): GLES kan sagtens regne og tegne offscreen, mens X kører — men
+  intet må vise noget på TV'et samtidig med X. Skal GPU'en vise noget, må X holde
+  pause — og efter en GPU-session skal boksen strøm-cykles for at få HDMI tilbage.
+  En baggrundsproces kan sagtens eje skærmen alene: render med GLES til en
+  offscreen-buffer, og "pip" resultatet til VOP'en ved at skrive til `/dev/fb0`.
 
 **Reglerne vi lærte (kort):**
 1. En GPU-stak er tre lag — og mangler ét, virker intet.
