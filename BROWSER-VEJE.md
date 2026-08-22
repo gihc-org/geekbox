@@ -16,8 +16,12 @@ løsningen, risikoerne og en foreslået rækkefølge (aug 2026). Grundlaget er D
   skærmen, ikke ind i X.
 - Producenten leverede både `kodi.bin` og en chromium 47 med GLES2-ozone-lag
   (`vendor_root/usr/lib/kodi/`, `vendor_root/usr/lib/chromium-browser/`) — de har i
-  2016 kørt både en medie-app og en browser mod stakken. Hvordan chromium'en
-  præsenterede (hvilken ozone-platform, X eller ej), har vi ikke målt.
+  2016 kørt både en medie-app og en browser mod stakken. Målt (aug 2026): chromium'en
+  er en GTK2+X11-build (`libgtk2ui.so`, `libx11_events_platform.so` i dens `libs/`),
+  så den kørte under X — og dens wrapper starter med `--no-sandbox` (samme
+  syscall-problem som HAANDBOG fælde 14). Stadig umålt: hvilken GL-vej den brugte
+  (`libgl_wrapper.so` = GLX vs. `libgles2_c_lib.so` = GLES2) og hvilken ozone-platform
+  der præsenterede — se måleprogrammet i §3.
 - Konsekvens for en browser: den *skal* køre under X (vinduer, mus, tastatur), men
   ingen af de fire platforme kan levere GPU-billeder ind i et X-vindue. De taler
   direkte til skærmen — præcis den kollision med X vi allerede har målt
@@ -57,7 +61,77 @@ En browser-fork skal rebases mod sikkerhedsrettelser for evigt, og det er en
 browser. Derfor: hold dig så tæt på stock-Firefox som muligt (env-vars + små
 patches) frem for en hård fork.
 
-## 3. Fire billige eksperimenter før nogen fork (~en aften hver)
+## 3. Måleprogrammet: hvad der kan måles inden vi bygger noget
+
+Alt nedenstående kan gøres uden at bygge løsningen — i projektets ånd: målt, ikke
+gættet. Nummereringen er gruppe + punkt, så den ikke forveksles med eksperimenterne
+i §4.
+
+### A. Repo-analyser (uden boks)
+
+A1. **Vendors chromium-ledninger.** `readelf -d` på `chromium-browser` og på
+    `libgl_wrapper.so`/`libgles2_c_lib.so` — hvilken libEGL/libGLESv2 de linker og
+    importerer (vendors hybris i `/usr/local/lib` eller mesa?). `strings | grep -i
+    ozone` på libs'ene for platformnavne (`egltest`/`x11`/`headless`).
+    `vendor_root/usr/local/lib/pkgconfig/` og `.la`-filerne viser, hvordan EGL'erne
+    var tænkt linket.
+A2. **Vendors kodi-ledninger.** Samme behandling af `kodi.bin` + `kodi-config.cmake`
+    (byggeflag afslører ofte EGL-backenden: `EGLPLATFORM=...`). Facit på, hvordan en
+    rigtig GLES-app præsenterede i 2016.
+A3. **EGL-platform-API-kontrakten** (de-risker opgave A i §2 direkte):
+    `vendor_root/usr/local/include/hybris/eglplatformcommon/eglplatformcommon.h`
+    definerer præcis, hvilke funktioner en ny platform skal implementere — suppleret
+    med `nm -D` på `eglplatform_hwcomposer.so` (samme funktionssæt = facitlisten for
+    `eglplatform_x11`). A bliver fra "et par hundrede linjer" til en konkret
+    tjekliste.
+A4. **Hybris-EGL'ens overflade.** `objdump -T` + `strings` på vendors `libEGL.so`:
+    hvilke EGL-entry-points og client-extensioner den reklamerer med
+    (`EGL_EXT_platform_base`, `EGL_KHR_surfaceless_context` …). Det er præcis den
+    liste, en browser spørger om ved init.
+A5. **PVR-blob'ens statiske capability-profil.** `strings` på
+    `libGLESv2`/`libEGL_POWERVR_ROGUE.so` (`dualos_blobs/system_lib`,
+    `dualos_blobs/vendor_lib`) — GL-extensionerne står næsten altid som tekst i
+    binæren. Første statiske liste at holde op mod WebRenders krav (risiko C i §2)
+    uden at røre boksen.
+A6. **Browsernes kravkatalog** (webforskning). Mozilla-kildens GLES-krav og
+    PowerVR-blocklist-kriterier (searchfox), og hvad ozone-GLES2 krævede i
+    chromium 47-æraen. Sammenlignes med A4+A5 → kvalificeret gæt om C før
+    eksperimenterne.
+
+### B. Boks-målinger (sikre — X kan køre imens)
+
+B7. **Null-platform-probe — den vigtigste, og den er sikker.** `eglplatform_null.so`
+    findes i broen, og reglen i `devuan/gpu/README.md` siger, at GLES offscreen kan
+    køre mens X kører. Et lille program (udvidelse af `test_triangle.cpp`) laver med
+    `EGL_PLATFORM=null` en offscreen-kontekst og dumper: fuld EGL+GLES-
+    extensionliste, GLES 3.0/3.1-feature-bits, og forsøger præcis de features
+    WebRender skal bruge (instancing, UBO std140, sRGB, float-texturer, blit, MSAA)
+    plus en lille perf-loop. Måler risiko C ved kørsel — uden at røre skærmen, uden
+    strøm-cyklus.
+B8. **X-blit-båndbredde.** Ren X-måling: 1920×1080 XPutImage/MIT-SHM ind i et vindue
+    i en loop. Validerer A's præsentationstese (8 MB/frame memcpy) uden GPU og uden
+    risiko.
+B9. Derefter `MOZ_X11_EGL`-forsøget (eksperiment 2 i §4) — nu med en forudsigelse fra
+    A4+A5+A6, så loggen kan læses mod forventningen i stedet for at tolkes frit.
+
+### C. Forskning (web)
+
+C10. Gammel libhybris-`eglplatform_x11`-kilde (GitHub-historien) — bekræfter form og
+     licens, og gør A's estimat eksakt.
+C11. Debian-armhfs nuværende kodi's EGL-understøttelse — hvilke platforme kan den
+     bruge her?
+
+### Hvad man ikke skal gøre tidligt
+
+**Køre vendors chromium 47.** Bygget til 14.04-æraens glibc, et sikkerhedshul på
+ben, og den fortæller ved kørsel mindre end den statiske analyse i A1. Undtagelse:
+kun hvis A1 peger på noget overraskende, der kun kan afgøres dynamisk.
+
+Rækkefølgen der giver mest per time: **A5+B7** (C-risikoen — den store ubekendte),
+**A3** (A-risikoen), **B8** (præsentationstesen), **A1+A2** (vendors facit), så
+A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
+
+## 4. Fire billige eksperimenter før nogen fork (~en aften hver)
 
 1. **Læs vendors egen chromium-opsætning** (`vendor_root/etc/chromium-browser/`,
    ozone-libs'ene) — måske står svaret på, hvordan en GLES-browser præsenterede på
@@ -72,7 +146,7 @@ patches) frem for en hård fork.
    denne kombination i 2016. Den korteste vej til en GPU-accelereret fuldskærms-app,
    og samtidig beviset for at stakken kan bære en rigtig app.
 
-## 4. Foreslået rækkefølge
+## 5. Foreslået rækkefølge
 
 1. Byg `eglplatform_x11` (A) som selvstændigt projekt — det er forudsætningen,
    uanset hvilken vej man ender på, og det gavner alle brugere af stakken.
@@ -83,7 +157,7 @@ patches) frem for en hård fork.
 5. I mellemtiden: `chromium` + SwiftShader er den eneste browser-vej med WebGL, der
    virker i dag (HAANDBOG fælde 16) — CPU-fart, men den virker.
 
-## 5. Dommen
+## 6. Dommen
 
 Ikke uoverkommeligt — men "uger-måneder" (`GRAFIK-FORKLARET.md` §4) holder, og
 arbejdet ligger næsten alle andre steder end i Firefox' egen kode. Risikoen samler
@@ -91,7 +165,7 @@ sig i to punkter: A (kendt form, afgrænset) og C (uafklaret indtil målt —
 eksperiment 3 afgør den). Målet "webspil i dag" → chromium+SwiftShader. Målet
 "GPU-nyttiggørelse" → eglplatform_x11 + Kodi/egne programmer først.
 
-## 6. Hvor man læser mere
+## 7. Hvor man læser mere
 
 | Vil du vide mere om... | Læs |
 |---|---|
