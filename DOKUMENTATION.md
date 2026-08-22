@@ -463,7 +463,7 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 - OpenSSH-server (seccomp vs. 3.10) — brug dropbear
 - systemd-sysusers på boksen — divert'ed; pakkeinstallation foregår bedst i qemu-chroot på PC'en
 - WebGL i firefox-esr — umuligt på fbdev-stakken: ingen KMS/DRI, kun IGLX (§5.13)
-- Hardware video-decode/GPU-acceleration — `pvrsrvkm` er loadet, men PowerVR-blobs'ene findes kun i dualOS-imaget (V151129), og integrationen mangler. Nuanceret vurdering (§5.15): GPU-demo/video-decode er et weekendprojekt (trin 0-1), browser-WebGL er uger-måneder — "lav værdi" gælder browser-målet, ikke demo-vejen
+- Hardware video-decode/GPU-acceleration — stakken kører nu via libhybris (trin 0-1 udført, §5.15), men browser-WebGL er uger-måneder: broen mangler `eglplatform_x11`, og browseren kræver KMS/DRI. Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 

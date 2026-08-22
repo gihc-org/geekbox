@@ -127,6 +127,7 @@ ikke kan undvære.
 - **WebGL-spil i browseren.** Browseren skal bruge den moderne transportvej
   (KMS/DRI), som vores 2013-kerne ikke har. Man skulle bygge en ny oversætter til
   browseren — et stort projekt (uger-måneder), selvom fabrikken nu kører.
+  Løsningsanalyse, rækkefølge og billige eksperimenter: `BROWSER-VEJE.md`.
 - **Skrivebord og GPU samtidig — næsten.** Konflikten handler kun om SKÆRMEN (et
   lærred, to malere): GLES kan sagtens regne og tegne offscreen, mens X kører — men
   intet må vise noget på TV'et samtidig med X. Skal GPU'en vise noget, må X holde
@@ -148,5 +149,6 @@ ikke kan undvære.
 | Grafikken i tekniske detaljer (målinger, fejlsøgning, opskrift) | `DOKUMENTATION.md` §5.13-5.15 |
 | Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-17) |
 | Hvorfor vi ikke bare kan bruge en ny kerne | `DRIVER-PORTERING.md` |
+| Hvordan GPU'en kan komme ind i en browser — løsningsanalyse og rækkefølge | `BROWSER-VEJE.md` |
 | Vores GPU-programmer og diagnose-værktøjer | `devuan/gpu/` (og `devuan/gpu/diagnostik/`) |
 | Hele rejsens historie i git | `git log` — hver commit fortæller et kapitel |
