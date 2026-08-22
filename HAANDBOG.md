@@ -58,8 +58,10 @@ billedet ud af HDMI'en. Det er VOP'en der viser vores skrivebord — ikke GPU'en
 
 **GPU (PowerVR G6110).** En separat regneenhed til 3D. Den tegner ingenting af sig selv:
 den renderer kun ind i buffere, når et program beder om det gennem hele driver-stakken —
-kernel-driver + proprietære blobs + integration mod skærmen. Af de tre dele har vores
-boks kun den første, og derfor virker WebGL ikke (fælde 16).
+kernel-driver + proprietære blobs + integration mod skærmen. Stakken kører faktisk nu:
+blobs'ene er hentet fra dualOS-imaget og kører i deres egen lille Android-hal via
+libhybris (DOK §5.15). WebGL virker alligevel ikke — browseren vil kun gennem den
+moderne dør (KMS/DRI), som kernen ikke har (fælde 16).
 
 **KMS/DRM og DRI.** Den moderne vej, grafikprogrammer får billeder på skærmen ad.
 Kræver kernens KMS-grænseflade (`/dev/dri`) og en X-driver der bruger den. Vendor-kernen
@@ -539,15 +541,18 @@ kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
 **Du ser:** et webspil melder "browseren understøtter ikke WebGL". Firefox er ny
 (140-esr) og har ikke slået WebGL fra i indstillingerne. Alligevel nægter den.
 
-**Hvad der sker:** WebGL kræver en dør ind i grafikken, og den dør findes ikke i vores
-opsætning. En GPU-driver er tre lag, og vi har kun det nederste:
+**Hvad der sker:** WebGL kræver en dør ind i grafikken — og browseren vil kun bruge
+den moderne dør, som vores opsætning ikke har. En GPU-driver er tre lag, og alle tre
+er nu på boksen:
 
 1. **Kerne-driveren** (`pvrsrvkm`) er loadet — `/dev/pvrsrvkm` findes. Men den er bare
    døren: den tager imod kommandoer, den udfører ingenting selv.
 2. **De proprietære blobs** — laget der faktisk forstår 3D-kommandoer — er lukkede,
-   Android-byggede fra 2016 og ligger ikke i vores Devuan.
-3. **Integrationen mod skærmen** — den moderne vej (KMS/DRI) mangler i vendor-kernen,
-   og den gamle vej (libhybris) er aldrig bygget.
+   Android-byggede fra 2016. Vi hentede dem fra dualOS-imagets `system.img` og kører
+   dem gennem libhybris i deres egen lille Android-hal (DOK §5.15).
+3. **Integrationen mod skærmen** — den gamle vej (libhybris) virker nu for vores egne
+   programmer, men den moderne vej (KMS/DRI) mangler stadig i vendor-kernen — og det
+   er kun den vej, browseren accepterer.
 
 Værre: selv **software-GL** (CPU-rendering, som ellers redder maskiner uden GPU) er
 spærret her. Det skal nemlig også gennem DRI, og vores X-server (fbdev) har ingen DRI.
@@ -568,10 +573,12 @@ ls /dev/pvrsrvkm                           # findes = kerne-driveren er der
 dpkg -l | grep mesa                        # installeret = bibliotekerne fejler ikke noget
 ```
 
-**Gjort:** intet — det kan ikke gøres. Hvis WebGL-spil er et mål, er `chromium` vejen:
-den har sin egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den
-findes til armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som
-fælde 14) og lav fart — alt renderes på CPU'en.
+**Gjort:** hele GPU-stakken blev bragt op bagefter — blobs'ene kom ind, og fabrikken
+tegner (DOK §5.15). Men WebGL i Firefox kan stadig ikke lade sig gøre: browseren
+kræver KMS/DRI i kernen. Hvis WebGL-spil er et mål, er `chromium` vejen: den har sin
+egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den findes til
+armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som fælde 14) og
+lav fart — alt renderes på CPU'en.
 
 ### Fælde 17: Boksen dør brat under belastning — strømforsyningen løj om 2A
 
