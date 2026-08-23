@@ -17,6 +17,8 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 - [x] M0: baseline-byg + verifikation på boks 1 (23. aug 2026)
 - [x] M1: `gles_daemon.c` (23. aug 2026)
 - [x] M2: `frontend.py` (23. aug 2026)
+- [x] M2b: `frame`-kommando + `window_demo.py` — X-vindue-demo (24. aug 2026;
+      implementeret + 10 fps målt, ÉN åben skærm-verifikation — se M2b)
 - [ ] M3: testcyklus på boksen
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
 
@@ -143,6 +145,54 @@ nu (`devuan/gpu/readback_probe.cpp`).
 - `--rect`-parsing: `960x540+480+270` skal splittes med `split("+", 1)`, ellers
   bliver der tre dele.
 
+### M2b — `window_demo.py`: X-vindue-demo (aug 2026)
+
+Brugerens ønske (24. aug 2026): *"køre et python script i X som åbner et vindue,
+den snakker med demonen og demoen i vinduet"* — **X skal IKKE stoppes**. Dette er
+et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
+
+- [x] `frame`-kommando i `gles_daemon.c`: renderer scenen i FBO og RETURNERER rå
+      pixels (JSON-header-linje + binær) — ingen fb0-blit, så X kan køre.
+- [x] `fmt="rgb565"` (2 bytes/px, little-endian R5G6B5): C-pakning i daemonen →
+      Python vender kun rækkerne om → **10 fps målt** (60 frames på 6,0 s,
+      640x360; daemon-render ~56-70 ms). Uden den var Python-pakningen ~2 s/frame.
+- [x] `window_demo.py`: ctypes + libX11 (hverken tkinter eller PIL findes på
+      boksen), `XCreateSimpleWindow` + `XPutImage`, WM_DELETE_WINDOW + Escape,
+      5x7-tekst genbrugt fra frontend.py.
+- [x] Verificeret på boks 1: 12/20/60 frames uden crash; daemonen får `quit` og
+      lukker (ingen efterladte); XPutImage ind i et vindue VIRKER på skærmen
+      (C-test `diagnostik/test_x8_putimage.c`: blå rect i vindue landede på fb0).
+- [ ] **ÅBEN:** endelig verifikation af at demo-vinduets indhold når skærmen.
+      fb0-dump midt i kørslen viste stadig gamle testrektangler i vindue-området
+      (window var i xwininfo-træet, men indholdet sås ikke på fb0). Næste skridt
+      var map-state-tjek (`xwininfo -id` midt i kørslen) + `clearroot` først —
+      se næste session.
+
+**Rødder fundet undervejs (alle målt på boksen, ikke gæt):**
+1. **XCreateImage format = ZPixmap (2), ikke 1.** Python-koden sendte 1
+   (XYPixmap) → XPutImage gik i bitmap-vejen → memcpy-crash (SIGSEGV i libc,
+   gdb-backtrace; r8=r9=40 = width/8 afslørede plan-logikken). C-tests brugte
+   ZPixmap og virkede. Fix: `format=2` i window_demo.py.
+2. **openbox (LXDE) flytter nye vinduer.** Demo-vinduet (anmodet om 120,80) lå
+   ved (640,370) (xwininfo: frame +638+347, client +640+370). Tidligere "sorte
+   aflæsninger" var aflæsning af det forkerte sted på skærmen.
+3. **X' fbdev-driver maler ikke root-baggrund ved opstart** — gamle direkte-
+   fb0-blits (kiosk-UI, testrektangler) bliver stående på skærmen. Brug
+   `diagnostik/clearroot.c` før visuel verifikation.
+4. **scp kan ikke overskrive en kørende eksekverbar** (sftp-server:
+   "dest open Failure") — dræb daemonen først.
+5. **Efterladte daemoner kan hænge i socket-read og ignorere SIGTERM**
+   (`skb_recv_datagram`) — `pkill -9` virker.
+
+Diagnostik-værktøjer i `devuan/gpu/diagnostik/` (genbrug i næste session):
+- `test_x7_fb_truth.c`: tegner i X og læser /dev/fb0 direkte — afgør om serveren
+  overhovedet tegner (JA: XFillRectangle på root lander på fb0).
+- `test_x8_putimage.c`: rydder gamle testvinduer, tester XPutImage på root + i
+  vindue, dumper fb0.
+- `fbdump.c`: mmap-dump af hele fb0 (`read()` giver kun halvdelen — M1-fælde).
+- `clearroot.c`: fylder root sort — ren tavle.
+- `rgb565_to_png.py`: RGB565-dump → PNG (visuel/ASCII-analyse).
+
 ### M3 — testcyklus på boks 1
 
 ```bash
@@ -185,6 +235,14 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 7. Ikke kør tunge installationer på boksen (brownout, DOK §5.14).
 8. Racerbetingelsen frontend↔daemon om fb0 løses i v1 af den synkrone protokol og
    adskilte rects — dokumenteret, ikke løst.
+9. XPutImage til et vindue kræver `ZPixmap` (2) i `XCreateImage` — `XYPixmap`
+   (1) → SIGSEGV i libX11/libc (målt med gdb, M2b).
+10. X' fbdev-driver maler ikke root-baggrund ved opstart — gamle fb0-blits
+    bliver stående på skærmen (målt, M2b; brug clearroot før visuelle tests).
+11. openbox/LXDE flytter nye vinduer — verificér position med `xwininfo -id`
+    eller `-root -tree`; stol ikke på egne koordinater (målt, M2b).
+12. scp over en kørende eksekverbar fejler ("dest open Failure") — dræb
+    processen først (målt, M2b).
 
 ## Åbne spørgsmål
 

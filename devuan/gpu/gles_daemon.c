@@ -14,6 +14,13 @@
  *   {"cmd":"fb"}
  *   {"cmd":"scenes"}
  *   {"cmd":"render","scene":"triangle","rect":[x,y,w,h],"phase":0.5}
+ *       — render + blit til fb0 (kiosk-tilstand; X skal være stoppet)
+ *   {"cmd":"frame","scene":"triangle","rect":[x,y,w,h],"phase":0.5}
+ *       — render og RETURNER rå pixels: først en JSON-header-linje
+ *         {"ok":true,"w":..,"h":..,"fmt":"rgba8|rgb565","bytes":N}, derefter
+ *         N bytes (GL-orientering: række 0 = bund). fmt="rgb565" (2 bytes/px,
+ *         little-endian R5G6B5) sparer frontenden for Python-pakning.
+ *         Til X-vindue-frontends.
  *   {"cmd":"clear","rect":[x,y,w,h],"color":[r,g,b]}        // 0-255
  *   {"cmd":"quit"}
  * Svar: {"ok":true/false, ...}; fejl: {"ok":false,"error":"..."}.
@@ -361,8 +368,10 @@ static int gl_init(void)
     return 0;
 }
 
-static int render_triangle(const fbdev_t *fb, int rx, int ry, int rw, int rh,
-                           double phase)
+/* render cos-mønster-scenen ind i en RGBA-buffer (rw*rh*4, GL-orientering:
+   række 0 = bund). buf skal være allokeret af kalderen. */
+static void render_scene_rgba(int rx, int ry, int rw, int rh, double phase,
+                              unsigned char *buf)
 {
     static const GLfloat vertices[] = {
          0.0f,  1.0f, 0.0f,
@@ -380,13 +389,34 @@ static int render_triangle(const fbdev_t *fb, int rx, int ry, int rw, int rh,
     glEnableVertexAttribArray(g_pos_loc);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 5);
     glFinish();
+    glReadPixels(rx, ry, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+}
 
+static int render_triangle(const fbdev_t *fb, int rx, int ry, int rw, int rh,
+                           double phase)
+{
     unsigned char *buf = (unsigned char *)malloc((size_t)rw * rh * 4);
     if (!buf) return -1;
-    glReadPixels(rx, ry, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    render_scene_rgba(rx, ry, rw, rh, phase, buf);
     int rc = fb_blit_rgba(fb, rx, ry, rw, rh, buf, 1);
     free(buf);
     return rc;
+}
+
+/* Pak RGBA8 → RGB565 (little-endian R5G6B5, samme layout som X' 16-bit
+   visual på boksen). Række 0 i out = række 0 i rgba (GL-orientering). */
+static void pack_rgb565(const unsigned char *rgba, int w, int h,
+                        unsigned char *out)
+{
+    size_t n = (size_t)w * h;
+    for (size_t i = 0; i < n; i++) {
+        uint16_t v = (uint16_t)(((rgba[0] >> 3) << 11) |
+                                ((rgba[1] >> 2) << 5) |
+                                (rgba[2] >> 3));
+        out[i * 2] = (unsigned char)(v & 0xff);
+        out[i * 2 + 1] = (unsigned char)(v >> 8);
+        rgba += 4;
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -470,9 +500,14 @@ static double now_ms(void)
     return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
 }
 
-/* returnerer 1 hvis daemonen skal lukke (quit) */
-static int handle_line(const char *line, const fbdev_t *fb, char *reply, size_t rn)
+/* returnerer 1 hvis daemonen skal lukke (quit). For "frame" sættes *out_bin /
+   *out_bin_len til et malloc'et RGBA-billede, som main-loopet sender efter
+   reply-linjen og frigør. */
+static int handle_line(const char *line, const fbdev_t *fb, char *reply, size_t rn,
+                       unsigned char **out_bin, size_t *out_bin_len)
 {
+    *out_bin = NULL;
+    *out_bin_len = 0;
     char cmd[64];
     if (js_str(line, "cmd", cmd, sizeof cmd) != 0) {
         snprintf(reply, rn, "{\"ok\":false,\"error\":\"manglende eller ugyldig cmd\"}");
@@ -532,6 +567,64 @@ static int handle_line(const char *line, const fbdev_t *fb, char *reply, size_t 
                  "{\"ok\":true,\"cmd\":\"render\",\"scene\":\"triangle\","
                  "\"rect\":[%d,%d,%d,%d],\"phase\":%.3f,\"ms\":%.1f}",
                  rect[0], rect[1], rect[2], rect[3], phase, ms);
+        return 0;
+    }
+
+    if (strcmp(cmd, "frame") == 0) {
+        int rect[4] = { 0, 0, W, H };
+        js_ints(line, "rect", rect, 4);   /* default: hele FBO'en */
+        if (rect[2] <= 0 || rect[3] <= 0 || rect[0] < 0 || rect[1] < 0 ||
+            rect[0] + rect[2] > W || rect[1] + rect[3] > H) {
+            snprintf(reply, rn,
+                     "{\"ok\":false,\"cmd\":\"frame\",\"error\":\"rect uden for FBO'en: [%d,%d,%d,%d]\"}",
+                     rect[0], rect[1], rect[2], rect[3]);
+            return 0;
+        }
+        char scene[32] = "triangle";
+        js_str(line, "scene", scene, sizeof scene);
+        if (strcmp(scene, "triangle") != 0) {
+            snprintf(reply, rn,
+                     "{\"ok\":false,\"cmd\":\"frame\",\"error\":\"ukendt scene: %s\"}", scene);
+            return 0;
+        }
+        double phase = 0.0;
+        js_num(line, "phase", &phase);
+        char fmt[16] = "rgba8";
+        js_str(line, "fmt", fmt, sizeof fmt);
+        unsigned char *buf = (unsigned char *)malloc((size_t)rect[2] * rect[3] * 4);
+        if (!buf) {
+            snprintf(reply, rn,
+                     "{\"ok\":false,\"cmd\":\"frame\",\"error\":\"malloc fejlede\"}");
+            return 0;
+        }
+        double t0 = now_ms();
+        render_scene_rgba(rect[0], rect[1], rect[2], rect[3], phase, buf);
+        double ms = now_ms() - t0;
+        if (strcmp(fmt, "rgb565") == 0) {
+            size_t n = (size_t)rect[2] * rect[3] * 2;
+            unsigned char *packed = (unsigned char *)malloc(n);
+            if (!packed) {
+                free(buf);
+                snprintf(reply, rn,
+                         "{\"ok\":false,\"cmd\":\"frame\",\"error\":\"malloc fejlede\"}");
+                return 0;
+            }
+            pack_rgb565(buf, rect[2], rect[3], packed);
+            free(buf);
+            *out_bin = packed;
+            *out_bin_len = n;
+            snprintf(reply, rn,
+                     "{\"ok\":true,\"cmd\":\"frame\",\"w\":%d,\"h\":%d,"
+                     "\"fmt\":\"rgb565\",\"bytes\":%zu,\"ms\":%.1f}\n",
+                     rect[2], rect[3], n, ms);
+        } else {
+            *out_bin = buf;
+            *out_bin_len = (size_t)rect[2] * rect[3] * 4;
+            snprintf(reply, rn,
+                     "{\"ok\":true,\"cmd\":\"frame\",\"w\":%d,\"h\":%d,"
+                     "\"fmt\":\"rgba8\",\"bytes\":%zu,\"ms\":%.1f}\n",
+                     rect[2], rect[3], *out_bin_len, ms);
+        }
         return 0;
     }
 
@@ -638,12 +731,19 @@ int main(int argc, char **argv)
             if (ch == '\n') {
                 buf[n] = 0;
                 char reply[4096];
-                int quit = handle_line(buf, &fb, reply, sizeof reply);
+                unsigned char *bin = NULL;
+                size_t bin_len = 0;
+                int quit = handle_line(buf, &fb, reply, sizeof reply, &bin, &bin_len);
                 printf("gles_daemon: <- %s\n", buf);
                 printf("gles_daemon: -> %s\n", reply);
                 fflush(stdout);
                 ssize_t wr = write(cfd, reply, strlen(reply));
                 (void)wr;
+                if (bin) {
+                    wr = write(cfd, bin, bin_len);
+                    (void)wr;
+                    free(bin);
+                }
                 if (quit) {
                     g_running = 0;
                     break;

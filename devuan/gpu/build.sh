@@ -51,7 +51,10 @@ arm-linux-gnueabihf-g++ -O2 -o "$OUT/readback_probe" "$HERE/readback_probe.cpp" 
 echo "== frontend.py =="
 cp "$HERE/frontend.py" "$OUT/"
 
+echo "== window_demo.py =="
+cp "$HERE/window_demo.py" "$OUT/"
+
 echo
 echo "FÆRDIG → $OUT"
 file "$OUT/test_triangle" "$OUT/system_shim.so" "$OUT/gles_daemon" "$OUT/null_probe" "$OUT/readback_probe"
-ls -la "$OUT/frontend.py"
+ls -la "$OUT/frontend.py" "$OUT/window_demo.py"

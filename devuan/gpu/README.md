@@ -70,11 +70,36 @@ ssh -i ~/.ssh/geekbox_key root@<ip> \
 NB: daemonen patcher hybris-wrapperens tomme `_glReadPixels`-slot — uden patchen
 er `glReadPixels` et NULL-kald → SIGSEGV → exit(42) (målt med strace+gdb).
 
+## X-vindue-demo (M2b, aug 2026) — X kører, demoen i et vindue
+
+`window_demo.py` (ctypes + libX11, ingen tkinter/PIL) åbner et vindue i X,
+snakker med daemonen over socketten og viser GLES-scenen i vinduet. **X stoppes
+IKKE** — daemonen renderer offscreen og returnerer pixels (`frame`-kommandoen)
+i stedet for at blitte til fb0.
+
+```bash
+ssh -i ~/.ssh/geekbox_key root@<ip> 'sh /root/gpu_up.sh'
+ssh -i ~/.ssh/geekbox_key root@<ip> \
+  '(LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer nohup /root/gles_daemon >/root/gles_daemon.log 2>&1 &)'
+ssh -i ~/.ssh/geekbox_key root@<ip> \
+  'su -s /bin/sh kristian -c "cd /home/kristian && DISPLAY=:0 python3 window_demo.py --frames 60 --fps 10"'
+```
+
+`frame` returnerer en JSON-header + rå pixels: `fmt="rgba8"` (4 B/px) eller
+`fmt="rgb565"` (2 B/px, little-endian R5G6B5) — rgb565 er C-pakket i daemonen og
+giver ~10 fps målt (60 frames på 6,0 s, 640x360). Status 24. aug 2026:
+implementeret og kørt på boks 1 uden crash; ÉN åben skærm-verifikation (vindue
+→ fb0) — detaljer og fund: `GLES-DAEMON-PLAN.md` M2b. Vigtigste fælder: XPutImage
+kræver `ZPixmap` (2) i `XCreateImage` (1 → SIGSEGV); openbox flytter vinduet
+(tjek med `xwininfo`); X maler ikke root-baggrund ved opstart (kør
+`diagnostik/clearroot.c` før visuelle tests); dræb en kørende daemon før scp.
+
 ## Python-projektet (i gang — aug 2026)
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen
-og blitter til fb0. Kommandoer over socketten i JSON-linjer. X stoppet mens det kører.
+og blitter til fb0 — eller returnerer pixels til et X-vindue (M2b, ovenfor).
+Kommandoer over socketten i JSON-linjer. X stoppet kun i kiosk-tilstanden (frontend.py).
 
 **Plan og status: `GLES-DAEMON-PLAN.md`** — beslutninger, milestones (M0-M4),
 testcyklus og fælder. Vigtigste nye beslutning (23. aug 2026): alt bygges CROSS på
@@ -85,6 +110,7 @@ Første konkrete skridt:
 1. `devuan/gpu/gles_daemon.c`: tag `test_triangle.cpp`, erstat animations-loopet med
    en socket-lytter; render scener efter kommandoer; blit til fb0.
 2. `devuan/gpu/frontend.py`: minimal UI på fb0 (tekst + rammer) med en socket-klient.
+   `devuan/gpu/window_demo.py`: samme scene i et X-vindue (M2b, X kører).
 3. Testcyklus: stop X → start daemon → start frontend → kommandoer → strøm-cyklus.
 
 ## Ny boks i samme tilstand
