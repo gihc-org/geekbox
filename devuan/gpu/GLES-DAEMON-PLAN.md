@@ -15,7 +15,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
       libhybris-hwcomposerwindow, libhybris-eglplatformcommon, libandroid-properties,
       libhardware, libsync — alle ELF32 ARM EABI5, tjekket med `file`)
 - [x] M0: baseline-byg + verifikation på boks 1 (23. aug 2026)
-- [ ] M1: `gles_daemon.c`
+- [x] M1: `gles_daemon.c` (23. aug 2026)
 - [ ] M2: `frontend.py`
 - [ ] M3: testcyklus på boksen
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
@@ -80,19 +80,41 @@ Resultat: boksens `/root/test_triangle_cross` + ny `/root/system_shim.so` (cross
 NB: den gamle `system_shim.so` blev overskrevet med den cross-byggede (samme kilde;
 adfærd verificeret i kørslen). Boksen skal strøm-cykles efter sessionen (regel 2).
 
-### M1 — `devuan/gpu/gles_daemon.c` (README-skridt 1)
+### M1 — `devuan/gpu/gles_daemon.c` ✅ (23. aug 2026)
 
-- [ ] Kopiér `test_triangle.cpp`'s init (hwc-modul, vindue, EGL, GLES2-shaderen).
-- [ ] Erstat animations-loopet med en unix-socket-lytter (`/tmp/gles.sock`; fjern
-      stale socket ved start; ryd op ved SIGTERM/SIGINT).
-- [ ] Minimal dependency-fri JSON-parser (objekter: string/number/array — nok til
-      protokollen).
-- [ ] Kommandoer: `ping`, `fb` (skærmgeometri), `render` (scene, rect, params),
-      `clear` (fyld rect med farve), `quit`. Fejl svares med `{"ok":false,...}`.
-- [ ] Scene v1: `triangle` = cos-mønster-shaderen fra `test_triangle`.
-- [ ] FBO 1920x1080 RGBA8; `glReadPixels` → konvertering til fb0-format → mmap-blit.
-- [ ] Accept: `ping`/`fb` svarer uden GPU-risiko; `render`+`clear` giver korrekt
-      fb0-indhold (verificeres visuelt i M3).
+- [x] `test_triangle.cpp`'s init genbrugt (hwc-modul, vindue, EGL, GLES2-shader).
+- [x] Unix-socket-lytter `/tmp/gles.sock` (stale socket fjernes ved start;
+      SIGTERM/SIGINT rydder op).
+- [x] Minimal dependency-fri JSON-subset-parser.
+- [x] Kommandoer: `ping`, `fb`, `scenes`, `render`, `clear`, `quit` — alle testet
+      på boks 1 med `socktest.py`.
+- [x] Scene `triangle` = cos-mønster-shaderen; FBO 1920x1080 + `glReadPixels` →
+      konvertering til fb0-format → mmap-blit (16/24/32 bpp via `fb_var`).
+- [x] Verificeret på boks 1: fb0-dump (mmap, 4.147.200 bytes RGB565) viser scenen
+      i rect'en; render ~87-123 ms pr. 960x540-frame (optimeres senere, fx i M4).
+
+**Vigtig opdagelse — `glReadPixels` var død i wrapperen:** hybris' libGLESv2.so.2
+har en tom `_glReadPixels`-slot (BSS-offset 0x101dc) — init'ens `android_dlsym`
+løste den ikke. Kald → SIGSEGV (NULL-pointer) → machybrisegl's signal-fælde
+(`catch_exit_signals`) fanger det → `refresh_display`-dansen (chvt + display-toggle)
+→ `exit(42)`. Fundet med strace (SIGSEGV `si_addr=NULL`) + gdb
+(`glReadPixels_wrapper` kaldte adresse 0x0) + disassembly. Fix:
+`patch_readpixels()` i gles_daemon.c — resolve `glReadPixels` via
+`hybris_dlsym(hybris_dlopen("libGLESv2.so"), ...)` fra DDK'en
+(`/system/vendor/lib/egl/libGLESv2_POWERVR_ROGUE.so` eksporterer den) og skriv
+pointeren ind i slottet. Verificeret: FBO- OG default-framebuffer-readback virker
+nu (`devuan/gpu/readback_probe.cpp`).
+
+**Andre målte fælder:**
+- `/dev/fb0`'s read() giver kun 2.073.600 bytes (1920x1080x1) — brug mmap til
+  dump, ikke dd/read.
+- `EGL_PLATFORM=null` crasher ved `eglCreateWindowSurface(NULL)` (NULL-deref i
+  `android_createDisplaySurface`-vejen → exit(42)) — null-platformen er IKKE en
+  genvej på denne boks; hwcomposer-platformen + patchen er vejen (B7-proben fra
+  BROWSER-VEJE.md er dermed besvaret med nej).
+- Daemonen kalder aldrig `eglSwapBuffers` → ingen hwc-præsentation → `service
+  nodm start` virkede bagefter. Om HDMI viser billedet uden strøm-cyklus skal
+  bekræftes på TV'et; regel 2 står til den er målt afkræftet.
 
 ### M2 — `devuan/gpu/frontend.py` (README-skridt 2)
 

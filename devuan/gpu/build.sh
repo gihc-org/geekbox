@@ -33,6 +33,21 @@ arm-linux-gnueabihf-g++ -O2 -o "$OUT/test_triangle" "$HERE/test_triangle.cpp" \
 echo "== system_shim.so =="
 arm-linux-gnueabihf-gcc -shared -fPIC -O2 -o "$OUT/system_shim.so" "$HERE/system_shim.c"
 
+echo "== gles_daemon =="
+arm-linux-gnueabihf-g++ -O2 -o "$OUT/gles_daemon" "$HERE/gles_daemon.c" \
+    "${INCLUDES[@]}" "${LIBS[@]}" \
+    -lhybris-hwcomposerwindow -lhybris-common -lEGL -lGLESv2 -lhardware -lm -ldl
+
+echo "== null_probe =="
+arm-linux-gnueabihf-g++ -O2 -o "$OUT/null_probe" "$HERE/null_probe.cpp" \
+    "${INCLUDES[@]}" "${LIBS[@]}" \
+    -lEGL -lGLESv2 -lm
+
+echo "== readback_probe =="
+arm-linux-gnueabihf-g++ -O2 -o "$OUT/readback_probe" "$HERE/readback_probe.cpp" \
+    "${INCLUDES[@]}" "${LIBS[@]}" \
+    -lhybris-hwcomposerwindow -lhybris-common -lEGL -lGLESv2 -lhardware -lm -ldl
+
 echo
 echo "FÆRDIG → $OUT"
-file "$OUT/test_triangle" "$OUT/system_shim.so"
+file "$OUT/test_triangle" "$OUT/system_shim.so" "$OUT/gles_daemon" "$OUT/null_probe" "$OUT/readback_probe"

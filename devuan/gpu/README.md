@@ -49,6 +49,25 @@ Reglerne (målt, ikke gættet):
 boks 1 (500 frames, samme GL_VERSION/GL_RENDERER). Kør:  `devuan/gpu/build.sh`
 (output i `devuan/gpu/bin/`). Boks 1 er ikke længere det eneste byggehost.
 
+## GLES-daemon (M1, aug 2026)
+
+`gles_daemon` lytter på unix-socket `/tmp/gles.sock`, renderer offscreen (FBO) og
+blitter til fb0. Protokol: JSON-linjer — `ping`, `fb`, `scenes`, `render`
+(scene/rect/phase), `clear` (rect/color), `quit`. Testklient:
+`devuan/gpu/socktest.py`. Detaljer + fund: `GLES-DAEMON-PLAN.md`.
+
+```bash
+ssh -i ~/.ssh/geekbox_key root@<ip> 'service nodm stop'
+ssh -i ~/.ssh/geekbox_key root@<ip> 'sh /root/gpu_up.sh'
+ssh -i ~/.ssh/geekbox_key root@<ip> \
+  'LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer /root/gles_daemon &'
+ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/socktest.py'
+# bagefter: service nodm start (daemonen præsenterer ikke via hwc)
+```
+
+NB: daemonen patcher hybris-wrapperens tomme `_glReadPixels`-slot — uden patchen
+er `glReadPixels` et NULL-kald → SIGSEGV → exit(42) (målt med strace+gdb).
+
 ## Python-projektet (i gang — aug 2026)
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
