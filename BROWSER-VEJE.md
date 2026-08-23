@@ -161,6 +161,12 @@ B7. **Null-platform-probe — den vigtigste, og den er sikker.** `eglplatform_nu
 B8. **X-blit-båndbredde.** Ren X-måling: 1920×1080 XPutImage/MIT-SHM ind i et vindue
     i en loop. Validerer A's præsentationstese (8 MB/frame memcpy) uden GPU og uden
     risiko.
+    **BESLUTNING (24. aug 2026): droppet før prototypen.** Vurdering: M2b
+    (eksperiment 3) har allerede bevist præsentationsmekanismen (offscreen →
+    XPutImage, 10 fps @ 640x360), A3 giver hele ws_module-kontrakten, og A5
+    reducerer C-risikoen. B8 ville kun sætte en perf-forventning og evt. vælge
+    XShm over XPutImage — det afgøres billigere i selve platformen. Køres evt.
+    senere som tuning.
 B9. Derefter `MOZ_X11_EGL`-forsøget (eksperiment 2 i §4) — nu med en forudsigelse fra
     A4+A5+A6, så loggen kan læses mod forventningen i stedet for at tolkes frit.
 
