@@ -42,6 +42,13 @@ Reglerne (målt, ikke gættet):
 3. Kør ikke tunge installationer på boksen (brownout-historien, DOK §5.14) — og brug
    aldrig "5V 2A"-adapteren.
 
+## Bygning — cross på laptoppen (M0, aug 2026)
+
+`devuan/gpu/build.sh` bygger `test_triangle` + `system_shim.so` til armhf med
+`g++-arm-linux-gnueabihf` mod `vendor_root`-libs — verificeret: identisk adfærd på
+boks 1 (500 frames, samme GL_VERSION/GL_RENDERER). Kør:  `devuan/gpu/build.sh`
+(output i `devuan/gpu/bin/`). Boks 1 er ikke længere det eneste byggehost.
+
 ## Python-projektet (i gang — aug 2026)
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)

@@ -14,7 +14,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
       ARM-libs i `vendor_root/usr/local/lib` (libEGL, libGLESv2, libhybris-common,
       libhybris-hwcomposerwindow, libhybris-eglplatformcommon, libandroid-properties,
       libhardware, libsync — alle ELF32 ARM EABI5, tjekket med `file`)
-- [ ] M0: baseline-byg + verifikation på boks 1
+- [x] M0: baseline-byg + verifikation på boks 1 (23. aug 2026)
 - [ ] M1: `gles_daemon.c`
 - [ ] M2: `frontend.py`
 - [ ] M3: testcyklus på boksen
@@ -48,16 +48,37 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 
 ## Milestones
 
-### M0 — baseline: test_triangle bygger cross (kriterium for alt videre)
+### M0 — baseline: test_triangle bygger cross ✅ (23. aug 2026)
 
-- [ ] Fastlæg den præcise link-linje. Første rekonstruktion fra koden:
-      `-lhybris-hwcomposerwindow -lhybris-common -lEGL -lGLESv2` + de transitive
-      `-landroid-properties -lhardware -lsync`; rpath afstemmes mod `/opt/hybris`
-      på boksen. Linjen skrives ned her, så bygningen kan gentages.
-- [ ] Cross-byg `test_triangle` + `system_shim.so` (`-shared -fPIC`) fra repoet.
-- [ ] Kør begge på boks 1 og sammenlign med de boks-byggede binærer: samme
-      GL_VERSION/GL_RENDERER, 500 frames renderet. **Identisk opførsel = baseline.**
-- [ ] `file`-tjek: binærerne er ELF32 ARM EABI5.
+Verificeret link-linje (cross, g++ 13.3 → kører på boks 1, gcc 14.2):
+
+    arm-linux-gnueabihf-g++ -O2 -o test_triangle test_triangle.cpp \
+      -I vendor_root/usr/local/include \
+      -I vendor_root/usr/local/include/android                  # <hardware/...>
+      -I vendor_root/usr/local/include/hybris/eglplatformcommon # "nativewindowbase.h"
+      -L vendor_root/usr/local/lib -Wl,-rpath-link,<samme sti> \
+      -lhybris-hwcomposerwindow -lEGL -lGLESv2 -lhardware -lm
+
+    arm-linux-gnueabihf-gcc -shared -fPIC -O2 -o system_shim.so system_shim.c
+
+Bygningen er pakket ind i `devuan/gpu/build.sh` — reproducerbar med én kommando.
+
+- [x] Link-linjen fastlagt. To header-fælder: `hwcomposer_window.h` bruger
+      Android-konventionen `<hardware/...>` (kræver `-I .../include/android`), og
+      inkluderer `nativewindowbase.h` med bare navn (kræver
+      `-I .../include/hybris/eglplatformcommon`).
+- [x] Cross-byg `test_triangle` + `system_shim.so` fra repoet.
+- [x] Verificeret på boks 1 (192.168.0.188): `GL_VERSION=OpenGL ES 3.1
+      build 1.4@3632227`, `GL_RENDERER=PowerVR Rogue G6110`, 500 frames —
+      identisk med originalen. `readelf -d`-NEEDED-listen matcher 1:1. Cross-byggede
+      `system_shim.so` fanger `system()`-kaldene uden EFAULT. De to
+      "Library 'libRL.so'/'libPVRDebugger.so' not found"-advarsler er de sædvanlige,
+      harmløse bionic-linker-advarsler om valgfrie debug-libs.
+- [x] `file`-tjek: ELF32 ARM EABI5, interpreter `/lib/ld-linux-armhf.so.3`.
+
+Resultat: boksens `/root/test_triangle_cross` + ny `/root/system_shim.so` (cross).
+NB: den gamle `system_shim.so` blev overskrevet med den cross-byggede (samme kilde;
+adfærd verificeret i kørslen). Boksen skal strøm-cykles efter sessionen (regel 2).
 
 ### M1 — `devuan/gpu/gles_daemon.c` (README-skridt 1)
 
