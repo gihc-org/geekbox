@@ -19,7 +19,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 - [x] M2: `frontend.py` (23. aug 2026)
 - [x] M2b: `frame`-kommando + `window_demo.py` — X-vindue-demo (24. aug 2026;
       implementeret + 10 fps målt + skærm-verifikation færdig — se M2b)
-- [ ] M3: testcyklus på boksen
+- [x] M3: testcyklus på boksen (24. aug 2026 — se M3)
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
 
 ## Faste beslutninger (med begrundelse)
@@ -178,6 +178,11 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
       X lever (fælde 8). Repeteret kørsel (600 frames @ 9,9 fps) verificerede
       det samme vindue → fb0-resultat, og X crashede IKKE (kun HDMI-displayet
       var slået fra).
+- [x] **FIX — ingen exit-dans (24. aug 2026):** `daemon_exit()` kalder `_exit()`
+      efter eksplicit oprydning (socket-unlink + `fflush`), så machybrisegl/
+      hybris' atexit-displaydans (chvt + display-toggle, kan slå HDMI fra eller
+      hænge processen) aldrig kører. Verificeret på boks 1: efter `quit` ingen
+      `[system-shim]`-linjer i loggen, proces væk, aktiv VT og HDMI-enable urørt.
 
 **Rødder fundet undervejs (alle målt på boksen, ikke gæt):**
 1. **XCreateImage format = ZPixmap (2), ikke 1.** Python-koden sendte 1
@@ -209,6 +214,9 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
    vt8; fix: `echo 1 > /sys/class/display/HDMI/enable`, ellers strøm-cyklus).
    Undgå hele dansen: kør `window_demo.py --keep-daemon` og dræb bagefter med
    `pkill -9 -x gles_daemon` (SIGKILL kører ingen exit-handlers) + `chvt 8`.
+   **LØST (24. aug 2026):** `daemon_exit()` med `_exit()` i gles_daemon.c
+   springer over atexit-dansen — `quit` (og SIGTERM/SIGINT-stien) er nu sikkert,
+   og hverken aktiv VT eller HDMI-enable ændres ved afslutning (målt).
 
 Diagnostik-værktøjer i `devuan/gpu/diagnostik/` (genbrug i næste session):
 - `test_x7_fb_truth.c`: tegner i X og læser /dev/fb0 direkte — afgør om serveren
@@ -233,9 +241,19 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 # bagefter: strøm-cykl boksen (DOK §5.15)
 ```
 
-- [ ] Daemon starter, `ping`/`fb` svarer; frontend tegner UI på fb0.
-- [ ] `triangle`-scenen vises korrekt i rect'en (fb0-dump verificeret visuelt).
-- [ ] X kan startes igen efter strøm-cyklus.
+- [x] Daemon starter, `ping`/`fb` svarer; frontend tegner UI på fb0 (24. aug
+      2026, boks 1): `service nodm stop` → `gpu_up.sh` → daemon → `frontend.py
+      --frames 30 --fps 5 --dump /root/fb_m3.raw`; daemon-log viser 30 renders,
+      frontend svarer "færdig" og dumper 4.147.200 bytes.
+- [x] `triangle`-scenen vises korrekt i rect'en (fb0-dump verificeret): BG
+      (18,22,30)→0x10A3 dominerer, ramme (120,190,255)→0x7DFF, titel/status-
+      tekst 0xEF9E, GLES-rect 102 unikke farver (cos-mønster, varmt punkt
+      ~0xACCE i midten) — matcher M2-signaturen.
+- [x] X kan startes igen: `service nodm start` → Xorg :0 på **vt7** (aktiv VT 7
+      matcher), lxpanel kører, HDMI-enable=1, ingen efterladt daemon. Bemærk:
+      nodm valgte vt7 denne gang (ikke boot-standardens vt8) — tjek altid aktiv
+      VT mod X' vt. Med `_exit`-fixet kørte ingen display-dans, så strøm-cyklus
+      er sandsynligvis ikke nødvendig — TV-bekræftelse afventer brugeren.
 
 ### M4 — integration og distribution
 

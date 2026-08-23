@@ -676,6 +676,17 @@ static void on_signal(int sig)
     g_running = 0;
 }
 
+/* Afslut uden atexit: spring over machybrisegl/hybris' refresh-display-dans
+   (chvt + display-toggle) som kører ved normal exit og kan slå HDMI-displayet
+   fra eller efterlade processen hængende (målt 24. aug 2026, M2b).
+   _exit() kører hverken atexit-handlere eller statiske destruktorer, så
+   dansen udløses aldrig; sockets/andre resurser ryddes eksplicit i main. */
+static void daemon_exit(int code)
+{
+    fflush(stdout);
+    _exit(code);
+}
+
 int main(int argc, char **argv)
 {
     const char *sock_path = argc > 1 ? argv[1] : SOCK_PATH_DEFAULT;
@@ -686,14 +697,14 @@ int main(int argc, char **argv)
 
     fbdev_t fb;
     if (fb_init(&fb) != 0)
-        return 1;
+        daemon_exit(1);
     if (gl_init() != 0)
-        return 1;
+        daemon_exit(1);
 
     int lfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (lfd < 0) {
         perror("gles_daemon: socket");
-        return 1;
+        daemon_exit(1);
     }
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof addr);
@@ -703,7 +714,7 @@ int main(int argc, char **argv)
     if (bind(lfd, (struct sockaddr *)&addr, sizeof addr) != 0 ||
         listen(lfd, 4) != 0) {
         perror("gles_daemon: bind/listen");
-        return 1;
+        daemon_exit(1);
     }
     chmod(sock_path, 0666);
     printf("gles_daemon: lytter på %s\n", sock_path);
@@ -759,5 +770,5 @@ int main(int argc, char **argv)
     close(lfd);
     unlink(sock_path);
     printf("gles_daemon: lukker\n");
-    return 0;
+    daemon_exit(0);
 }
