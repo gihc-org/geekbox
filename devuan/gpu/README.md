@@ -62,6 +62,8 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'sh /root/gpu_up.sh'
 ssh -i ~/.ssh/geekbox_key root@<ip> \
   'LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer /root/gles_daemon &'
 ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/socktest.py'
+ssh -i ~/.ssh/geekbox_key root@<ip> \
+  'python3 /root/frontend.py --frames 30 --fps 5'   # UI + animeret scene
 # bagefter: service nodm start (daemonen præsenterer ikke via hwc)
 ```
 

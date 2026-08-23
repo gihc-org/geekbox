@@ -16,7 +16,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
       libhardware, libsync — alle ELF32 ARM EABI5, tjekket med `file`)
 - [x] M0: baseline-byg + verifikation på boks 1 (23. aug 2026)
 - [x] M1: `gles_daemon.c` (23. aug 2026)
-- [ ] M2: `frontend.py`
+- [x] M2: `frontend.py` (23. aug 2026)
 - [ ] M3: testcyklus på boksen
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
 
@@ -116,18 +116,32 @@ nu (`devuan/gpu/readback_probe.cpp`).
   nodm start` virkede bagefter. Om HDMI viser billedet uden strøm-cyklus skal
   bekræftes på TV'et; regel 2 står til den er målt afkræftet.
 
-### M2 — `devuan/gpu/frontend.py` (README-skridt 2)
+### M2 — `devuan/gpu/frontend.py` ✅ (23. aug 2026)
 
-- [ ] Python 3, kun stdlib. Åbn `/dev/fb0` O_RDWR + mmap; læs var-info (arvet fra
-      `fb_overscan.py` — samme ioctl-struktur).
-- [ ] Tegn: fyld, rammer, tekst via indlejret 5x7-bitmapfont (ingen afhængigheder).
-- [ ] Socket-klient: forbind, send JSON-linjer, læs svar.
-- [ ] Demo-loop: baggrund + ramme + titel/statuslinjer, animeret fase-sweep af
-      `triangle`-scenen i N frames, derefter `clear`.
-- [ ] Flag: `--fb`, `--socket`, `--rect WxH+X+Y`, `--frames`, `--fps`, `--no-gles`
-      (UI-test uden daemon).
-- [ ] Accept: kører på boksen uden X; fb0 dumpet til PNG viser rammer, tekst og
-      GLES-scene (metoden fra DEBUG-SORT-SKAERM).
+- [x] Python 3, kun stdlib. Åbn `/dev/fb0` O_RDWR + mmap; var/fix-info læst via
+      ioctl (arvet teknik fra `fb_overscan.py`).
+- [x] Tegn: fyld, rammer, tekst via indlejret 5x7-bitmapfont (A-Z, 0-9,
+      tegnsætning + æ/ø/å; Æ/Ø/Å normaliseres til AE/O/A).
+- [x] Socket-klient: JSON-linjer ind, svar ud (synkront).
+- [x] Demo-loop: baggrund + ramme + titel/statuslinjer, animeret fase-sweep af
+      `triangle`-scenen i N frames. Afvigelse fra planen: der køres ingen `clear`
+      til sidst — sidste frame efterlades på skærmen (statuslinjen siger det),
+      så resultatet kan ses/dumpes.
+- [x] Flag: `--fb`, `--socket`, `--rect WxH+X+Y`, `--frames`, `--fps`,
+      `--no-gles`, `--dump`, `--title`.
+- [x] Accept: kører på boksen uden X; fb0 dumpet til PNG viser rammer, tekst og
+      GLES-scene (metoden fra DEBUG-SORT-SKAERM) — verificeret på boks 1:
+      baggrund (16,20,24) = (18,22,30) i RGB565, ramme (120,188,248), titel 240
+      pixels, GLES-rect 102 farver (cos-mønster), statuslinje til stede.
+      `--no-gles`: rect er tom baggrund, UI tegnet — verificeret.
+
+**To fælder fundet og løst undervejs (begge målt på boksen):**
+- `line_length` i `fb_fix_screeninfo` ligger på byte-offset **44** på 32-bit ARM,
+  ikke 42: `__u32` skal 4-byte-alignes efter tre `__u16`-felter, så kompilatoren
+  (og kernen) indskyder 2 bytes padding. En "pakket" Python-formatstreng gør det
+  ikke — brug eksplicitte offsets + sanity-check (frontend.py har kommentar).
+- `--rect`-parsing: `960x540+480+270` skal splittes med `split("+", 1)`, ellers
+  bliver der tre dele.
 
 ### M3 — testcyklus på boks 1
 

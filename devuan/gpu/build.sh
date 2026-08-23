@@ -48,6 +48,10 @@ arm-linux-gnueabihf-g++ -O2 -o "$OUT/readback_probe" "$HERE/readback_probe.cpp" 
     "${INCLUDES[@]}" "${LIBS[@]}" \
     -lhybris-hwcomposerwindow -lhybris-common -lEGL -lGLESv2 -lhardware -lm -ldl
 
+echo "== frontend.py =="
+cp "$HERE/frontend.py" "$OUT/"
+
 echo
 echo "FÆRDIG → $OUT"
 file "$OUT/test_triangle" "$OUT/system_shim.so" "$OUT/gles_daemon" "$OUT/null_probe" "$OUT/readback_probe"
+ls -la "$OUT/frontend.py"
