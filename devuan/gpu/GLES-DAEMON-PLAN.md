@@ -173,6 +173,11 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
       x646-995 y362-377). De to dumps adskiller sig på 19.456 px, og de varme
       cos-bånd forskydes mellem dumpsene → fase-sweep kører. Dumpene lå som
       `/root/fb_m2b_{1,2}.raw` (slettes ved næste oprydning).
+      **OBS (2. kørsel, 24. aug):** ved `quit` kører daemonens exit-dans og kan
+      efterlade `/sys/class/display/HDMI/enable=0` — skærmen bliver sort, selvom
+      X lever (fælde 8). Repeteret kørsel (600 frames @ 9,9 fps) verificerede
+      det samme vindue → fb0-resultat, og X crashede IKKE (kun HDMI-displayet
+      var slået fra).
 
 **Rødder fundet undervejs (alle målt på boksen, ikke gæt):**
 1. **XCreateImage format = ZPixmap (2), ikke 1.** Python-koden sendte 1
@@ -197,6 +202,13 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
    (chvt 7 → display-toggle → chvt 11 → chvt 7) kan processen stadig ligge i
    `pgrep`; dræb med `pkill -9 -x gles_daemon` og kør `chvt 8` tilbage til X
    (målt 24. aug 2026).
+8. **`quit`-exit-dansen kan slå HDMI-displayet FRA.** Dansen kører
+   `echo 0 > /sys/class/display/*/enable` (og normalt `echo 1` bagefter); blev
+   processen dræbt midt i dansen (eller `echo 1` fejler), står displayet på 0 →
+   sort skærm, selvom X kører (målt 24. aug 2026: `HDMI/enable=0`, X i live på
+   vt8; fix: `echo 1 > /sys/class/display/HDMI/enable`, ellers strøm-cyklus).
+   Undgå hele dansen: kør `window_demo.py --keep-daemon` og dræb bagefter med
+   `pkill -9 -x gles_daemon` (SIGKILL kører ingen exit-handlers) + `chvt 8`.
 
 Diagnostik-værktøjer i `devuan/gpu/diagnostik/` (genbrug i næste session):
 - `test_x7_fb_truth.c`: tegner i X og læser /dev/fb0 direkte — afgør om serveren

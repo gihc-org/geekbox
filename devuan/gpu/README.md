@@ -83,6 +83,7 @@ ssh -i ~/.ssh/geekbox_key root@<ip> \
   '(LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer nohup /root/gles_daemon >/root/gles_daemon.log 2>&1 &)'
 ssh -i ~/.ssh/geekbox_key root@<ip> \
   'su -s /bin/sh kristian -c "cd /home/kristian && DISPLAY=:0 python3 window_demo.py --frames 60 --fps 10"'
+# bagefter (undgå exit-dansen der slår HDMI fra): pkill -9 -x gles_daemon + chvt 8
 ```
 
 `frame` returnerer en JSON-header + rå pixels: `fmt="rgba8"` (4 B/px) eller
@@ -94,7 +95,10 @@ i vindue-området) — detaljer og fund: `GLES-DAEMON-PLAN.md` M2b. Vigtigste
 fælder: XPutImage kræver `ZPixmap` (2) i `XCreateImage` (1 → SIGSEGV); openbox
 flytter vinduet (tjek med `xwininfo`); X maler ikke root-baggrund ved opstart
 (kør `diagnostik/clearroot.c` før visuelle tests); daemonens start skifter
-aktiv VT (kør `chvt 8` efter start); dræb en kørende daemon før scp.
+aktiv VT (kør `chvt 8` efter start); daemonens `quit`-exit-dans kan slå
+HDMI-displayet fra og efterlade en sort skærm med X i live — brug
+`--keep-daemon` + `pkill -9 -x gles_daemon` (eller strøm-cyklus); dræb en
+kørende daemon før scp.
 
 ## Python-projektet (i gang — aug 2026)
 
