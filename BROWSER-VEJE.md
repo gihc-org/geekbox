@@ -142,6 +142,13 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    regel 1+2 — stop X eller forvent strøm-cyklus bagefter.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.
+   **GJORT (24. aug 2026)** via M2b-vindue-demoen (`window_demo.py` + daemonens
+   `frame`-kommando, `devuan/gpu/GLES-DAEMON-PLAN.md` M2b): GLES 3.1/PVR-billede
+   renderet af daemonen (offscreen) vist i et Python-oprettet X-vindue via
+   XPutImage, mens X kørte — verificeret helt ned i `/dev/fb0` (IsViewable +
+   fbdump), 10 fps @ 640x360. Præsentationstesen i §2.A (offscreen →
+   XPutImage) er dermed bekræftet som teknisk vej; det manglende stykke er
+   selve `eglplatform_x11`-platformen (A).
 4. **Kodi fra Debian-armhf** + broerne i `/opt/hybris`: producenten kørte netop
    denne kombination i 2016. Den korteste vej til en GPU-accelereret fuldskærms-app,
    og samtidig beviset for at stakken kan bære en rigtig app.
@@ -150,7 +157,8 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
 
 1. Byg `eglplatform_x11` (A) som selvstændigt projekt — det er forudsætningen,
    uanset hvilken vej man ender på, og det gavner alle brugere af stakken.
-2. Kør eksperiment 3 (prototype i X-vindue) — måling i stedet for gæt.
+2. ~~Kør eksperiment 3 (prototype i X-vindue)~~ — GJORT 24. aug 2026 via
+   M2b-vindue-demoen (måling i stedet for gæt).
 3. Kodi (eksperiment 4) — nyttiggør vendor-kodi-binæren (TODO trin 2).
 4. Først derefter: beslutningen om browseren — som til den tid måske viser sig at
    hedde "stock Firefox + MOZ_X11_EGL + en lille patch" frem for en egentlig fork.

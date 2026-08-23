@@ -160,6 +160,11 @@ vinduet. **X skal IKKE stoppes.** Vejen blev oprindeligt noteret som "et nyt
 spor oven på M2", men er per bruger-præcisering hovedformålet;
 frontend.py-kiosken (M2/M3) er sekundær.
 
+**Forbindelse til `BROWSER-VEJE.md`:** vindue-demoen er eksperiment 3
+("prototype af A — PVR-renderet billede i X-vindue, X kører") og bekræfter A's
+præsentationstese (offscreen → XPutImage). Næste skridt på browser-vejen er
+selve `eglplatform_x11`-platformen (BROWSER-VEJE §2.A).
+
 - [x] `frame`-kommando i `gles_daemon.c`: renderer scenen i FBO og RETURNERER rå
       pixels (JSON-header-linje + binær) — ingen fb0-blit, så X kan køre.
 - [x] `fmt="rgb565"` (2 bytes/px, little-endian R5G6B5): C-pakning i daemonen →
