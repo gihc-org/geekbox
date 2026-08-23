@@ -110,6 +110,33 @@ Kæden: **dit program → libhybris → Android-maskinerne → pvrsrvkm (kernens
 GPU'en**. Der kører altså ikke "et helt Android" — kun de dele af hallen, maskinerne
 ikke kan undvære.
 
+### Daemonen døde med kode 42 — et tomt hul i telefonbogen
+
+Da vi byggede GLES-daemonen, virkede alting lige indtil den første rigtige
+tegne-kommando — så døde den helt uden forklaring. Det lignede ikke et normalt
+nedbrud: boksen kørte først en lille "display-dans" (skifter kanal, slukker og
+tænder skærmen) og lukkede derefter pænt ned med kode 42.
+
+Gåden var, at den gjorde det helt bevidst. Fabrikkens vagt (en signal-fælde i
+Android-laget) fanger programmer, der er ved at falde, rydder op — derfor dansen —
+og lukker med en fast kode i stedet for at efterlade rod. Så spørgsmålet var ikke
+"hvordan døde den", men "hvad fik vagten til at gribe ind?".
+
+Svaret lå i telefonbogen. Android-maskinerne kalder hinanden gennem en slags
+telefonbog (wrapperens funktionstabeller), og én plads i bogen — "læs pixels"
+(`glReadPixels`) — var aldrig blevet udfyldt. Da daemonen ringede op, hoppede
+programmet ud i tomrummet (adresse 0) og væltede; vagten fangede faldet.
+
+Vi fandt det ved at følge sporene i rækkefølge: strace (aflytning af alle
+systemkald) viste dansen og kode 42, gdb (stoppet i faldøjeblikket) viste at
+programmet kaldte adresse 0, og til sidst læste vi selve telefonbogens tegninger
+(disassembly) og så den tomme plads.
+
+Løsningen var lille: ved opstart slår daemonen selv den rigtige adresse op i
+fabrikkens rigtige telefonbog og skriver den ind i den tomme plads. Siden da kan
+programmet "læse pixels" fra GPU'en — og daemonen kan hente sine billeder ud til
+skærmen. (Teknisk historie: DOK §5.15a; opslagsværket: HAANDBOG fælde 18.)
+
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
 **Det vi kan:**
@@ -147,7 +174,7 @@ ikke kan undvære.
 |---|---|
 | Historien om hele Devuan-projektet og alle beslutningerne | `DOKUMENTATION.md` |
 | Grafikken i tekniske detaljer (målinger, fejlsøgning, opskrift) | `DOKUMENTATION.md` §5.13-5.15 |
-| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-17) |
+| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-18) |
 | Hvorfor vi ikke bare kan bruge en ny kerne | `DRIVER-PORTERING.md` |
 | Hvordan GPU'en kan komme ind i en browser — løsningsanalyse og rækkefølge | `BROWSER-VEJE.md` |
 | Vores GPU-programmer og diagnose-værktøjer | `devuan/gpu/` (og `devuan/gpu/diagnostik/`) |

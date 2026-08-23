@@ -623,6 +623,34 @@ apt-get --purge autoremove  # rydder de pakker chromium trak med
 
 ---
 
+### Fælde 18: Daemonen dør med kode 42 — et tomt hul i hybris' funktionstabel
+
+**Symptom:** `gles_daemon` svarer på `ping`/`fb`, men dør på den første `render`.
+Klienten får BrokenPipe; loggen slutter lige efter den sidste kommando; `dmesg` er
+tavs. Lige før døden kører processen "display-dansen" (`[system-shim]`-linjer med
+`chvt 7` og `/sys/class/display/*/enable`-toggle) og afslutter med `exit(42)` —
+den dør altså IKKE af et signal, den lukker sig selv pænt.
+
+**Årsag:** hybris' `libGLESv2.so.2` (wrapperen) kalder den ægte GLES-funktion
+gennem en slot i sin egen hukommelse (BSS, offset 0x101dc). For `glReadPixels`
+var slottet aldrig udfyldt (init'ens `android_dlsym` løste symbolet ikke) →
+kaldet går gennem NULL → SIGSEGV. machybrisegl's signal-fælde
+(`catch_exit_signals` i libEGL) fanger det, kører `cleanup()` (= display-dansen)
+og kalder `exit(42)` — derfor ser det ud som en bevidst nedlukning, ikke et
+nedbrud.
+
+**Kur:** `patch_readpixels()` i `devuan/gpu/gles_daemon.c` — efter EGL-init:
+`hybris_dlopen("libGLESv2.so")` + `hybris_dlsym("glReadPixels")` (den ægte
+funktion ligger i `/system/vendor/lib/egl/libGLESv2_POWERVR_ROGUE.so` og ER
+eksporteret), og skriv pointeren ind i slottet (`base + 0x101dc`). Derefter
+virker readback fra både FBO og default-framebuffer.
+
+**Detektiv-sporet:** strace (dansen + `exit_group(42)`), grep "SIG" i strace
+(`SIGSEGV si_addr=NULL`), gdb (`glReadPixels_wrapper` kaldte 0x0), disassembly af
+wrapperen (slottet). Alt dokumenteret i DOK §5.15a.
+
+---
+
 ## 5. Fejlfinding: de fem første kommandoer
 
 Når noget ikke virker, så kør disse fem, i denne rækkefølge, **før** du begynder at tænke:

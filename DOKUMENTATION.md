@@ -383,6 +383,55 @@ firefox/chromium taler kun EGL-X11/DRI, som kræver KMS. Vendors egen Chromium 4
 beviser at en browser *kan* køre på stakken — men den er 10 år gammel, kan ikke
 moderne web, og rammer 3.10's seccomp/syscall-problemer (fælde 14).
 
+### 5.15a GLES-daemonen og exit(42): den tomme `glReadPixels`-plads (aug 2026)
+
+Da vi byggede GLES-daemonen (M1), virkede `ping`/`fb` — men den første `render`
+dræbte processen tavst. Fejlsøgningen (alle trin målt, ikke gættet):
+
+1. **Symptom:** klienten fik BrokenPipe; daemon-loggen sluttede lige efter
+   `scenes`-svaret.
+2. **Misvisende først:** `dmesg` var tom for nedbrud (print-fatal-signals er
+   slået fra på boksen), og strace viste at processen IKKE fik et signal — den
+   afsluttede selv pænt med `exit_group(42)`.
+3. **Display-dansen:** strace + log viste `[system-shim]`-kaldene
+   (`chvt 7`, sluk/tænd `/sys/class/display/*/enable`, `chvt 11`, `chvt 7`) lige
+   før døden — den "dans" som libEGL kører, når den rydder op.
+4. **Disassembly af `libEGL.so.1.0.0`:** `refresh_display()` ER dansen
+   (5 × `system()` + usleep), og `catch_exit_signals()` er en signal-fælde:
+   sigaction på 4/6/7/11/15/20 + `sigsetjmp`; kommer man tilbage fra
+   `siglongjmp`, køres `cleanup()` (= dansen) og `exit(42)`.
+5. **Signalet:** genlæsning af strace-loggen (grep "SIG") afslørede
+   `--- SIGSEGV {si_code=SEGV_MAPERR, si_addr=NULL} ---` på hovedtråden, lige
+   efter malloc af readback-bufferen (2.073.600 bytes = 960×540×4).
+6. **gdb-backtrace:** `glReadPixels_wrapper (glesv2.c:775)` kaldte adresse 0x0.
+7. **Rodårsag (disassembly af `libGLESv2.so.2.0.0`):** wrapperen kalder den ægte
+   funktion gennem en global slot i BSS (`_glReadPixels`, offset 0x101dc) — og
+   den var NULL. Init'ens `android_dlsym("glReadPixels")` havde ikke løst
+   symbolet, selvom den ægte funktion ER eksporteret af
+   `/system/vendor/lib/egl/libGLESv2_POWERVR_ROGUE.so` (readelf-verificeret).
+   Hvorfor `android_dlsym` fejlede, er stadig uforklaret (åbent punkt).
+8. **Afviste hypoteser (målt):** FBO-readback vs default-framebuffer-readback —
+   begge crash (problemet er readback generelt, ikke FBO);
+   `GRALLOC_USAGE_SW_READ_OFTEN` på vinduesbufferen — ingen effekt;
+   `EGL_PLATFORM=null` — crasher endnu tidligere ved `eglCreateWindowSurface`
+   (NULL-deref i `android_createDisplaySurface`-vejen; B7-proben er dermed
+   besvaret: null-platformen er ikke en genvej på denne boks).
+
+**Løsningen (`patch_readpixels()` i `gles_daemon.c`):** efter EGL-init hentes den
+ægte funktion med `hybris_dlopen("libGLESv2.so")` + `hybris_dlsym("glReadPixels")`
+(altså gennem hybris' Android-tolk — samme vej wrapperen selv skulle have brugt),
+og pointeren skrives ind i den tomme slot (`base + 0x101dc`). Dermed virker
+`glReadPixels` — både fra FBO og fra default-framebufferen.
+
+**Verifikation:** `readback_probe.cpp` — begge readback-veje OK, 1.036.800 pixels
+ændret (trekanten dækker præcis halvdelen af skærmen); `gles_daemon` — alle
+kommandoer (`ping`/`fb`/`scenes`/`render`/`clear`/`quit`) svarer ok, og et
+mmap-dump af fb0 viser scenen i rect'en.
+
+**Betydning fremover:** enhver readback (også browser-WebGL-eksperimenter) ville
+have dødd på samme NULL-slot; patchen åbner vejen. Opslagsværket: HAANDBOG
+fælde 18.
+
 ### Ny boks i samme tilstand
 
 **Firefox skal IKKE fjernes** — GPU-stakken bor uden for imaget. Regnestykket:
