@@ -42,13 +42,18 @@ Reglerne (målt, ikke gættet):
 3. Kør ikke tunge installationer på boksen (brownout-historien, DOK §5.14) — og brug
    aldrig "5V 2A"-adapteren.
 
-## Python-projektet (næste skridt — planlagt, ikke startet)
+## Python-projektet (i gang — aug 2026)
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen
 og blitter til fb0. Kommandoer over socketten i JSON-linjer. X stoppet mens det kører.
 
-Første konkrete skridt (forslag):
+**Plan og status: `GLES-DAEMON-PLAN.md`** — beslutninger, milestones (M0-M4),
+testcyklus og fælder. Vigtigste nye beslutning (23. aug 2026): alt bygges CROSS på
+laptoppen (`g++-arm-linux-gnueabihf` mod `vendor_root`-libs), ikke på boksen —
+boks 1 er ikke længere det eneste byggehost, og nye bokse behøver aldrig gcc.
+
+Første konkrete skridt:
 1. `devuan/gpu/gles_daemon.c`: tag `test_triangle.cpp`, erstat animations-loopet med
    en socket-lytter; render scener efter kommandoer; blit til fb0.
 2. `devuan/gpu/frontend.py`: minimal UI på fb0 (tekst + rammer) med en socket-klient.
