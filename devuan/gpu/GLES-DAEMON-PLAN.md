@@ -6,6 +6,12 @@ daemonen renderer GLES offscreen og blitter resultatet til fb0. X stoppes under
 brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 `devuan/gpu/README.md`.
 
+**Hovedformål (præciseret af brugeren 24. aug 2026):** teste
+GLES/hybris-stakken via et vindue oprettet af Python (M2b-vejen:
+`window_demo.py` + daemonens `frame`-kommando, X kører). fb0-kiosken (M2/M3)
+er en sekundær alternativ visningsvej — nyttig som kiosk-UI, men ikke
+hovedmålet.
+
 ## Status (23. aug 2026)
 
 - [x] Beslutning: **cross-bygning på laptoppen** (ikke på boksen)
@@ -19,7 +25,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 - [x] M2: `frontend.py` (23. aug 2026)
 - [x] M2b: `frame`-kommando + `window_demo.py` — X-vindue-demo (24. aug 2026;
       implementeret + 10 fps målt + skærm-verifikation færdig — se M2b)
-- [x] M3: testcyklus på boksen (24. aug 2026 — se M3)
+- [x] M3: testcyklus på boksen (24. aug 2026 — se M3; side-spor, se hovedformål)
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
 
 ## Faste beslutninger (med begrundelse)
@@ -147,9 +153,12 @@ nu (`devuan/gpu/readback_probe.cpp`).
 
 ### M2b — `window_demo.py`: X-vindue-demo (aug 2026)
 
-Brugerens ønske (24. aug 2026): *"køre et python script i X som åbner et vindue,
-den snakker med demonen og demoen i vinduet"* — **X skal IKKE stoppes**. Dette er
-et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
+**HOVEDMÅLET** (præciseret af brugeren 24. aug 2026): *"teste
+GLES/hybris-stakken via et vindue oprettet af python"* — `window_demo.py`
+åbner et X-vindue, snakker med daemonen over socketten og viser GLES-scenen i
+vinduet. **X skal IKKE stoppes.** Vejen blev oprindeligt noteret som "et nyt
+spor oven på M2", men er per bruger-præcisering hovedformålet;
+frontend.py-kiosken (M2/M3) er sekundær.
 
 - [x] `frame`-kommando i `gles_daemon.c`: renderer scenen i FBO og RETURNERER rå
       pixels (JSON-header-linje + binær) — ingen fb0-blit, så X kan køre.
@@ -228,6 +237,9 @@ Diagnostik-værktøjer i `devuan/gpu/diagnostik/` (genbrug i næste session):
 - `rgb565_to_png.py`: RGB565-dump → PNG (visuel/ASCII-analyse).
 
 ### M3 — testcyklus på boks 1
+
+NB: M3 tester kiosk-vejen (fb0, X stoppet) — et side-spor. Hovedmålet (test af
+GLES/hybris via Python-vindue) er M2b, verificeret ovenfor.
 
 ```bash
 devuan/find_box.sh                          # find IP
