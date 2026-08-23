@@ -18,7 +18,7 @@ brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
 - [x] M1: `gles_daemon.c` (23. aug 2026)
 - [x] M2: `frontend.py` (23. aug 2026)
 - [x] M2b: `frame`-kommando + `window_demo.py` — X-vindue-demo (24. aug 2026;
-      implementeret + 10 fps målt, ÉN åben skærm-verifikation — se M2b)
+      implementeret + 10 fps målt + skærm-verifikation færdig — se M2b)
 - [ ] M3: testcyklus på boksen
 - [ ] M4: integration i `gpu_setup.sh` + dokumentation
 
@@ -162,11 +162,17 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
 - [x] Verificeret på boks 1: 12/20/60 frames uden crash; daemonen får `quit` og
       lukker (ingen efterladte); XPutImage ind i et vindue VIRKER på skærmen
       (C-test `diagnostik/test_x8_putimage.c`: blå rect i vindue landede på fb0).
-- [ ] **ÅBEN:** endelig verifikation af at demo-vinduets indhold når skærmen.
-      fb0-dump midt i kørslen viste stadig gamle testrektangler i vindue-området
-      (window var i xwininfo-træet, men indholdet sås ikke på fb0). Næste skridt
-      var map-state-tjek (`xwininfo -id` midt i kørslen) + `clearroot` først —
-      se næste session.
+- [x] **SKÆRM-VERIFIKATION FÆRDIG (24. aug 2026):** demo-vinduets indhold når
+      `/dev/fb0`. På boks 1 (192.168.0.188) med X kørende: `clearroot` først,
+      daemon startet, `window_demo.py --frames 150 --fps 10` (150 frames på
+      15,4 s ≈ 9,7 fps). Midt i kørslen: vindue `0x1800001`
+      "GLES-daemon demo — PowerVR G6110 (640x360)" var **IsViewable** på
+      `+640+357` (openbox-frame `+638+334`), og to `fbdump`-dumps (1920x1080
+      RGB565, mmap) viser cos-mønsteret + hvid status-tekst præcis i
+      vindue-området (88/91 unikke farver; 5394 hvide label-pixels i bbox
+      x646-995 y362-377). De to dumps adskiller sig på 19.456 px, og de varme
+      cos-bånd forskydes mellem dumpsene → fase-sweep kører. Dumpene lå som
+      `/root/fb_m2b_{1,2}.raw` (slettes ved næste oprydning).
 
 **Rødder fundet undervejs (alle målt på boksen, ikke gæt):**
 1. **XCreateImage format = ZPixmap (2), ikke 1.** Python-koden sendte 1
@@ -183,6 +189,14 @@ et nyt spor oven på M2 (frontend.py-kiosken på fb0 kræver stadig X stoppet).
    "dest open Failure") — dræb daemonen først.
 5. **Efterladte daemoner kan hænge i socket-read og ignorere SIGTERM**
    (`skb_recv_datagram`) — `pkill -9` virker.
+6. **Daemonens START skifter aktiv VT (målt: til vt10).** hwc-init'en kører en
+   VT-dans også ved start. Kør `chvt 8` (X' vt) EFTER daemon-start og FØR
+   demoen — ellers viser skærmen ikke X' indhold, og fb0 kan indeholde
+   konsol-billedet (målt 24. aug 2026).
+7. **Daemonens quit-exit-dans kan efterlade processen kørende.** Efter `quit`
+   (chvt 7 → display-toggle → chvt 11 → chvt 7) kan processen stadig ligge i
+   `pgrep`; dræb med `pkill -9 -x gles_daemon` og kør `chvt 8` tilbage til X
+   (målt 24. aug 2026).
 
 Diagnostik-værktøjer i `devuan/gpu/diagnostik/` (genbrug i næste session):
 - `test_x7_fb_truth.c`: tegner i X og læser /dev/fb0 direkte — afgør om serveren

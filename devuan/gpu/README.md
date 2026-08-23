@@ -88,11 +88,13 @@ ssh -i ~/.ssh/geekbox_key root@<ip> \
 `frame` returnerer en JSON-header + rå pixels: `fmt="rgba8"` (4 B/px) eller
 `fmt="rgb565"` (2 B/px, little-endian R5G6B5) — rgb565 er C-pakket i daemonen og
 giver ~10 fps målt (60 frames på 6,0 s, 640x360). Status 24. aug 2026:
-implementeret og kørt på boks 1 uden crash; ÉN åben skærm-verifikation (vindue
-→ fb0) — detaljer og fund: `GLES-DAEMON-PLAN.md` M2b. Vigtigste fælder: XPutImage
-kræver `ZPixmap` (2) i `XCreateImage` (1 → SIGSEGV); openbox flytter vinduet
-(tjek med `xwininfo`); X maler ikke root-baggrund ved opstart (kør
-`diagnostik/clearroot.c` før visuelle tests); dræb en kørende daemon før scp.
+implementeret, kørt på boks 1 uden crash og **skærm-verificeret** (vindue →
+fb0; `xwininfo -id` IsViewable + `fbdump` midt i kørslen viser mønster og tekst
+i vindue-området) — detaljer og fund: `GLES-DAEMON-PLAN.md` M2b. Vigtigste
+fælder: XPutImage kræver `ZPixmap` (2) i `XCreateImage` (1 → SIGSEGV); openbox
+flytter vinduet (tjek med `xwininfo`); X maler ikke root-baggrund ved opstart
+(kør `diagnostik/clearroot.c` før visuelle tests); daemonens start skifter
+aktiv VT (kør `chvt 8` efter start); dræb en kørende daemon før scp.
 
 ## Python-projektet (i gang — aug 2026)
 
