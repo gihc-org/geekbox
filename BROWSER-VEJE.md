@@ -75,24 +75,74 @@ A1. **Vendors chromium-ledninger.** `readelf -d` på `chromium-browser` og på
     ozone` på libs'ene for platformnavne (`egltest`/`x11`/`headless`).
     `vendor_root/usr/local/lib/pkgconfig/` og `.la`-filerne viser, hvordan EGL'erne
     var tænkt linket.
+    **Målt (24. aug 2026):** `chromium-browser` er en GTK2+X11-build
+    (NEEDED: `libgtk2ui.so`, `libgfx_x11.so`, `libx11_events_platform.so` +
+    libX11/Xext/Xcomposite/Xrender/Xi/Xdamage/Xfixes). GL indlæses dynamisk via
+    `libgl_wrapper.so`, som dlopen'er **både** `libGL.so.1` og `libEGL.so.1` +
+    `libGLESv2.so.2` og indeholder både GLX-stier
+    (`ui/gl/gl_context_glx.cc`, `gl_surface_glx.cc`) og hele EGL-fejltabellen.
+    `libgles2_c_lib.so` er Chromiums in-process GLES2-commandbuffer.
+    `dualos_blobs/system_lib/egl.cfg` = `0 0 POWERVR_ROGUE` (Android-loaderens
+    drivervalg). GPU-driver-buglisten i `libgpu.so` indeholder PowerVR-Rogue-
+    regler, men alle scoped til `os: android` (id 104: gpu_rasterization fra;
+    id 76: `EGL_KHR_fence_sync` skruet ned ≤4.4.4; id 33: share-group →
+    virtualiserede kontekster). Konklusion: 2016-chromium'en HAVDE begge GL-veje
+    bygget ind; hvilken den valgte på boksen er et runtime-valg (GLX via libGL
+    eller EGL/GLES2 via hybris).
 A2. **Vendors kodi-ledninger.** Samme behandling af `kodi.bin` + `kodi-config.cmake`
     (byggeflag afslører ofte EGL-backenden: `EGLPLATFORM=...`). Facit på, hvordan en
     rigtig GLES-app præsenterede i 2016.
+    **Målt (24. aug 2026):** `kodi.bin` linker DIREKTE mod `libGLESv2.so.2` +
+    `libEGL.so.1` (hybris, ikke mesa), og `kodi-config.cmake` er bygget med
+    `-DTARGET_HYBRIS -DBUILD_KODI_ADDON` (Kodi 15.2). Facit: en rigtig GLES-app i
+    2016 hægtede sig på hybris' libEGL/libGLESv2 (med `EGL_PLATFORM=hwcomposer`,
+    fuldskærm) — samme biblioteker en x11-platform skal servicere.
 A3. **EGL-platform-API-kontrakten** (de-risker opgave A i §2 direkte):
     `vendor_root/usr/local/include/hybris/eglplatformcommon/eglplatformcommon.h`
     definerer præcis, hvilke funktioner en ny platform skal implementere — suppleret
     med `nm -D` på `eglplatform_hwcomposer.so` (samme funktionssæt = facitlisten for
     `eglplatform_x11`). A bliver fra "et par hundrede linjer" til en konkret
     tjekliste.
+    **Målt (24. aug 2026):** hele kontrakten ligger i
+    `.../eglplatformcommon/ws.h`: `struct ws_module` med `init_module`,
+    `GetDisplay`, `Terminate`, `CreateWindow`, `DestroyWindow`,
+    `eglGetProcAddress`, `passthroughImageKHR`, `eglQueryString`, `prepareSwap`,
+    `finishSwap`, `setSwapInterval`. Platform-`.so`'en skal eksportere de tilsvarende
+    `*ws_*`-funktioner + et `ws_module_info`-symbol (facit fra `nm -D` på
+    `eglplatform_hwcomposer.so`/`eglplatform_fbdev.so`). `eglplatform_fbdev.so` er
+    den nærmeste analog: `FbDevNativeWindow` implementerer ANativeWindow
+    (dequeue/queue/lock/cancelBuffer + setSwapInterval) — en x11-platform bliver
+    samme form, med XPutImage i queueBuffer.
 A4. **Hybris-EGL'ens overflade.** `objdump -T` + `strings` på vendors `libEGL.so`:
     hvilke EGL-entry-points og client-extensioner den reklamerer med
     (`EGL_EXT_platform_base`, `EGL_KHR_surfaceless_context` …). Det er præcis den
     liste, en browser spørger om ved init.
+    **Målt (24. aug 2026):** hybris' `libEGL.so.1.0.0` eksporterer komplet
+    EGL-API (GetDisplay/Initialize/ChooseConfig/CreateWindow- + Pixmap- +
+    PbufferSurface/CreateContext/MakeCurrent/SwapBuffers/QueryString/
+    GetProcAddress) + `CreateImageKHR`/`DestroyImageKHR` +
+    `_my_eglSwapBuffersWithDamageEXT`. Android-loaderens `libEGL.so` bærer
+    extension-strenge: `EGL_KHR_create_context` + `EGL_EXT_create_context_robustness`,
+    `EGL_KHR_fence_sync`/`reusable_sync`/`wait_sync`, `EGL_KHR_image(_base)`,
+    `EGL_ANDROID_image_native_buffer`, `EGL_ANDROID_presentation_time` m.fl. —
+    præcis det sæt en browser spørger om ved init (create-context+robustness,
+    fence-sync, image).
 A5. **PVR-blob'ens statiske capability-profil.** `strings` på
     `libGLESv2`/`libEGL_POWERVR_ROGUE.so` (`dualos_blobs/system_lib`,
     `dualos_blobs/vendor_lib`) — GL-extensionerne står næsten altid som tekst i
     binæren. Første statiske liste at holde op mod WebRenders krav (risiko C i §2)
     uden at røre boksen.
+    **Målt (24. aug 2026)** på `dualos_blobs/vendor_lib/lib/egl/libGLESv2_POWERVR_ROGUE.so`:
+    `GL_OES_surfaceless_context`, `GL_EXT_robustness`, `GL_KHR_debug`,
+    `GL_OES_texture_float`/`half_float` + `GL_EXT_color_buffer_float`,
+    `GL_EXT_draw_buffers`, `GL_EXT_texture_rg`, `GL_KHR_blend_equation_advanced
+    (+coherent)`, `GL_KHR_texture_compression_astc_ldr`,
+    `GL_IMG_texture_compression_pvrtc(2)`, `GL_EXT_multisampled_render_to_texture`,
+    `GL_OES_EGL_image(_external)`, `GL_OES_EGL_sync`, `GL_OES_shader_image_atomic`,
+    `GL_OES_standard_derivatives`, `GL_OES_vertex_array_object` m.fl. ES 3.1-core
+    dækker UBO/instancing/SSBO (rendereren melder 3.1 på boksen). → Risiko C
+    reduceret: PVR reklamerer statisk med de fleste WebRender/WebGL-byggesten;
+    resten er runtime-adfærd (buglisten i A1), ikke tilstedeværelse.
 A6. **Browsernes kravkatalog** (webforskning). Mozilla-kildens GLES-krav og
     PowerVR-blocklist-kriterier (searchfox), og hvad ozone-GLES2 krævede i
     chromium 47-æraen. Sammenlignes med A4+A5 → kvalificeret gæt om C før
