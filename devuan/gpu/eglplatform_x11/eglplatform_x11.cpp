@@ -451,6 +451,15 @@ static const char *x11ws_eglQueryString(EGLDisplay dpy, EGLint name,
                                         const char *(*real_eglQueryString)(
                                             EGLDisplay dpy, EGLint name))
 {
+    if (name == EGL_EXTENSIONS && dpy == EGL_NO_DISPLAY) {
+        /* Client-extensioner. Målt (24. aug 2026): Firefox/glxtest kræver
+         * EGL_EXT_platform_base — uden den melder proben "libEGL no display"
+         * og falder tilbage til Mesa-software. */
+        static const char client_exts[] =
+            "EGL_KHR_get_all_proc_addresses "
+            "EGL_EXT_platform_base EGL_EXT_platform_x11 EGL_KHR_platform_x11";
+        return client_exts;
+    }
     return real_eglQueryString(dpy, name);
 }
 

@@ -308,6 +308,18 @@ GL 3.1 PowerVR G6110, aktiv VT og HDMI urørt bagefter. `ws_module`-kontrakten
    som EGL-native-display (`eglGetDisplay(dpy)`); platformens `GetDisplay`
    gemmer det, og `present()` tegner via klientens forbindelse.
 
+**Firefox-forsøg (24. aug 2026, BROWSER-VEJE eksperiment 2):** `MOZ_X11_EGL=1`
++ `EGL_PLATFORM=x11` + shims lader Firefox' `glxtest` loade vores libEGL og
+Android-EGL-kæden, men `eglGetDisplay` fejler i glxtest's proces
+(EGL_BAD_DISPLAY, logd "eglGetDisplay:218 error 300c") — samme kald virker i
+`dlopen_egl_test.cpp`. Platformen annoncerer nu `EGL_EXT_platform_base`
+(`eglQueryString`-hook) og der findes en `egl_platform_shim` med
+`eglGetPlatformDisplayEXT`/`eglGetDisplay`, men glxtest rammer Android-loaderens
+version. Diagnose-værktøjer: `dlsym_trace.c`, `dlopen_egl_test.cpp`,
+`egl_display_probe.cpp`. Næste skridt: afgøre hvorfor Android-loaderens
+eglGetDisplay fejler i glxtest, eller tvinge Firefox til hybris-wrapperens
+eglGetDisplay.
+
 ## Regler og fælder (målt/arvet — ikke gæt)
 
 1. **X stoppes under brug** — daemonen blitter til fb0, så skærm-output kolliderer

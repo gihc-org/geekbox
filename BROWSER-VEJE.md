@@ -196,6 +196,20 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    Den vil næppe virke (manglende x11-platform), men loggen viser præcis, hvad
    Firefox kræver af EGL'en. Advarsel: rører forsøget hwc-init på skærmen, gælder
    regel 1+2 — stop X eller forvent strøm-cyklus bagefter.
+   **AFPRØVET (24. aug 2026) med `eglplatform_x11`:** Firefox ESR 140's
+   GL-probe (`glxtest`) loader vores libEGL + hele Android-EGL-kæden
+   (`/system/lib/libEGL.so` + `libEGL_POWERVR_ROGUE.so` — bekræftet med strace
+   og logd), men `eglGetDisplay` fejler i Firefox' proces med
+   **EGL_BAD_DISPLAY** (logd: "eglGetDisplay:218 error 300c") → proben melder
+   "libEGL no display" og Firefox falder tilbage til Mesa-software (llvmpipe).
+   De samme kald virker i vores klon (`devuan/gpu/eglplatform_x11/`
+   `dlopen_egl_test.cpp`/`egl_display_probe.cpp`). Vi har tilføjet
+   `EGL_EXT_platform_base` til client-extensionerne (platformens
+   `eglQueryString`-hook) og en `eglGetPlatformDisplayEXT`/`eglGetDisplay`-shim
+   (`egl_platform_shim.c`), men glxtest når ikke dertil — symbolopslaget rammer
+   Android-loaderens version. ÅBEN: hvorfor Android-loaderens `eglGetDisplay`
+   fejler i glxtest (display-argument vs. miljø), og hvordan Firefox tvinges til
+   hybris-wrapperens version.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.
    **GJORT (24. aug 2026)** via M2b-vindue-demoen (`window_demo.py` + daemonens
