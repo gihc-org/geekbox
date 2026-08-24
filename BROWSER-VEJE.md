@@ -210,16 +210,30 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    Android-loaderens version. ÅBEN: hvorfor Android-loaderens `eglGetDisplay`
    fejler i glxtest (display-argument vs. miljø), og hvordan Firefox tvinges til
    hybris-wrapperens version.
-   **Næste skridt (Firefox, efter 24. aug 2026):**
-   1. Afgør om glxtest kalder `eglGetDisplay` med X-`Display*` (gdb på
-      symbolet i glxtest) — Android-loaderen afviser non-default med
-      EGL_BAD_DISPLAY (300C).
-   2. Tving kaldet gennem hybris-wrapperens `eglGetDisplay`
-      (shim-præcedens med `RTLD_GLOBAL` / wrapper-patch).
-   3. Kør firefox-esr helt og verificér WebGL: about:support + platformens
-      præsent-log (`x11ws: vindue pakket ind` / `present`) + fbdump midt i
-      en WebGL-side.
-   Værktøjer og beviser: `DOKUMENTATION.md` §5.15c + `devuan/gpu/eglplatform_x11/`.
+   **LØST (samme aften):** rodårsagen var, at glxtest henter **kerne-EGL-
+   funktioner gennem `eglGetProcAddress`** (ikke dlsym) — se
+   `toolkit/xre/glxtest/glxtest.cpp` (`get_egl_status`). Wrapperens
+   `eglGetProcAddress`-kæde ender hos Android-loaderens interne funktioner,
+   fordi vores platforms `ws_eglGetProcAddress` returnerede NULL for
+   kerne-EGL-navne. Fix i `eglplatform_x11.cpp`: platformens
+   `ws_eglGetProcAddress` videresender kerne-EGL-navne til wrapperens egne
+   eksporter (dlopen/dlsym af `/opt/hybris/libEGL.so.1`, undtagen
+   `eglGetProcAddress` selv) + stubs for `eglQueryDeviceStringEXT`/
+   `eglQueryDisplayAttribEXT` (glxtest kræver dem non-NULL). Derudover var
+   glxtest-binæren patchet (dybde-tjek 24→16, Bug 1667621 — boksens X er
+   16-bit; uden patchen smed proben det ellers vellykkede EGL-resultat væk).
+   **Resultat:** `glxtest` melder nu `TEST_TYPE=EGL`, `VENDOR=Imagination
+   Technologies`, `RENDERER=PowerVR Rogue G6110`, GLES 3.1 — ingen
+   Mesa-fallback.
+   **Ny blokering (fuld Firefox):** WebRender-hardwarekonteksten kan stadig
+   ikke oprettes → "Fallback WR to SW-WR". Målt med gdb (to mønstre):
+   0x300c — `eglBindAPI(ES)` lykkes, men `eglCreateContext` rammer IKKE
+   wrapperen (Android-intern/libepoxy-mistænkt); og 0x3000 — wrapperens
+   `eglCreateContext` + `eglMakeCurrent` virker, men kontekst-`Init` fejler
+   bagefter. `eglCreateWindowSurface` ramte aldrig wrapperen (0 hits) —
+   Firefox starter med offscreen/pbuffer. Detaljer og næste skridt:
+   `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md` (handover),
+   `DOKUMENTATION.md` §5.15c, `HAANDBOG.md` fælde 23.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.
    **GJORT (24. aug 2026)** via M2b-vindue-demoen (`window_demo.py` + daemonens

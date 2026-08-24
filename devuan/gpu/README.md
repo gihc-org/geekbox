@@ -115,6 +115,14 @@ skal gå gennem vinduets egen X-forbindelse (klienten sender sit Display* som
 EGL-native-display). Fælderne: `HAANDBOG.md` 19-22. Detaljer:
 `GLES-DAEMON-PLAN.md` M4a + `DOKUMENTATION.md` §5.15b.
 
+**Browser-status (24. aug 2026):** Firefox' GL-probe (`glxtest`) er GRØN —
+PowerVR Rogue G6110 / GLES 3.1 / TEST_TYPE=EGL — efter platformens
+`ws_eglGetProcAddress` videresender kerne-EGL-navne til wrapperen (glxtest
+henter dem via `eglGetProcAddress`, ikke dlsym) og glxtest-binæren er patchet
+(dybde-tjek 24→16, X er 16-bit; backup `/root/glxtest.orig`). Hele Firefox
+blokerer stadig på WebRender-hardwarekontekst (0x300c/0x3000, målt med gdb).
+Handover med alle spor: `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen
 og blitter til fb0 — eller returnerer pixels til et X-vindue (M2b, ovenfor).

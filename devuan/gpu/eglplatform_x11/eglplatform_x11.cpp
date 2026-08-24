@@ -36,6 +36,7 @@ extern "C" {
 #include <dirent.h>
 #include <linux/vt.h>
 #include <sys/ioctl.h>
+#include <dlfcn.h>
 
 #ifndef HAL_PIXEL_FORMAT_RGBA_8888
 #define HAL_PIXEL_FORMAT_RGBA_8888 1
@@ -434,9 +435,56 @@ static void x11ws_DestroyWindow(EGLNativeWindowType win)
     delete static_cast<X11NativeWindow *>(aw);
 }
 
+static void *x11ws_wrapper_symbol(const char *name)
+{
+    /* Returnér wrapperens egen eksport af `name` (fx eglGetDisplay). Bruges
+     * af ws_eglGetProcAddress: Firefox' glxtest henter KERNE-EGL-funktioner
+     * gennem eglGetProcAddress — falder de igennem til Android-loaderen,
+     * får vi dens INTERNE funktioner (eglGetDisplay afviser non-default
+     * displays med 300C og omgår X11-platformen helt; målt 24. aug 2026). */
+    static void *wrapper_handle = NULL;
+    if (!wrapper_handle) {
+        wrapper_handle = dlopen("/opt/hybris/libEGL.so.1",
+                                RTLD_NOW | RTLD_NOLOAD);
+        if (!wrapper_handle)
+            wrapper_handle = dlopen("/opt/hybris/libEGL.so.1", RTLD_NOW);
+    }
+    return wrapper_handle ? dlsym(wrapper_handle, name) : NULL;
+}
+
+/* EGL_EXT_device_base: glxtest kræver funktionerne non-NULL (og kalder
+ * eglQueryDisplayAttribEXT direkte), men vi har ikke noget EGLDevice at
+ * melde — returnér tomt/falsk, så Firefox' probe hopper pænt forbi. */
+static const char *x11ws_eglQueryDeviceStringEXT(void *device, EGLint name)
+{
+    (void)device;
+    (void)name;
+    return NULL;
+}
+
+static EGLBoolean x11ws_eglQueryDisplayAttribEXT(EGLDisplay dpy, EGLint name,
+                                                 intptr_t *value)
+{
+    (void)dpy;
+    (void)name;
+    (void)value;
+    return EGL_FALSE;
+}
+
 static __eglMustCastToProperFunctionPointerType
 x11ws_eglGetProcAddress(const char *procname)
 {
+    if (strcmp(procname, "eglQueryDeviceStringEXT") == 0)
+        return (__eglMustCastToProperFunctionPointerType)
+            x11ws_eglQueryDeviceStringEXT;
+    if (strcmp(procname, "eglQueryDisplayAttribEXT") == 0)
+        return (__eglMustCastToProperFunctionPointerType)
+            x11ws_eglQueryDisplayAttribEXT;
+    if (strcmp(procname, "eglGetProcAddress") != 0) {
+        void *wrapper_fn = x11ws_wrapper_symbol(procname);
+        if (wrapper_fn)
+            return (__eglMustCastToProperFunctionPointerType)wrapper_fn;
+    }
     return eglplatformcommon_eglGetProcAddress(procname);
 }
 

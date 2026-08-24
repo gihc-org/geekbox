@@ -61,7 +61,10 @@ den renderer kun ind i buffere, når et program beder om det gennem hele driver-
 kernel-driver + proprietære blobs + integration mod skærmen. Stakken kører faktisk nu:
 blobs'ene er hentet fra dualOS-imaget og kører i deres egen lille Android-hal via
 libhybris (DOK §5.15). WebGL virker alligevel ikke — browseren vil kun gennem den
-moderne dør (KMS/DRI), som kernen ikke har (fælde 16).
+moderne dør (KMS/DRI), som kernen ikke har (fælde 16). Siden 24. aug 2026 findes
+der dog en EGL-omvej (`eglplatform_x11`): Firefox' GL-probe er grøn, men hele
+browseren blokerer stadig på WebRenders GPU-kontekst — se fælde 23 og
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
 
 **KMS/DRM og DRI.** Den moderne vej, grafikprogrammer får billeder på skærmen ad.
 Kræver kernens KMS-grænseflade (`/dev/dri`) og en X-driver der bruger den. Vendor-kernen
@@ -580,6 +583,13 @@ egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den findes
 armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som fælde 14) og
 lav fart — alt renderes på CPU'en.
 
+**Opdatering (24. aug 2026):** med `eglplatform_x11` (hybris-EGL → X-vindue) har
+Firefox fået en EGL-vej udenom KMS/DRI — dens GL-probe (`glxtest`) er nu GRØN
+(PowerVR Rogue G6110, GLES 3.1, TEST_TYPE=EGL; fælde 23 er løst). Hele Firefox
+blokerer stadig på WebRenders GPU-kontekst (to målte fejlmønstre, 0x300c/0x3000),
+så WebGL i browseren virker fortsat ikke i dag — status og næste skridt:
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+
 ### Fælde 17: Boksen dør brat under belastning — strømforsyningen løj om 2A
 
 **Du ser:** boksen genstarter sig selv midt i tunge opgaver — første gang under
@@ -731,14 +741,39 @@ hybris/bionic loader Android-EGL-kæden ind. I glxtest's proces rammer
 med et ikke-default display (fx X-`Display*`) svarer den EGL_BAD_DISPLAY.
 Vores hybris-wrapper (der kender `eglplatform_x11`) bliver ikke ramt, selvom
 de samme kald virker i `dlopen_egl_test.cpp`/`egl_display_probe.cpp`.
+Præcisering (målt 24. aug 2026): glxtest henter **alle** kerne-EGL-funktioner
+gennem `eglGetProcAddress("eglGetDisplay")` (se `get_egl_status` i
+`toolkit/xre/glxtest/glxtest.cpp`) — IKKE via dlsym. Wrapperens
+`eglGetProcAddress`-kæde er: special-cases → dlsym(platform) →
+`ws_eglGetProcAddress` (platformens egen) → Android-loaderens interne
+funktioner. Vores platforms `ws_eglGetProcAddress` returnerede NULL for
+kerne-EGL-navne (delegere til `eglplatformcommon`), så Android-intern
+`eglGetDisplay` (+0x50c0 i `/system/lib/libEGL.so`, kun r0==0 accepteres)
+vandt. De samme kald via direkte dlsym gav altid wrapperens version — derfor
+var de "samme kald virker i kloner"-prober et vildspor: de testede dlsym-vejen.
 
-**Kur (status 24. aug 2026):** endnu ikke løst. Udført: platformen annoncerer
-`EGL_EXT_platform_base` (eglQueryString-hook), og `egl_platform_shim`
-eksporterer `eglGetDisplay`/`eglGetPlatformDisplayEXT` — men glxtest når ikke
-dertil. Næste skridt: afgør om glxtest kalder med `Display*` (gdb), og tving
-kaldet gennem wrapperen (shim-præcedens / wrapper-patch). Diagnose:
-`devuan/gpu/eglplatform_x11/` (dlopen_egl_test, egl_display_probe,
-dlsym_trace). Detaljer: DOK §5.15c.
+**Kur (løst 24. aug 2026):** platformens `ws_eglGetProcAddress`
+(`eglplatform_x11.cpp`) videresender nu kerne-EGL-navne til wrapperens egne
+eksporter (`dlopen("/opt/hybris/libEGL.so.1", RTLD_NOW|RTLD_NOLOAD)` +
+`dlsym`), undtagen `eglGetProcAddress` selv (rekursionsfare), og tilbyder
+stubs for `eglQueryDeviceStringEXT`/`eglQueryDisplayAttribEXT` (glxtest
+kræver dem non-NULL og kalder queryDisplayAttrib direkte). Derudover er
+glxtest-binæren patchet: dybde-tjekket `cmp r1, #24` → `#16` (fil-offset
+0x2777, `0x18`→`0x10`; backup `/root/glxtest.orig`) — boksens X er 16-bit,
+og uden patchen smed proben det ellers vellykkede EGL-resultat væk (Bug
+1667621). Resultat: `glxtest` = PowerVR Rogue G6110 / GLES 3.1 /
+TEST_TYPE=EGL.
+
+**Ny blokering (fuld Firefox):** WebRender-hardwarekontekst fejler stadig →
+"Fallback WR to SW-WR". Målt med gdb, to mønstre: (1) 0x300c —
+`eglBindAPI(EGL_OPENGL_ES_API)` lykkes, men `eglCreateContext` rammer IKKE
+wrapperen (Android-intern via ikke-kortlagt vej — libepoxy mistænkt), og
+(2) 0x3000 — wrapperens `eglCreateContext` + `eglMakeCurrent` virker (med
+pbuffer), men kontekst-`Init` fejler bagefter. Wrapperens
+`eglCreateWindowSurface` blev aldrig ramt (0 hits) — Firefox starter
+offscreen/pbuffer. Næste skridt og alle spor:
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`; DOK §5.15c;
+`BROWSER-VEJE.md` eksperiment 2.
 
 ---
 

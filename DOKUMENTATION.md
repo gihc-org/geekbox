@@ -537,24 +537,47 @@ Firefox + `MOZ_X11_EGL=1` (BROWSER-VEJE eksperiment 2).
   (log dlopen/dlsym med egl-navne), `dlopen_egl_test.cpp`,
   `egl_display_probe.cpp`.
 
-**ÅBEN — hvorfor glxtest rammer Android-loaderens `eglGetDisplay`:**
-1. Sandsynligvis kalder glxtest `eglGetDisplay` med sit X11-`Display*`
-   (non-default) — Android-loaderens `eglGetDisplay` afviser non-default med
-   300C; vores wrapper håndterer non-default via platformen. Test: spor
-   argumentet med gdb på `eglGetDisplay` i glxtest.
-2. Symbolopslaget i glxtest's proces rammer Android-loaderens version frem for
-   wrapperens/shim'ens. Veje: (a) få wrapperen til at loade vores platform før
-   Android-loaderens symboler interposerer, (b) patche wrapperens
-   symbol-eksport, (c) afklare om bionic-loaderens namespace adskiller sig fra
-   glibc's (dlsym fra handle vs. RTLD_DEFAULT).
+**LØST — hvorfor glxtest ramte Android-loaderens `eglGetDisplay`:**
+Rodårsagen var hverken display-argumentet eller bionic-namespace — det var
+**symbolopslagsmetoden**. glxtest henter kerne-EGL-funktioner gennem
+`eglGetProcAddress("eglGetDisplay")` (se `get_egl_status` i
+`toolkit/xre/glxtest/glxtest.cpp`), ikke via dlsym. Wrapperens
+`eglGetProcAddress`-kæde er: special-cases → dlsym(platform-handle) →
+`ws_eglGetProcAddress` (platformens egen) → Android-loaderens interne
+funktioner. Vores platforms `ws_eglGetProcAddress` returnerede NULL for
+kerne-EGL-navne (delegere til `eglplatformcommon_eglGetProcAddress`), så
+Android-intern `eglGetDisplay` (+0x50c0, kun r0==0 accepteres, linje 218/300C)
+vandt. Probe-bevis: `eglGetProcAddress("eglGetDisplay")` gav Android-intern
+(afviste 0x1234), mens `dlsym(libegl, "eglGetDisplay")` gav wrapperens
+(håndterede 0x1234). De tidligere klon-prober testede dlsym-vejen og var
+dermed et vildspor.
 
-**Næste eksperimenter (rækkefølge):**
-A. gdb/spor `eglGetDisplay`-argumentet i glxtest (NULL vs. `Display*`).
-B. Hvis non-NULL: få kaldet gennem wrapperen (shim-præcedens med
-   `RTLD_GLOBAL` / wrapper-patch).
-C. Når proben siger PowerVR/EGL: kør firefox-esr helt og verificér WebGL via
-   about:support + platformens præsent-log (`x11ws: vindue pakket ind` /
-   `present`) + fbdump.
+**Fix (24. aug 2026):** platformens `ws_eglGetProcAddress`
+(`devuan/gpu/eglplatform_x11/eglplatform_x11.cpp`) videresender kerne-EGL-
+navne til wrapperens egne eksporter (dlopen + dlsym af
+`/opt/hybris/libEGL.so.1`, undtagen `eglGetProcAddress` selv — rekursion) og
+tilbyder stubs for `eglQueryDeviceStringEXT`/`eglQueryDisplayAttribEXT`.
+Derudover patchet glxtest-binæren: `cmp r1, #24` → `#16` (offset 0x2777;
+backup `/root/glxtest.orig`) — boksens X er 16-bit, og uden patchen smed
+proben det ellers vellykkede EGL-resultat væk (Bug 1667621).
+
+**Resultat:** `glxtest` melder nu `TEST_TYPE=EGL`, `VENDOR=Imagination
+Technologies`, `RENDERER=PowerVR Rogue G6110`, `OpenGL ES 3.1
+build 1.4@3632227` — ingen Mesa/GLX-fallback.
+
+**Ny blokering (fuld Firefox, kørt 24. aug 2026):** WebRender-hardware-
+kontekst fejler → "Fallback WR to SW-WR". Målt med gdb på boksen, to mønstre:
+0x300c (hardware-WR/GLES-vej: `eglBindAPI(ES)` lykkes, men `eglCreateContext`
+rammer IKKE wrapperen — Android-intern via ikke-kortlagt vej, libepoxy
+mistænkt) og 0x3000 (desktop-GL-vej: wrapperens `eglCreateContext` +
+`eglMakeCurrent` på pbuffer VIRKER, men kontekst-`Init` fejler bagefter).
+Wrapperens `eglCreateWindowSurface` blev aldrig ramt (0 hits) — Firefox
+starter offscreen/pbuffer. Næste skridt: byg/kør epoxy-mimic (libepoxy's
+EGL-dispatch), find mønster-A-kaldets funktionspointer, og diagnosticér
+mønster-B-`Init` (MOZ_LOG="GLContext:5"). Alle spor og kommandoer:
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`. Verifikation når
+konteksten virker: about:support + platformens præsent-log (`x11ws: vindue
+pakket ind` / `present`) + fbdump.
 
 ## 6. Slutarkitekturen
 

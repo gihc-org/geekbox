@@ -225,29 +225,35 @@ Resultatet i dag: et 640x360-vindue viser fabrikkens cos-mønster på TV'et — 
 billeder i sekundet — mens skrivebordet kører. (Teknisk historie: DOK §5.15b;
 fælderne: HAANDBOG fælde 19-22; koden: `devuan/gpu/eglplatform_x11/`.)
 
-### Firefox siger stadig nej — men nu ved vi præcis hvorfor
+### Firefox' synsprøve er bestået — nu kæmper vi med selve brillerne
 
 Med `eglplatform_x11` kunne vi stille det næste spørgsmål: vil Firefox bruge
 den? Svaret blev "næsten". Da vi startede Firefox med `MOZ_X11_EGL=1` og vores
-miljø, skete der faktisk noget nyt: den indlæste vores EGL og hele
-Android-kæden (vi kunne følge det i systemets spor). Men så stoppede dens
-indgangsprobe: den spurgte "giv mig en skærm" (`eglGetDisplay`) — og fik
-svaret "ukendt skærm" (EGL_BAD_DISPLAY). Firefox trak sig derfor tilbage til
-software-malingen (Mesa/llvmpipe), som vi kender.
+miljø, indlæste den vores EGL og hele Android-kæden — men dens indgangsprobe
+(`glxtest`) spurgte "giv mig en skærm" (`eglGetDisplay`) og fik "ukendt skærm"
+(EGL_BAD_DISPLAY), så Firefox trak sig tilbage til software-malingen.
 
-Det mærkelige: det præcis samme spørgsmål virker i vores eget lille program.
-Forskellen ligger i, HVEM der svarer. Vores EGL har to lag: en
-oversætter-wrapper, der kender vores x11-platform — og Android-maskinernes
-egen dør, som kun forstår Android-skærme. I Firefox' proces rammer opkaldet
-Android-døren i stedet for oversætteren, og Android-døren siger "ukendt
-skærm". Vi har bygget en lille lappegrej, der kan svare i stedet
-(`egl_platform_shim`), og vi har lært vores EGL at sige "jeg kan X-vinduer"
-(EGL_EXT_platform_base) — men Firefox' probe når ikke dertil endnu.
+Det mærkelige var, at det præcis samme spørgsmål virkede i vores egne små
+programmer. Vi endte med at finde den rigtige forklaring i Firefox' egen kilde:
+proben henter sine kerne-funktioner ad en anden vej end vores programmer
+(gennem "find enhver funktion"-opkaldet `eglGetProcAddress` i stedet for
+telefonbogen). Ad den vej ramte den Android-maskinernes egen dør — som kun
+forstår Android-skærme — i stedet for vores oversætter, der kender X-vinduer.
 
-Så status: fabrikken kan male i et vindue, og Firefox er ét symbolopslag fra
-at opdage det. Det næste skridt er at finde ud af, hvorfor Firefox' opkald
-rammer Android-døren — og tvinge det gennem oversætteren. (Teknisk: DOK
-§5.15c; fælde: HAANDBOG 23; værktøjer: `devuan/gpu/eglplatform_x11/`.)
+Kuren var at lære vores platform at svare rigtigt, når Firefox spørger ad den
+vej: platformen videresender nu kerne-funktionerne til oversætteren selv (og
+byder på to tomme svar, som proben kræver findes). Derudover ville proben
+opgive på forhånd, fordi boksens skærm er 16-bit og proben kræver 24-bit —
+vi rettede den ene sammenligning i selve proben (med backup).
+
+**Nu består Firefox' synsprøve:** proben melder `PowerVR Rogue G6110`, GLES
+3.1, "EGL" — fabrikken er fundet! Men når hele Firefox starter, kan den stadig
+ikke få selve tegnemaskinen (WebRender) i gang: oprettelsen af en GPU-kontekst
+fejler på to målbare måder, og Firefox falder tilbage til software-WebRender.
+Vi har sporet begge fejl med gdb og ved præcis, hvor vi skal kigge næste gang.
+(Teknisk: DOK §5.15c; fælder: HAANDBOG 23 + to nye spor i
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`; værktøjer:
+`devuan/gpu/eglplatform_x11/`.)
 
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
@@ -269,11 +275,13 @@ rammer Android-døren — og tvinge det gennem oversætteren. (Teknisk: DOK
 
 **Det vi ikke kan (endnu):**
 - **WebGL-spil i browseren.** Oversætteren til X-vinduer er bygget
-  (`eglplatform_x11`), og Firefox-forsøget er kørt: dens GL-probe indlæser
-  vores EGL + Android-kæden, men rammer Android-dørens `eglGetDisplay`
-  (EGL_BAD_DISPLAY) og falder tilbage til software. Én blokering tilbage:
-  tvinge Firefox' opkald gennem oversætteren — næste skridt står i
-  `BROWSER-VEJE.md` og DOK §5.15c.
+  (`eglplatform_x11`), og Firefox' GL-probe er nu **grøn** (PowerVR Rogue
+  G6110, GLES 3.1, TEST_TYPE=EGL) efter vi fik probens funktionsopslag gennem
+  oversætteren og rettede dens 16-bit-dybdetjek. Hele Firefox kan dog stadig
+  ikke oprette WebRenders GPU-kontekst (to målte fejlmønstre) og falder tilbage
+  til software-WebRender. Næste skridt står i
+  `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`, `BROWSER-VEJE.md`
+  og DOK §5.15c.
 
 **Reglerne vi lærte (kort):**
 1. En GPU-stak er tre lag — og mangler ét, virker intet.

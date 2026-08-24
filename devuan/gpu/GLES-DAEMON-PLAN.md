@@ -310,15 +310,21 @@ GL 3.1 PowerVR G6110, aktiv VT og HDMI urørt bagefter. `ws_module`-kontrakten
 
 **Firefox-forsøg (24. aug 2026, BROWSER-VEJE eksperiment 2):** `MOZ_X11_EGL=1`
 + `EGL_PLATFORM=x11` + shims lader Firefox' `glxtest` loade vores libEGL og
-Android-EGL-kæden, men `eglGetDisplay` fejler i glxtest's proces
-(EGL_BAD_DISPLAY, logd "eglGetDisplay:218 error 300c") — samme kald virker i
-`dlopen_egl_test.cpp`. Platformen annoncerer nu `EGL_EXT_platform_base`
-(`eglQueryString`-hook) og der findes en `egl_platform_shim` med
-`eglGetPlatformDisplayEXT`/`eglGetDisplay`, men glxtest rammer Android-loaderens
-version. Diagnose-værktøjer: `dlsym_trace.c`, `dlopen_egl_test.cpp`,
-`egl_display_probe.cpp`. Næste skridt: afgøre hvorfor Android-loaderens
-eglGetDisplay fejler i glxtest, eller tvinge Firefox til hybris-wrapperens
-eglGetDisplay.
+Android-EGL-kæden, men `eglGetDisplay` fejlede i glxtest's proces
+(EGL_BAD_DISPLAY, logd "eglGetDisplay:218 error 300c"). **LØST:** rodårsagen
+var, at glxtest henter kerne-EGL-funktioner gennem `eglGetProcAddress`
+(ikke dlsym), og platformens `ws_eglGetProcAddress` returnerede NULL for
+kerne-EGL-navne → Android-loaderens interne funktioner vandt. Fix i
+`eglplatform_x11.cpp`: `ws_eglGetProcAddress` videresender kerne-EGL-navne til
+wrapperens egne eksporter (+ stubs for `eglQueryDeviceStringEXT`/
+`eglQueryDisplayAttribEXT`); glxtest-binæren patchet (dybde-tjek 24→16, X er
+16-bit; backup `/root/glxtest.orig`). `glxtest` melder nu PowerVR Rogue G6110 /
+GLES 3.1 / TEST_TYPE=EGL. **Ny blokering (fuld Firefox):** WebRender-hardware-
+kontekst fejler (0x300c: create rammer ikke wrapperen; 0x3000: create+MakeCurrent
+virker, Init fejler). Detaljer: `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+Diagnose-værktøjer: `dlsym_trace.c` (i stykker — brug ikke), `dlopen_egl_test.cpp`,
+`egl_display_probe.cpp`, `egl_getproc_probe2`, `ff_egl_mimic`,
+`android_internal_probe`, `epoxy_mimic` (kilde i `/tmp/epoxy_mimic.c`).
 
 ## Regler og fælder (målt/arvet — ikke gæt)
 
