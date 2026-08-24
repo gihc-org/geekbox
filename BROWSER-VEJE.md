@@ -210,6 +210,16 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    Android-loaderens version. ÅBEN: hvorfor Android-loaderens `eglGetDisplay`
    fejler i glxtest (display-argument vs. miljø), og hvordan Firefox tvinges til
    hybris-wrapperens version.
+   **Næste skridt (Firefox, efter 24. aug 2026):**
+   1. Afgør om glxtest kalder `eglGetDisplay` med X-`Display*` (gdb på
+      symbolet i glxtest) — Android-loaderen afviser non-default med
+      EGL_BAD_DISPLAY (300C).
+   2. Tving kaldet gennem hybris-wrapperens `eglGetDisplay`
+      (shim-præcedens med `RTLD_GLOBAL` / wrapper-patch).
+   3. Kør firefox-esr helt og verificér WebGL: about:support + platformens
+      præsent-log (`x11ws: vindue pakket ind` / `present`) + fbdump midt i
+      en WebGL-side.
+   Værktøjer og beviser: `DOKUMENTATION.md` §5.15c + `devuan/gpu/eglplatform_x11/`.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.
    **GJORT (24. aug 2026)** via M2b-vindue-demoen (`window_demo.py` + daemonens

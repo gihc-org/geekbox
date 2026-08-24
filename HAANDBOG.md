@@ -717,6 +717,29 @@ stopper ved den første NUL (efter argv[0]=".../Xorg") og når aldrig "vt8".
 **Kur:** Iterér argument-for-argument: `for (p = cmd; p < cmd + n; p += strlen(p)+1)`
 og sammenlign hvert argument med `strncmp`/`strcmp`.
 
+### Fælde 23: Firefox' EGL-probe rammer Android-loaderens `eglGetDisplay` — EGL_BAD_DISPLAY
+
+**Symptom:** firefox-esr med `MOZ_X11_EGL=1` + vores env melder
+`glxtest: libEGL no display` og renderer med Mesa/llvmpipe, selvom
+`eglplatform_x11` virker for egne programmer. logd viser
+`eglGetDisplay:218 error 300c` (EGL_BAD_DISPLAY), og strace viser at glxtest
+loader `/system/lib/libEGL.so` + `/vendor/lib/egl/libEGL_POWERVR_ROGUE.so`.
+
+**Årsag:** Firefox' GL-probe (`glxtest`) dlopen'er vores `libEGL.so.1`, og
+hybris/bionic loader Android-EGL-kæden ind. I glxtest's proces rammer
+`eglGetDisplay` Android-loaderens version (som kun forstår Android-skærme) —
+med et ikke-default display (fx X-`Display*`) svarer den EGL_BAD_DISPLAY.
+Vores hybris-wrapper (der kender `eglplatform_x11`) bliver ikke ramt, selvom
+de samme kald virker i `dlopen_egl_test.cpp`/`egl_display_probe.cpp`.
+
+**Kur (status 24. aug 2026):** endnu ikke løst. Udført: platformen annoncerer
+`EGL_EXT_platform_base` (eglQueryString-hook), og `egl_platform_shim`
+eksporterer `eglGetDisplay`/`eglGetPlatformDisplayEXT` — men glxtest når ikke
+dertil. Næste skridt: afgør om glxtest kalder med `Display*` (gdb), og tving
+kaldet gennem wrapperen (shim-præcedens / wrapper-patch). Diagnose:
+`devuan/gpu/eglplatform_x11/` (dlopen_egl_test, egl_display_probe,
+dlsym_trace). Detaljer: DOK §5.15c.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

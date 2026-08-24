@@ -508,6 +508,54 @@ HAANDBOG.md.
 hybris libEGL/libGLESv2 og kan køres med `EGL_PLATFORM=x11`), derefter stock
 Firefox + `MOZ_X11_EGL=1` (BROWSER-VEJE eksperiment 2).
 
+### 5.15c Firefox-forsøget: Android-loaderens `eglGetDisplay` vinder (aug 2026)
+
+**Forsøg** (BROWSER-VEJE eksperiment 2, 24. aug 2026): firefox-esr 140.12 med
+`MOZ_X11_EGL=1`, `LD_LIBRARY_PATH=/opt/hybris`, `EGL_PLATFORM=x11`,
+`LD_PRELOAD` (system_shim + egl_platform_shim), `DISPLAY=:0`, temp-profil.
+
+**Målt:**
+- Firefox' GL-probe (`glxtest`) dlopen'er vores `libEGL.so.1` og loader via
+  bionic hele Android-EGL-kæden: `/system/lib/libEGL.so` (Android-loaderen) +
+  `/vendor/lib/egl/libEGL_POWERVR_ROGUE.so` (bekræftet med strace + logd
+  "loaded ...").
+- Derefter fejler `eglGetDisplay` med **EGL_BAD_DISPLAY** (logd:
+  "eglGetDisplay:218 error 300c") → glxtest melder "libEGL no display" og
+  Firefox falder tilbage til Mesa-software (llvmpipe, GLX).
+- De samme kald virker i kloner: `dlopen_egl_test.cpp` (dlopen → dlsym →
+  `eglGetDisplay(EGL_DEFAULT_DISPLAY)` → 0x1, eglInitialize 1.4) og
+  `egl_display_probe.cpp` (også med `Display*` og `eglGetPlatformDisplayEXT`
+  via shim); `x11ws: init_module` kører.
+
+**Arbejde udført:**
+- Platformens `eglQueryString`-hook annoncerer nu client-extensionerne
+  `EGL_EXT_platform_base` + `EGL_EXT_platform_x11` + `EGL_KHR_platform_x11`
+  (målt nødvendige for Firefox' probe).
+- `egl_platform_shim.c` (LD_PRELOAD) eksporterer `eglGetPlatformDisplayEXT`,
+  `eglGetPlatformDisplay` og `eglGetDisplay` (viderestiller til wrapperen).
+- Diagnose-værktøjer i `devuan/gpu/eglplatform_x11/`: `dlsym_trace.c`
+  (log dlopen/dlsym med egl-navne), `dlopen_egl_test.cpp`,
+  `egl_display_probe.cpp`.
+
+**ÅBEN — hvorfor glxtest rammer Android-loaderens `eglGetDisplay`:**
+1. Sandsynligvis kalder glxtest `eglGetDisplay` med sit X11-`Display*`
+   (non-default) — Android-loaderens `eglGetDisplay` afviser non-default med
+   300C; vores wrapper håndterer non-default via platformen. Test: spor
+   argumentet med gdb på `eglGetDisplay` i glxtest.
+2. Symbolopslaget i glxtest's proces rammer Android-loaderens version frem for
+   wrapperens/shim'ens. Veje: (a) få wrapperen til at loade vores platform før
+   Android-loaderens symboler interposerer, (b) patche wrapperens
+   symbol-eksport, (c) afklare om bionic-loaderens namespace adskiller sig fra
+   glibc's (dlsym fra handle vs. RTLD_DEFAULT).
+
+**Næste eksperimenter (rækkefølge):**
+A. gdb/spor `eglGetDisplay`-argumentet i glxtest (NULL vs. `Display*`).
+B. Hvis non-NULL: få kaldet gennem wrapperen (shim-præcedens med
+   `RTLD_GLOBAL` / wrapper-patch).
+C. Når proben siger PowerVR/EGL: kør firefox-esr helt og verificér WebGL via
+   about:support + platformens præsent-log (`x11ws: vindue pakket ind` /
+   `present`) + fbdump.
+
 ## 6. Slutarkitekturen
 
 ```
