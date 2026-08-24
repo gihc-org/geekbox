@@ -110,6 +110,54 @@ Kæden: **dit program → libhybris → Android-maskinerne → pvrsrvkm (kernens
 GPU'en**. Der kører altså ikke "et helt Android" — kun de dele af hallen, maskinerne
 ikke kan undvære.
 
+**Hvordan fungerer broen helt konkret?**
+
+Dit program kalder helt almindelige GLES-funktioner — `eglGetDisplay` ("åbn
+skærmen"), `glDrawArrays` ("tegn trekanten"). Udefra ligner de normale biblioteker
+(`libEGL`/`libGLESv2`), men indeni er de **oversætter-udgaver** fra libhybris. De
+gør tre ting:
+
+1. **De læsser maskinerne ind.** Android-maskinerne er lukkede programmer, bygget
+   til at stå i Android-hallen (de taler bionic, ikke Linux' C-bibliotek). Hybris
+   har en indbygget Android-tolk — en lille dynamisk linker — der kan læsse dem ind
+   i vores Linux-proces og finde deres bionic-afhængigheder, uden at der kører et
+   helt Android. Det er derfor `system.img` bare kan ligge som en fil: vi stiller et
+   stykke af hallen ind i vores bygning.
+2. **De oversætter opkaldene.** Når dit program kalder en GLES-funktion, viderestiller
+   oversætteren den til fabrikkens rigtige program gennem en **telefonbog**
+   (funktionstabeller): Android-maskinerne lægger lister af adresser ud, og hybris
+   fylder de pladser ud, som Linux-siden ejer, og slår resten op hos fabrikken.
+   (Kode-42-historien ovenfor var præcis én plads i telefonbogen, der aldrig blev
+   udfyldt — et tomt hul.)
+3. **De afleverer billedet.** Når fabrikken har tegnet, ligger billedet i hallens
+   lagerhal — Androids hukommelsesstyring **gralloc/ION**. Herfra kan vi hente det
+   ud på to måder: bede fabrikken læse det tilbage i CPU-hukommelse
+   (`glReadPixels`), eller lade en "platform" præsentere lagerhalens blok direkte på
+   en skærm.
+
+Et lille kort over kæden:
+
+```
+dit program (fx Kodi eller vores testklient)
+   │  kalder EGL/GLES — ser normale ud
+   ▼
+libhybris' oversættere (libEGL/libGLESv2 + en eglplatform-"platform")
+   │  læsser + oversætter til Android-maskinernes sprog
+   ▼
+Android-maskinerne i /system (+ /system/vendor):
+   bionic, logd, servicemanager, gralloc/ION, PowerVR-blobs
+   │  tegner i lagerhalen (gralloc-buffere)
+   ▼
+pvrsrvkm (kernens dør) → PowerVR G6110 (fabrikken)
+```
+
+**Hvad er en "EGL-platform"?** EGL er den dør, GLES-programmer går ind ad.
+"Platformen" er den del af døren, der ved, hvordan et færdigt billede skal vises på
+en bestemt slags skærm. Android havde platforme til sine egne skærme
+(hwcomposer/surfaceflinger), og der fandtes en til Linux' framebuffer (fbdev) og en
+til "ingen skærm" (null) — men der manglede én til **X-vinduer**. Det er den, vi til
+slut byggede: `eglplatform_x11`.
+
 ### Daemonen døde med kode 42 — et tomt hul i telefonbogen
 
 Da vi byggede GLES-daemonen, virkede alting lige indtil den første rigtige
@@ -137,6 +185,46 @@ fabrikkens rigtige telefonbog og skriver den ind i den tomme plads. Siden da kan
 programmet "læse pixels" fra GPU'en — og daemonen kan hente sine billeder ud til
 skærmen. (Teknisk historie: DOK §5.15a; opslagsværket: HAANDBOG fælde 18.)
 
+### Fabrikken maler ind i et vindue — eglplatform_x11
+
+Efter daemonen kunne hente billeder ud, stillede vi det næste spørgsmål: kan vi få
+fabrikkens billeder ind i et **X-vindue, mens skrivebordet kører**? Det er præcis
+det, en browser skal kunne for at vise WebGL.
+
+Først byggede vi en hurtig demo: daemonen tegnede billedet, sendte pixels gennem en
+socket, og et Python-program viste dem i et vindue. Det virkede (10 billeder i
+sekundet) — men det var en omvej. Kodi og en browser kalder EGL direkte og beder
+ikke om pixels gennem en socket. De har brug for en rigtig **platform**: en
+oversætter, der selv henter billedet fra lagerhalen og sætter det ind i vinduet.
+
+Så vi byggede `eglplatform_x11` — og det gav to gåder, der hver kostede en god del
+af en aften. Begge var værd at forstå:
+
+**Gåde 1: vinduet var der, men lærredet var tomt.** Programmet åbnede et vindue, X
+sagde "vinduet er synligt" — men på TV'et var der bare skrivebord. Svaret lå i en
+enkelt detalje: når fabrikken starter, **skifter den kanal på skærmen** (et
+VT-skift i Android-laget). Og X maler kun ud til TV'et, når X' egen kanal er
+aktiv. Vi tegnede altså ind i et lærred, der ikke var koblet til TV'et — i timevis,
+fordi alle undersøgelser sagde "alt er i orden". Kur: efter fabrikkens startdans
+skifter platformen kanalen tilbage til X' kanal ved det første billede. Siden da
+sker det automatisk.
+
+**Gåde 2: maleren stod i et andet rum.** Selv efter kanal-fixet var vinduet tomt,
+når tegningen kom fra platformens egen X-forbindelse. Det viste sig, at denne
+server kun tegner, når tegningen kommer fra **den samme forbindelse, der oprettede
+vinduet** — som en maler, der kun må male i det rum, hvor han selv står. Kur:
+klienten giver platformen sin egen X-forbindelse (som "native display"), så alle
+tegninger går gennem den.
+
+Undervejs blev vi snydt af en tilfældighed: vi troede et øjeblik, at en lille
+lappegrej (LD_PRELOAD) ødelagde tegningen — men det var bare to forskellige
+tilstande af gåde 1, der tilfældigt fulgtes ad. Læren står fast: **mål kanalen
+(VT) først**, når noget ikke kommer på skærmen.
+
+Resultatet i dag: et 640x360-vindue viser fabrikkens cos-mønster på TV'et — ~9
+billeder i sekundet — mens skrivebordet kører. (Teknisk historie: DOK §5.15b;
+fælderne: HAANDBOG fælde 19-22; koden: `devuan/gpu/eglplatform_x11/`.)
+
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
 **Det vi kan:**
@@ -147,20 +235,21 @@ skærmen. (Teknisk historie: DOK §5.15a; opslagsværket: HAANDBOG fælde 18.)
 - Bygge et lille grafisk system: en Python-frontend der tegner sin egen UI direkte på
   `/dev/fb0` (som `fb_overscan.py` gør) og taler med en GLES-daemon i baggrunden over
   en unix-socket — daemonen renderer offscreen og blitter billederne til skærmen.
+- **Vise GLES-billeder i et X-vindue, mens skrivebordet kører.** Det var længe
+  "næsten": fabrikken kunne regne offscreen, men ikke vise noget i et vindue. Nu kan
+  den — `eglplatform_x11` henter billedet fra lagerhalen og sætter det ind i
+  X-vinduet (~9 billeder i sekundet i 640x360). Den gamle fuldskærms-vej
+  (hwcomposer/kiosk) kræver stadig, at X holder pause.
 - Forklare præcis, hvorfor noget virker eller ikke virker — hver fælde er målt og
   skrevet ned, så intet behøver gættes igen.
 
 **Det vi ikke kan (endnu):**
-- **WebGL-spil i browseren.** Browseren skal bruge den moderne transportvej
-  (KMS/DRI), som vores 2013-kerne ikke har. Man skulle bygge en ny oversætter til
-  browseren — et stort projekt (uger-måneder), selvom fabrikken nu kører.
-  Løsningsanalyse, rækkefølge og billige eksperimenter: `BROWSER-VEJE.md`.
-- **Skrivebord og GPU samtidig — næsten.** Konflikten handler kun om SKÆRMEN (et
-  lærred, to malere): GLES kan sagtens regne og tegne offscreen, mens X kører — men
-  intet må vise noget på TV'et samtidig med X. Skal GPU'en vise noget, må X holde
-  pause — og efter en GPU-session skal boksen strøm-cykles for at få HDMI tilbage.
-  En baggrundsproces kan sagtens eje skærmen alene: render med GLES til en
-  offscreen-buffer, og "pip" resultatet til VOP'en ved at skrive til `/dev/fb0`.
+- **WebGL-spil i browseren.** Browseren skal have GPU-billeder ind i sit eget vindue
+  gennem en EGL-platform til X — den manglende oversætter er nu bygget
+  (`eglplatform_x11`), men selve browser-integrationen (stock Firefox +
+  `MOZ_X11_EGL=1`, evt. små patches) er stadig uafprøvet — et projekt i
+  uger-måneder-klassen, selvom fabrikken kører. Løsningsanalyse, rækkefølge og
+  billige eksperimenter: `BROWSER-VEJE.md`.
 
 **Reglerne vi lærte (kort):**
 1. En GPU-stak er tre lag — og mangler ét, virker intet.
@@ -174,8 +263,8 @@ skærmen. (Teknisk historie: DOK §5.15a; opslagsværket: HAANDBOG fælde 18.)
 |---|---|
 | Historien om hele Devuan-projektet og alle beslutningerne | `DOKUMENTATION.md` |
 | Grafikken i tekniske detaljer (målinger, fejlsøgning, opskrift) | `DOKUMENTATION.md` §5.13-5.15 |
-| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-18) |
+| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-22) |
 | Hvorfor vi ikke bare kan bruge en ny kerne | `DRIVER-PORTERING.md` |
 | Hvordan GPU'en kan komme ind i en browser — løsningsanalyse og rækkefølge | `BROWSER-VEJE.md` |
-| Vores GPU-programmer og diagnose-værktøjer | `devuan/gpu/` (og `devuan/gpu/diagnostik/`) |
+| Vores GPU-programmer og diagnose-værktøjer | `devuan/gpu/` (og `devuan/gpu/diagnostik/`, `devuan/gpu/eglplatform_x11/`) |
 | Hele rejsens historie i git | `git log` — hver commit fortæller et kapitel |

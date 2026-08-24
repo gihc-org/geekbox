@@ -112,7 +112,8 @@ viser på fb0 i 640x360-vinduet, ~9 fps, GL 3.1. To vigtige fælder (fikset):
 hybris' EGL-init skifter aktiv VT væk fra X (platformen chvt'er tilbage ved
 første present — fbdev-X viser kun indhold, når dens VT er aktiv), og tegning
 skal gå gennem vinduets egen X-forbindelse (klienten sender sit Display* som
-EGL-native-display). Detaljer: `GLES-DAEMON-PLAN.md` M4a.
+EGL-native-display). Fælderne: `HAANDBOG.md` 19-22. Detaljer:
+`GLES-DAEMON-PLAN.md` M4a + `DOKUMENTATION.md` §5.15b.
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen

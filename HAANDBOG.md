@@ -649,6 +649,74 @@ virker readback fra både FBO og default-framebuffer.
 (`SIGSEGV si_addr=NULL`), gdb (`glReadPixels_wrapper` kaldte 0x0), disassembly af
 wrapperen (slottet). Alt dokumenteret i DOK §5.15a.
 
+### Fælde 19: Hybris' EGL-init skifter aktiv VT — X tegner ikke til fb0, før man skifter tilbage
+
+**Symptom:** Et GLES-program opretter et X-vindue, `xwininfo` siger
+`Map State: IsViewable` og XPutImage køres uden fejl — men `/dev/fb0` er urørt
+(fbdump viser skrivebordet i vindue-området). Samme program virker pludselig, når
+man manuelt kører `chvt <X' vt>`.
+
+**Årsag:** Hybris' EGL-init (machybrisegl) kører en "display-dans" ved opstart og
+efterlader den AKTIVE VT på en anden kanal end X' (målt: vt10; X lå på vt7/vt8).
+fbdev-X' shadow-framebuffer kopieres kun til fb0, når X' egen VT er aktiv — er den
+ikke, tegner X ind i skyggen, men intet når lærredet. Alle tegninger ser derfor ud
+til at forsvinde, selvom vinduet og requestene er perfekte.
+
+**Kur:** Skift tilbage til X' VT EFTER EGL-init (og helst ved første present):
+find Xorgs VT via `/proc/<pid>/cmdline` og kør `chvt <vt>` / ioctl `VT_ACTIVATE` +
+`VT_WAITACTIVE` på `/dev/tty0`. `eglplatform_x11` gør det selv i `ensure_x_vt()`.
+
+**Detektiv-sporet:** `fgconsole` viste vt10 under kørslerne; `chvt 8` + gentest
+genoprettede rendering (6.420 px forskel i fbdump). Alt andet (LD_PRELOAD,
+forbindelse, XImage) var vildspor — "mål VT først".
+
+### Fælde 20: Tegning fra en anden X-forbindelse når ikke fb0
+
+**Symptom:** XPutImage/XFillRectangle uden X-fejl (XSync passerer), vinduet er
+IsViewable — men intet vises, heller ikke efter fælde 19-fixet. Tegning fra
+vinduets egen forbindelse virker derimod.
+
+**Årsag:** På denne boks' fbdev-X-server renderer tegninger kun, når de kommer fra
+den X-forbindelse, der oprettede vinduet. En "platform", der åbner sin egen
+forbindelse (`XOpenDisplay` i init_module) og tegner derfra, afleverer sine
+requests til serveren — men de når aldrig lærredet (serveren accepterer dem uden
+fejl).
+
+**Kur:** Tegn gennem vinduets egen forbindelse. I `eglplatform_x11` sender klienten
+sit `Display*` som EGL-native-display (`eglGetDisplay((EGLNativeDisplayType)dpy)`),
+og platformens `GetDisplay` gemmer det til `present()`.
+
+**Detektiv-sporet:** xdraw-probe med `--secondconn` (0 px) vs. samme forbindelse
+(6.420 px); XGetImage læste sort tilbage; request-strømme (strace `writev`) var
+byte-identiske i begge tilfælde.
+
+### Fælde 21: `popen`/`pgrep`/`system()` fejler i hybris-processer — ødelagt environ
+
+**Symptom:** Et hybris-loadet program (fx `eglplatform_x11` eller `gles_daemon`)
+kalder `system()`, `popen()` eller lignende for at køre et hjælpeprogram — og det
+virker ikke (execve fejler med EFAULT, `popen` returnerer NULL uden forklaring).
+
+**Årsag:** Efter hybris-init er processens `environ` ødelagt (målt i projektet:
+glibc 2.41's `system()` på 3.10-kernen). Det rammer alt, der exec'er: `system()`,
+`popen()`, og indirekte kommandoer der bygger på dem.
+
+**Kur:** `system_shim.so` overtager `system()` (kører med RENT env). For alt andet:
+undgå fork/exec — læs `/proc` direkte (`opendir`/`readdir` + `read` af `cmdline`)
+og brug ioctl i stedet for `chvt`-kommandoen. Målt: `popen` fejler, direkte
+`/proc`-scanning virker.
+
+### Fælde 22: `/proc/<pid>/cmdline` har NUL-separerede argumenter — almindelig `strstr` stopper for tidligt
+
+**Symptom:** Man scanner `/proc/*/cmdline` efter fx "vt8" hos Xorg — og finder det
+ikke, selvom `cat` viser det. F.eks. fælde 19-fixet "virker ikke", når det bygges
+med `strstr(cmd, "vt")`.
+
+**Årsag:** `/proc/<pid>/cmdline` adskiller argumenterne med NUL-byte. `strstr`
+stopper ved den første NUL (efter argv[0]=".../Xorg") og når aldrig "vt8".
+
+**Kur:** Iterér argument-for-argument: `for (p = cmd; p < cmd + n; p += strlen(p)+1)`
+og sammenlign hvert argument med `strncmp`/`strcmp`.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

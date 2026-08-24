@@ -456,6 +456,58 @@ H.264-decode). GPU-adgangen er nu LØST og verificeret (trin 0-1, en aften med
 målinger) — det, der stadig koster uger-måneder, er alene browser-integrationen
 (trin 2).
 
+### 5.15b `eglplatform_x11`-prototypen: GLES ind i et X-vindue (aug 2026)
+
+**Formål (BROWSER-VEJE §2.A):** en rigtig libhybris-EGL-platform, så GPU-billeder
+kan vises i et X-vindue, mens X kører — forudsætningen for Kodi og en browser.
+M2b-vindue-demoen (socket + Python + XPutImage) beviste mekanikken, men Kodi/browser
+kalder EGL direkte og kræver en platform, der selv præsenterer.
+
+**Arkitektur (kode: `devuan/gpu/eglplatform_x11/`):**
+- Platformen er et `eglplatform_*.so` i `/usr/local/lib/libhybris/`, der eksporterer
+  `ws_module_info` (hele `ws_module`-vtabellen fra A3: init_module, GetDisplay,
+  Terminate, CreateWindow, DestroyWindow, eglGetProcAddress, passthroughImageKHR,
+  eglQueryString, prepareSwap, finishSwap, setSwapInterval).
+- `CreateWindow` modtager XID'en og pakker den ind i en `X11NativeWindow`
+  (BaseNativeWindow fra `nativewindowbase.h`), som allokerer gralloc-buffere
+  (format RGBA_8888, usage `GRALLOC_USAGE_HW_FB|SW_READ_OFTEN` — målt: HW_COMPOSER
+  giver ENOMEM i PVR-grallocen).
+- `queueBuffer` → `gralloc->lock` (CPU-læsning) → RGB565-pakning (X' 16-bit
+  visual) → XPutImage.
+- Bygget på boksen (`build_box.sh`; armhf-X11-headere mangler på laptoppen).
+  Testklient: `test_client_x11.cpp` (X-vindue + `EGL_PLATFORM=x11` + cos-scene).
+
+**Verificeret (24. aug 2026):** 640x360-vindue viser cos-mønsteret på fb0 —
+100 unikke farver (0xFFFF, 0x0000, varme cos-farver 0xFF36 osv.), 6.208 px
+forskellige mellem to fbdump midt i kørslen (fase-sweep kører), ~9 fps @ 640x360,
+`GL_VERSION=OpenGL ES 3.1 build 1.4@3632227`, `GL_RENDERER=PowerVR Rogue G6110`,
+aktiv VT og HDMI-enable urørt bagefter. libEGL dlopen'er `eglplatform_x11.so` og
+kalder `ws_module_info` — A3-kontrakten holder.
+
+**To målte fælder (begge løst i platformen):**
+1. **Hybris' EGL-init skifter aktiv VT væk fra X' VT (målt: →vt10).** fbdev-X'
+   shadow-framebuffer kopieres kun til fb0, når X' VT er aktiv — ellers viser
+   xwininfo IsViewable, men fb0 er urørt (al tegning "forsvinder"). Fix:
+   `ensure_x_vt()` — find Xorgs VT via `/proc/<pid>/cmdline` (NB: NUL-adskilte
+   argumenter, se fælde 22) og ioctl `VT_ACTIVATE`+`VT_WAITACTIVE` på `/dev/tty0`,
+   kaldt ved første present. NB: `popen`/`pgrep` fejler i hybris-processer
+   (ødelagt environ → execve-EFAULT, fælde 21) — derfor direkte `/proc`-scanning.
+2. **Tegning fra en anden X-forbindelse end vinduets egen når ikke fb0 på denne
+   server** (requests accepteres uden fejl, intet renderer). Fix: klienten sender
+   sit `Display*` som EGL-native-display (`eglGetDisplay((EGLNativeDisplayType)dpy)`);
+   platformens `GetDisplay` gemmer det, og `present()` tegner via klientens
+   forbindelse.
+
+**Fejlsøgnings-sporet (kort):** solid-farve-test → 0 px i fb0 trods korrekte
+request-streams (strace `writev` byte-identiske); XGetImage læste sort;
+xdraw-probe viste at settle + samme-forbindelse virkede; `chvt 8`-testen isolerede
+VT-fælden. LD_PRELOAD var et vildspor (tilfældig korrelation). Fælder 19-22 i
+HAANDBOG.md.
+
+**Næste skridt:** afprøv platformen med en rigtig app (Kodi linker direkte mod
+hybris libEGL/libGLESv2 og kan køres med `EGL_PLATFORM=x11`), derefter stock
+Firefox + `MOZ_X11_EGL=1` (BROWSER-VEJE eksperiment 2).
+
 ## 6. Slutarkitekturen
 
 ```
@@ -512,7 +564,7 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 - OpenSSH-server (seccomp vs. 3.10) — brug dropbear
 - systemd-sysusers på boksen — divert'ed; pakkeinstallation foregår bedst i qemu-chroot på PC'en
 - WebGL i firefox-esr — umuligt på fbdev-stakken: ingen KMS/DRI, kun IGLX (§5.13)
-- Hardware video-decode/GPU-acceleration — stakken kører nu via libhybris (trin 0-1 udført, §5.15), men browser-WebGL er uger-måneder: broen mangler `eglplatform_x11`, og browseren kræver KMS/DRI. Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
+- Hardware video-decode/GPU-acceleration — stakken kører nu via libhybris (trin 0-1 udført, §5.15), og `eglplatform_x11`-prototypen (GLES ind i X-vindue) er bygget og verificeret (§5.15b). Browser-WebGL er stadig uger-måneder: selve browser-integrationen (stock Firefox + `MOZ_X11_EGL=1`) er uafprøvet. Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 
