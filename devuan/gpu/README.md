@@ -102,6 +102,18 @@ urørte ved quit); dræb en kørende daemon før scp.
 
 ## Python-projektet (i gang — aug 2026)
 
+## eglplatform_x11-prototype (24. aug 2026) — GLES ind i et X-vindue
+
+BROWSER-VEJE §2.A i udført form: `devuan/gpu/eglplatform_x11/` er en rigtig
+libhybris-EGL-platform, der renderer via PVR (offscreen, gralloc) og
+præsenterer i et X-vindue via XPutImage. Bygges på boksen (`build_box.sh`),
+testes med `test_client_x11` (`EGL_PLATFORM=x11`). Verificeret: cos-scenen
+viser på fb0 i 640x360-vinduet, ~9 fps, GL 3.1. To vigtige fælder (fikset):
+hybris' EGL-init skifter aktiv VT væk fra X (platformen chvt'er tilbage ved
+første present — fbdev-X viser kun indhold, når dens VT er aktiv), og tegning
+skal gå gennem vinduets egen X-forbindelse (klienten sender sit Display* som
+EGL-native-display). Detaljer: `GLES-DAEMON-PLAN.md` M4a.
+
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen
 og blitter til fb0 — eller returnerer pixels til et X-vindue (M2b, ovenfor).

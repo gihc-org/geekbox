@@ -281,6 +281,33 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 - [ ] Overvej udvidelser (ikke v1): scaling, select()-event-loop i daemonen,
       tastatur-input til frontenden, flere scener.
 
+### M4a — `eglplatform_x11`-prototype (24. aug 2026, BROWSER-VEJE §2.A)
+
+`devuan/gpu/eglplatform_x11/` — en rigtig libhybris EGL-platform: PVR renderer
+offscreen i gralloc-buffere, og platformens `queueBuffer` præsenterer dem i et
+X-vindue via XPutImage (RGB565-pakning for X' 16-bit-visual). Bygges på boksen
+(`build_box.sh`; armhf-X11-headere mangler på laptoppen). Testklient:
+`test_client_x11.cpp` (X-vindue + `EGL_PLATFORM=x11` + cos-scene).
+
+**VERIFICERET (24. aug 2026):** 640x360-vindue viser cos-mønsteret på fb0 —
+100 unikke farver (hvid 0xFFFF, sort, varme cos-farver 0xFF36 osv.), animation
+bekræftet (6.208 px forskel mellem to dumps midt i kørslen), ~9 fps @ 640x360,
+GL 3.1 PowerVR G6110, aktiv VT og HDMI urørt bagefter. `ws_module`-kontrakten
+(A3) holder — libEGL dlopen'er `eglplatform_x11.so` og kalder `ws_module_info`.
+
+**To målte fælder (begge fikset i platformen):**
+1. **Hybris' EGL-init skifter aktiv VT væk fra X' VT (målt: →10), og fbdev-X
+   kopierer KUN shadow→fb0, når X' VT er aktiv** — ellers når al tegning aldrig
+   skærmen (xwininfo viser IsViewable, men fb0 er urørt). Fix: `ensure_x_vt()`
+   finder Xorgs VT via `/proc/*/cmdline` (bemærk: NUL-adskilte argumenter — almindelig
+   strstr stopper ved første NUL!) og chvt'er via ioctl, kaldt ved første present.
+   NB: hverken `popen`/`pgrep` virker i hybris-processer (ødelagt environ →
+   execve-EFAULT — samme fælde som `system()`).
+2. **Tegning fra en ANDEN X-forbindelse end vinduets egen når ikke fb0 på
+   denne server** (uanset settle/Expose). Fix: klienten sender sit `Display*`
+   som EGL-native-display (`eglGetDisplay(dpy)`); platformens `GetDisplay`
+   gemmer det, og `present()` tegner via klientens forbindelse.
+
 ## Regler og fælder (målt/arvet — ikke gæt)
 
 1. **X stoppes under brug** — daemonen blitter til fb0, så skærm-output kolliderer

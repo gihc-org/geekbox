@@ -205,6 +205,13 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    fbdump), 10 fps @ 640x360. Præsentationstesen i §2.A (offscreen →
    XPutImage) er dermed bekræftet som teknisk vej; det manglende stykke er
    selve `eglplatform_x11`-platformen (A).
+   **OPFØLGNING (24. aug 2026):** selve `eglplatform_x11`-platformen er nu
+   bygget og verificeret — `devuan/gpu/eglplatform_x11/` (GLES 3.1 → gralloc →
+   XPutImage → fb0, ~9 fps @ 640x360, cos-scene). To målte fælder løst:
+   hybris' EGL-init skifter aktiv VT væk fra X (fix: platformen chvt'er tilbage
+   ved første present), og tegning skal gå gennem vinduets egen X-forbindelse
+   (fix: klientens Display* som EGL-native-display). Detaljer:
+   `GLES-DAEMON-PLAN.md` M4a.
 4. **Kodi fra Debian-armhf** + broerne i `/opt/hybris`: producenten kørte netop
    denne kombination i 2016. Den korteste vej til en GPU-accelereret fuldskærms-app,
    og samtidig beviset for at stakken kan bære en rigtig app.
