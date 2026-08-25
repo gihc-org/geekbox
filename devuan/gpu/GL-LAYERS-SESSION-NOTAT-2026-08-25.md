@@ -16,6 +16,8 @@
 - [revideret] KONKLUSION: frysen er IKKE en present-/kompositeringsfejl — det er en RENDER-fejl efter GPU-proces-genstart: WebRender tegner sorte frames ind i EGL-overfladen. X-serveren kompositerer fint (desktop + openbox-ramme + øvrige vinduer vises). Den tidligere "present-stien er synderen"-konklusion er hermed kvalificeret/ændret.
 - [målt] Run D (gfx:5, 22:17–22:21): DeviceReset allerede ved present #2–3 (<10 s inde) — reset-tidspunktet varierer altså (run C: ~#50; run D: ~#2). `MOZ_LOG=gfx:5` nåede GPU-processen (verificeret i environ) men gav INGEN ekstra log-linjer — den vej er blind i denne build.
 - [aftalt] Ny test FØR videre Firefox-kørsler (22:21): **standalone GLES-loop gennem den samme eglplatform_x11-sti** (`test_client_x11` på boksen; evt. ny probe med frame-tæller + eglSwapBuffers-fejlkode) i 3+ min. Virker den uendeligt → fejlen er Firefox/WebRender-samspil; fejler/sortner den efter N frames → vendor-stakken (hybris/PVR/gralloc) er roden.
+- [udført] Standalone GLES-loop (22:22–22:27): **300 swaps uden fejl (2,2 fps, 137 s), present #1→#300, X OK** — vendor-stakken (hybris/EGL/gralloc → eglplatform_x11 → XPutImage) overlever langt ud over Firefox' reset-punkt (#2–#100). **Fejlen er Firefox/WebRender-samspillet, IKKE vendor-stakken.**
+- [målt] test_client artefakt: overfladen blev `fmt=4` (RGB_565) mens shim'ens put_image-konvertering er hårdkodet RGBA8888 (4 B/px) → 2×2-tiling + pixeleret nederste halvdel (bruger-observation + kvadrant-lysstyrke TL=TR=160, BL=82, BR=79). Testklient-specifikt; Firefox bruger fmt=1 (RGBA_8888). Værktøj skal rettes (respekter b->format) før test_client bruges til pixel-tjek.
 
 ## Status i ét blik
 

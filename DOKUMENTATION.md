@@ -732,6 +732,10 @@ den stabile opsætning for UI + WebGL-test.
    (`test_client_x11`, 3+ min): fejler vendor-stakken selv (eglSwapBuffers-
    fejl/sorte frames efter N swaps) → roden er hybris/PVR/gralloc, ikke
    Firefox; kører den fint → fejlen er Firefox/WebRender-samspillet.
+   **UDFØRT (22:27): 300 swaps uden fejl (2,2 fps) — vendor-stakken
+   overlever; fejlen er Firefox/WebRender-specifik.** NB: test_client
+   overflade blev fmt=4 (RGB_565) og shim'ens konvertering er hårdkodet
+   RGBA8888 → 2×2-tiling/artefakter i testklienten (fix: respekter b->format).
 4. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
    dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
    bidrage til reset/nedbrud).
