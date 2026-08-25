@@ -18,6 +18,10 @@
 - [aftalt] Ny test FØR videre Firefox-kørsler (22:21): **standalone GLES-loop gennem den samme eglplatform_x11-sti** (`test_client_x11` på boksen; evt. ny probe med frame-tæller + eglSwapBuffers-fejlkode) i 3+ min. Virker den uendeligt → fejlen er Firefox/WebRender-samspil; fejler/sortner den efter N frames → vendor-stakken (hybris/PVR/gralloc) er roden.
 - [udført] Standalone GLES-loop (22:22–22:27): **300 swaps uden fejl (2,2 fps, 137 s), present #1→#300, X OK** — vendor-stakken (hybris/EGL/gralloc → eglplatform_x11 → XPutImage) overlever langt ud over Firefox' reset-punkt (#2–#100). **Fejlen er Firefox/WebRender-samspillet, IKKE vendor-stakken.**
 - [målt] test_client artefakt: overfladen blev `fmt=4` (RGB_565) mens shim'ens put_image-konvertering er hårdkodet RGBA8888 (4 B/px) → 2×2-tiling + pixeleret nederste halvdel (bruger-observation + kvadrant-lysstyrke TL=TR=160, BL=82, BR=79). Testklient-specifikt; Firefox bruger fmt=1 (RGBA_8888). Værktøj skal rettes (respekter b->format) før test_client bruges til pixel-tjek.
+- [målt] **Present-loft ~2M px/s gælder STANDALONE-klienten** (640×360 → ~9 fps, 1280×720 → 2,2 fps, 1280×948 → ~1,4 fps), men **Firefox' kompositor er kadence-bundet, ikke transfer-bundet**: scale=0,5 (640×407, run F) gav STADIG ~1,4 fps — Firefox' GL-layers-kompositor kører fast ~1,4 Hz uanset canvas-størrelse (vsync-kadence-problem på denne stak). rAF følger kompositor-takten.
+- [udført] Run E (gfx:5+WebRender:5, 22:28–22:38): **10 min / present #800+ / 0 DeviceReset** — reset'et er FLAKY (run C ~#50, run D ~#2, run E ingen); MOZ_LOG gav stadig intet ekstra.
+- [udført] Run F (scale=0,5, 22:38–22:47): **9 min / present #800+ / 0 DeviceReset** — hurtigere presents (~4× mindre canvas) fjerner IKKE reset'et (2 af 4 kørsler på denne boot reset: C+D; E+F overlevede). Reset'et er flaky, ikke canvas-størrelses-afhængigt.
+- [målt] Firefox-kompositor-kadence ~1,4 Hz er uafhængig af canvas-størrelse (scale=1 og 0,5 giver samme FPS) — en separat vsync-kadence-problematik, ikke transfer-loftet (som kun gælder standalone-klienten).
 
 ## Status i ét blik
 

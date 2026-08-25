@@ -741,6 +741,9 @@ den stabile opsætning for UI + WebGL-test.
    bidrage til reset/nedbrud).
 5. **Workaround-jagt:** automatisk genstart af Firefox når canvas'et bliver
    sort (frisk proces renderer korrekt) — eller undgå reset via prefs.
+   Status 25. aug nat: reset'et er flaky (~50 % af kørslerne; 2 af 4 på
+   denne boot), uafhængigt af canvas-størrelse; frisk Firefox-start efter
+   reset renderer korrekt, så auto-genstart er en brugbar nødløsning.
 6. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
    manglede i dokumentationen): **Shadertoy** (shadertoy.com, pure fragment-
    shaders, ingen reklamer, anden kodevej end Unity), **WebGL-aquarium /
