@@ -55,6 +55,25 @@ præcis den der reseter. Samme historie passer med run D (reset ved present
    og se om reset-raten stiger — bekræfter resize-racen som udløser.
 5. **Kadence-problemet (~1,4 Hz)** er en separat sag, tages bagefter.
 
+## Opdatering 23:10 — WebRender kører reelt (plan-skridt 3 besvaret)
+
+**`gfx.webrender.enabled=false` er IKKE effektivt:** GPU-processen har 25
+tråde, alle WR* (WrGlyphRasterizer, WRWorkerLP#0-7, WRWorker#0-3, ...).
+Firefox 128 ESR kører altså WebRender-på-OpenGL i denne "GL-layers"-tilstand.
+Det forklarer `WR_POST_UPDATE`-reset'et (WebRender-detektion) og passer med
+alt det målte.
+
+**Buffer-race-fixet (skridt 1) er implementeret + bygget** (md5
+`409af875`, `retired`-felter, `release_buffer`, slet aldrig busy buffer),
+men **run 1 i probe2 reset STADIG** (98 s, present #100) med **0
+retire-hændelser** i loggen — enten fanger `busy`-flaget ikke racen, eller
+reset'et har en anden udløser. Probe2 kører 5×5 min med det rettede modul.
+
+**Næste eksperiment (efter probe2):** `gfx.webrender.force-disabled=true`
+i profilen (hard override) → sanity-tjek at siden stadig renderer (gamle
+GL-layers-kompositor via EGL) → probe igen 5×5 min. Hvis reset'et forsvinder
+uden WebRender, har vi en brugbar konfiguration til spillet.
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`

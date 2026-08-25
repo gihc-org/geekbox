@@ -125,7 +125,7 @@ class X11NativeWindowBuffer : public BaseNativeWindowBuffer {
 public:
     X11NativeWindowBuffer(alloc_device_t *alloc, unsigned int w, unsigned int h,
                           unsigned int fmt, unsigned int usage)
-        : m_alloc(alloc), busy(0)
+        : m_alloc(alloc), busy(0), retired(0)
     {
         int out_stride = 0;
         if (m_alloc && m_alloc->alloc(m_alloc, (int)w, (int)h, (int)fmt, (int)usage,
@@ -144,8 +144,7 @@ public:
          * decRef-slotten ([28]) og efterlader incRef ([24]) = NULL — men PVR's
          * WSEGL kalder incRef på bufferen ved swap (SIGSEGV 0x0 i
          * libpvrANDROID_WSEGL). Vi overskriver begge med no-ops: poolen ejes
-         * af vinduet (busy-flag + destroyBuffers), så refcount er uden
-         * betydning for levetiden i v1. */
+         * af vinduet (busy-flag + retired + destroyBuffers). */
         common.incRef = x11buf_incRef;
         common.decRef = x11buf_decRef;
     }
@@ -157,6 +156,7 @@ public:
 
     alloc_device_t *m_alloc;
     int busy;
+    int retired; /* sat når destroyBuffers vil slette, men bufferen er busy */
 
 private:
     static void x11buf_incRef(struct android_native_base_t *base) { (void)base; }
@@ -213,12 +213,16 @@ protected:
             m_sizeDirty = false;
             destroyBuffers();
         }
-        if (m_bufList.empty())
+        unsigned int live = 0;
+        for (size_t i = 0; i < m_bufList.size(); i++)
+            if (!m_bufList[i]->retired)
+                live++;
+        if (live == 0)
             allocateBuffers(2);
         for (unsigned int i = 0; i < m_bufList.size(); i++) {
             X11NativeWindowBuffer *b =
                 m_bufList[(m_nextBuffer + i) % m_bufList.size()];
-            if (!b->busy) {
+            if (!b->retired && !b->busy) {
                 b->busy = 1;
                 m_nextBuffer = (m_nextBuffer + i + 1) % m_bufList.size();
                 *buffer = b;
@@ -237,14 +241,14 @@ protected:
         X11NativeWindowBuffer *b = static_cast<X11NativeWindowBuffer *>(buffer);
         refresh_size();
         present(b);
-        b->busy = 0;
+        release_buffer(b);
         return NO_ERROR;
     }
 
     virtual int cancelBuffer(BaseNativeWindowBuffer *buffer, int fenceFd)
     {
         (void)fenceFd;
-        static_cast<X11NativeWindowBuffer *>(buffer)->busy = 0;
+        release_buffer(static_cast<X11NativeWindowBuffer *>(buffer));
         return NO_ERROR;
     }
 
@@ -318,17 +322,57 @@ private:
             }
             m_bufList.push_back(b);
         }
-        m_bufferCount = (unsigned int)m_bufList.size();
+        m_bufferCount = live_count();
         fprintf(stderr, "x11ws: %u buffer(e) allokeret (%ux%u fmt=%u usage=%x)\n",
                 m_bufferCount, m_width, m_height, m_format, m_usage);
     }
 
+    unsigned int live_count() const
+    {
+        unsigned int n = 0;
+        for (size_t i = 0; i < m_bufList.size(); i++)
+            if (!m_bufList[i]->retired)
+                n++;
+        return n;
+    }
+
     void destroyBuffers()
     {
-        for (size_t i = 0; i < m_bufList.size(); i++)
-            delete m_bufList[i];
-        m_bufList.clear();
-        m_bufferCount = 0;
+        /* Slet ALDRIG en busy buffer: ved 1x1→resize-dansen (Firefox opretter
+         * kompositorvinduet 1x1 og resizer bagefter) kan GPU'en stadig
+         * rendere i en buffer når destroyBuffers kører → use-after-free →
+         * sporadisk GL-fejl → Firefox' WR_POST_UPDATE-reset (målt 25. aug
+         * 2026). Busy-buffere markeres retired og frigøres i release_buffer. */
+        std::vector<X11NativeWindowBuffer *> keep;
+        for (size_t i = 0; i < m_bufList.size(); i++) {
+            X11NativeWindowBuffer *b = m_bufList[i];
+            if (b->busy) {
+                b->retired = 1;
+                keep.push_back(b);
+            } else {
+                delete b;
+            }
+        }
+        m_bufList = keep;
+        m_bufferCount = live_count();
+        if (!keep.empty())
+            fprintf(stderr, "x11ws: destroyBuffers: %u buffer(e) venter "
+                    "(busy/retired)\n", (unsigned)keep.size());
+    }
+
+    void release_buffer(X11NativeWindowBuffer *b)
+    {
+        b->busy = 0;
+        if (b->retired) {
+            for (size_t i = 0; i < m_bufList.size(); i++) {
+                if (m_bufList[i] == b) {
+                    m_bufList.erase(m_bufList.begin() + i);
+                    delete b;
+                    break;
+                }
+            }
+            m_bufferCount = live_count();
+        }
     }
 
     void present(X11NativeWindowBuffer *b)
