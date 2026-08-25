@@ -1,5 +1,14 @@
 # GL-layers-forsøg — session-notat 25. aug 2026 (aften/nat)
 
+## Aftaler og beslutninger
+
+- [udført] Lokal stress-side bygget + kørt — fejlen reproduceres uden Unity/reklamer/netværk; present-stien er synderen (25. aug nat, 21:25).
+- [udført] stall_capture.sh rettet (GPU-lookup + present-nummer + rate-check), rootdiff 16/32-bpp, capture_stress.sh bygget (21:30).
+- [udført] xrefresh installeret via x11-xserver-utils (21:38).
+- [udført] Boks genstartet efter D-state-kile (sysrq-b), GPU-init + patches genkørt, værktøjer genopbygget (21:40).
+- [aftalt] Næste: uBlock Origin som kontrol → gdb på GPU-processen ved stall → xrefresh-test → andre WebGL-sider (Shadertoy, aquarium/three.js, Basemark sidst).
+- [afventer] Remote debugging-port 9222 aldrig observeret lyttende — uafklaret, ikke kritisk.
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`
