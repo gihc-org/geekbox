@@ -642,6 +642,75 @@ Navigator-vinduet er fremme — verificeret: client Relative Y=23, knapper
 synlige. Fælde: en testside med rød body-baggrund fik boksen til at slukke
 HELT to gange (ingen panic-log i 3.10-kernen) — kør ikke den test.
 
+### 5.15d GL-layers-forsøget: spillet animerer i vinduet — skærmen tier (25. aug 2026)
+
+Situationen efter §5.15c: WebGL 2.0 og hele Firefox-UI'et virker med
+Basic-kompositoren, men **Subway Surfers (poki.com) frøs efter første frame**
+(målt: 0 pixel ændring over 36 s i spilvinduet; main ~118 % CPU fordelt på
+mange tråde à ~5 % — ingen enkelt spinner; content-hovedtråden lavede ~3.800
+`clock_gettime`-kald/sek (busy-wait); SoftwareVsyncThread ~1.800/sek; ingen
+GPU-proces). Det lignede en livelock i vsync/present-stien, ikke langsom
+readback.
+
+**Eksperiment (en variabel):** `layers.acceleration.disabled` true → false
+(behold `gfx.webrender.enabled=false`) — gamle GL-layers-kompositor via EGL.
+Resultater, alle målt:
+
+- **Testside** (`webgl_test_dump.html`): `WEBGL_RESULT OK PowerVR Rogue
+  G6200, or similar WebGL 2.0`, GPU-proces kører, present-kæden kører
+  (#50 → #100 → ...), CSS renderer korrekt (body `#222` = præcis #222, IKKE
+  sort som WebRender-fejlen), og **efter genstart målt at animationen når
+  BÅDE X-root (518.481 px/2 s) og fb0 (329.280 px/2 s)** — GL-layers virker
+  end-to-end for den simple side.
+- **Spillet:** første frame når skærmen (~126.416 px ændret i vindueområdet
+  på root), hvorefter præsentationen til root/fb0 stopper — MEN vinduets
+  egne pixels fortsætter med at animere (70–168k px/2–4 s), present-kæden
+  sænker farten til ~5 fps (#250+ vokser langsomt; loggen skriver hver 50.).
+- **To svigtmønstre målt:** (a) GPU-proces `DeviceReset
+  DeviceResetReason::UNKNOWN DeviceResetDetectPlace::WR_POST_UPDATE` ~50
+  frames inde → ny GPU-proces gen-wrapper samme vindue, presents fortsætter
+  ind i vinduet (op til #900), men skærmen forbliver sort; (b) uden reset:
+  present-kæden sænker til ~5 fps og skærmen stopper efter første frame(s).
+  Begge ender med `CompositorBridgeChild ... AbnormalShutdown`, `accel
+  canvas lost`, channel error — og **to kørsler tog hele boksen ned**
+  (strøm-cykling nødvendig; ingen panic-log i 3.10-kernen, som ved
+  body-rød-testen i §5.15c).
+- **Prober (nye værktøjer i `devuan/gpu/eglplatform_x11/`):** `x32probe1–4.c`
+  beviser at X-serveren KAN kompositerer 32-bit vinduer/children til root OG
+  fb0: openbox-framet, Firefox' visual 0x1ec, separat X-forbindelse som
+  tegner, XSync efter hver frame, gentagne XPutImage (grøn/blå skifte synligt
+  frame-for-frame på root og fb0). Vindues-attributter (depth 32, visual
+  0x1ec, colormap 0x100002a ikke installeret, backing NotUseful, gravity)
+  matcher Firefox' vinduer. **Fejlen er altså Firefox/GPU-genstart-specifik,
+  IKKE en X-server-begrænsning** (uafklaret).
+
+**Konklusion:** GL-layers-stien løser spillets render-livelock (spillet
+animerer i vinduet), men præsentationen til den fysiske skærm er stadig i
+stykker for spil-lignende belastning — og spil-kørslerne er ustabile for
+boksen. Basic-kompositoren (status quo i §5.15c) er fortsat den stabile
+opsætning for UI + WebGL-test.
+
+**Næste skridt (aftalt):**
+1. Byg en **lokal WebGL-stress-side** (ingen reklamer, ingen Unity, ingen
+   netværk): kontinuerlig rAF-animation, fuld canvas, FPS-tæller via dump,
+   justerbar opløsning. Kør 5+ min og se om skærmen opdaterer hele tiden —
+   adskiller present-sti-fejl fra poki/Unity-specifikke problemer.
+2. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
+   dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
+   bidrage til reset/nedbrud).
+3. **gdb på GPU-processen** når present-kæden sænker farten (`stall_capture.sh`
+   i repoet) — find den blokerende tråd (gralloc-lock? XSync? buffer-tømning?).
+4. Test om tvungen skærmopdatering (installér `xrefresh` fra x11-utils) får
+   indholdet frem — det ville pege på en server-redraw-fejl og give en
+   workaround.
+
+Oversigt over nye værktøjer: `xdump.c` (XGetImage-dump),
+`rootdiff.c` (16-bpp-diff på boksen), `capture_game_black.sh`
+(snapshot-loop root+fb0+vindue-attributter), `stall_capture.sh`
+(gdb ved present-stall), `start_game.sh` (instrumenteret spil-launcher),
+`x32probe1–4.c` (X-kompositerings-prober). Hele forløbet:
+`devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
+
 ## 6. Slutarkitekturen
 
 ```
@@ -697,8 +766,14 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
 
 - OpenSSH-server (seccomp vs. 3.10) — brug dropbear
 - systemd-sysusers på boksen — divert'ed; pakkeinstallation foregår bedst i qemu-chroot på PC'en
-- WebGL i firefox-esr — umuligt på fbdev-stakken: ingen KMS/DRI, kun IGLX (§5.13)
-- Hardware video-decode/GPU-acceleration — stakken kører nu via libhybris (trin 0-1 udført, §5.15), og `eglplatform_x11`-prototypen (GLES ind i X-vindue) er bygget og verificeret (§5.15b). Browser-WebGL er stadig uger-måneder: selve browser-integrationen (stock Firefox + `MOZ_X11_EGL=1`) er uafprøvet. Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
+- WebGL i firefox-esr — virker nu (2.0, PowerVR G6110) via hybris +
+  `eglplatform_x11` (§5.15c) med Basic-kompositoren; **fulde spil fryser dog
+  præsentationen til skærmen** — GL-layers-stien løser render-livelocket i
+  vinduet, men skærmen opdaterer ikke (og spil-kørsler har taget boksen ned
+  to gange). Status og næste skridt: §5.15d
+- Hardware video-decode/GPU-acceleration — WebGL 2.0 virker i firefox-esr via
+  hybris-stakken (§5.15c); spil-præsentationen er det åbne spor (§5.15d).
+  Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 

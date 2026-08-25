@@ -255,6 +255,43 @@ Vi har sporet begge fejl med gdb og ved præcis, hvor vi skal kigge næste gang.
 `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`; værktøjer:
 `devuan/gpu/eglplatform_x11/`.)
 
+### Spillet kører — men skærmen tier stille (25. aug 2026)
+
+Så fik vi WebGL i Firefox til at virke — hele brugerfladen inklusive. Men da
+vi prøvede et rigtigt spil (Subway Surfers på poki.com), skete det samme hver
+gang: spillets første billede dukkede op på skærmen, og så stod ALT stille.
+Firefox var ellers travl som en myretue — processorerne arbejdede, loggene
+voksede — men skærmen ændrede ikke en pixel.
+
+Vi fandt to forskellige måder at tegne Firefox-vinduet på, og prøvede dem
+begge:
+
+- **Basic-måden** (UI'et males af processoren direkte på skærmen): hele
+  vinduet ser rigtigt ud, men spillet fryser efter første billede — Firefox
+  sidder i en travl venteløkke der aldrig bliver færdig.
+- **GL-layers-måden** (GPU'en maler, og vi flytter billedet ind i vinduet):
+  nu ANIMERER spillet faktisk — vindue-pixlerne danser, billede-tælleren
+  vokser. Men når vi kigger på selve skærmen, er den stadig frossen i det
+  første billede. Og efter nogle minutter dør hele boksen (to gange målt —
+  strømmen skal tages og gives igen).
+
+For at være sikre på, at det ikke er skærm-driveren der er skyld i det, byggede
+vi nogle helt små testprogrammer: de laver et vindue med samme "gennemsigtige"
+farve-format som Firefox bruger, og maler skiftevis grøn og blå i det. Det
+virker perfekt — skærmen skifter farve billede for billede, også når et andet
+program laver malingen. Så X-serveren kan godt; fejlen ligger et sted i
+samspillet mellem Firefox og GPU-processen, når den kører et rigtigt spil i
+flere sekunder (eller genstarter sig selv midt i det hele — det gør den
+indimellem, og så holder skærmen helt op med at opdatere).
+
+Næste skridt: en **lokal stress-side uden reklamer og uden spilmotor** (bare
+en animeret WebGL-verden), så vi kan se om skærmen også tier dér — hvis den
+gør, er fejlen vores egen præsentations-sti; hvis ikke, er det noget særligt
+ved poki/Unity-spillet. Vi prøver også at blokere reklamerne (uBlock) som
+kontrol — de er ikke årsagen, men de slider på en i forvejen presset boks.
+(Teknisk: DOK §5.15d; hele måle-forløbet:
+`devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.)
+
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
 **Det vi kan:**
@@ -272,16 +309,17 @@ Vi har sporet begge fejl med gdb og ved præcis, hvor vi skal kigge næste gang.
   (hwcomposer/kiosk) kræver stadig, at X holder pause.
 - Forklare præcis, hvorfor noget virker eller ikke virker — hver fælde er målt og
   skrevet ned, så intet behøver gættes igen.
+- **Køre WebGL 2.0 i Firefox med hele brugerfladen synlig** — med
+  Basic-kompositoren: siden og canvas tegnes korrekt på skærmen (PowerVR
+  G6110, `WEBGL_RESULT OK`). Desktop-genvejen "Firefox WebGL" virker fra
+  LXDE-sessionen.
 
 **Det vi ikke kan (endnu):**
-- **WebGL-spil i browseren.** Oversætteren til X-vinduer er bygget
-  (`eglplatform_x11`), og Firefox' GL-probe er nu **grøn** (PowerVR Rogue
-  G6110, GLES 3.1, TEST_TYPE=EGL) efter vi fik probens funktionsopslag gennem
-  oversætteren og rettede dens 16-bit-dybdetjek. Hele Firefox kan dog stadig
-  ikke oprette WebRenders GPU-kontekst (to målte fejlmønstre) og falder tilbage
-  til software-WebRender. Næste skridt står i
-  `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`, `BROWSER-VEJE.md`
-  og DOK §5.15c.
+- **WebGL-spil i browseren.** Med Basic-kompositoren fryser spillet efter
+  første billede (en travl venteløkke i præsentationsstien). Med
+  GL-layers-kompositoren animerer spillet i vinduet, men skærmen opdaterer
+  ikke — og spil-kørsler har taget boksen ned to gange. Næste skridt står i
+  DOK §5.15d og `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
 
 **Reglerne vi lærte (kort):**
 1. En GPU-stak er tre lag — og mangler ét, virker intet.
