@@ -14,6 +14,8 @@
 - [målt] fb-driver-read-wedge er et SEPARAT kernel-problem: XGetImage(root)/dd(fb0) kiler fb-driverens read() i D-state under present-belastning (run B) — ikke X-serveren.
 - [udført] Run C konklusion (bruger-observation + pixel-analyse 22:14): RESTEN af skærmen har fine farver — KUN Firefox-vinduets indhold er sort; openbox-titellinjen (tekst) er læsbar. Vindue-dump er ~100 % sort (mean 0-2, 0 % lyse pixels); de 78k px/4 s ændringer er støj. rAF/FPS kører videre, presents fortsætter (#800+), men indholdet er SORT. Ingen CONTEXT_LOST logget, ingen GL-fejl i loggen.
 - [revideret] KONKLUSION: frysen er IKKE en present-/kompositeringsfejl — det er en RENDER-fejl efter GPU-proces-genstart: WebRender tegner sorte frames ind i EGL-overfladen. X-serveren kompositerer fint (desktop + openbox-ramme + øvrige vinduer vises). Den tidligere "present-stien er synderen"-konklusion er hermed kvalificeret/ændret.
+- [målt] Run D (gfx:5, 22:17–22:21): DeviceReset allerede ved present #2–3 (<10 s inde) — reset-tidspunktet varierer altså (run C: ~#50; run D: ~#2). `MOZ_LOG=gfx:5` nåede GPU-processen (verificeret i environ) men gav INGEN ekstra log-linjer — den vej er blind i denne build.
+- [aftalt] Ny test FØR videre Firefox-kørsler (22:21): **standalone GLES-loop gennem den samme eglplatform_x11-sti** (`test_client_x11` på boksen; evt. ny probe med frame-tæller + eglSwapBuffers-fejlkode) i 3+ min. Virker den uendeligt → fejlen er Firefox/WebRender-samspil; fejler/sortner den efter N frames → vendor-stakken (hybris/PVR/gralloc) er roden.
 
 ## Status i ét blik
 

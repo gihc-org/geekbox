@@ -726,12 +726,18 @@ den stabile opsætning for UI + WebGL-test.
    gfx-logging (`MOZ_LOG="gfx:5"` eller `gfx.logging.level`-pref, IKKE
    MOZ_GL_SPEW) og fang fejlkoden omkring `WR_POST_UPDATE`; test også om
    reset'et er frame-antal-afhængigt (let vs. tung side, `scale`/`tex`).
-3. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
+   NB: `MOZ_LOG=gfx:5` gav intet output i run D — logningen er blind i denne
+   build; alternativet er nedenstående standalone-test.
+3. **Standalone GLES-loop gennem samme eglplatform_x11-sti**
+   (`test_client_x11`, 3+ min): fejler vendor-stakken selv (eglSwapBuffers-
+   fejl/sorte frames efter N swaps) → roden er hybris/PVR/gralloc, ikke
+   Firefox; kører den fint → fejlen er Firefox/WebRender-samspillet.
+4. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
    dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
    bidrage til reset/nedbrud).
-4. **Workaround-jagt:** automatisk genstart af Firefox når canvas'et bliver
+5. **Workaround-jagt:** automatisk genstart af Firefox når canvas'et bliver
    sort (frisk proces renderer korrekt) — eller undgå reset via prefs.
-5. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
+6. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
    manglede i dokumentationen): **Shadertoy** (shadertoy.com, pure fragment-
    shaders, ingen reklamer, anden kodevej end Unity), **WebGL-aquarium /
    three.js-eksempler** (mange draw-calls, kontinuerlig animation, ingen
