@@ -501,7 +501,11 @@ private:
         XPutImage(m_dpy, m_win, gc, img, 0, 0, 0, 0, w, h);
         XFreeGC(m_dpy, gc);
         XFlush(m_dpy);
-        XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
+        static int no_sync = -1;
+        if (no_sync < 0)
+            no_sync = getenv("X11WS_NO_SYNC") ? atoi(getenv("X11WS_NO_SYNC")) : 0;
+        if (!no_sync)
+            XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
         img->data = NULL; /* data ejes af kalderen — lad XDestroyImage ikke frigøre */
         XDestroyImage(img);
     }

@@ -38,6 +38,20 @@
   viste 0 fejl-returværdier.
 - [udført] eglMakeCurrent-fangst bygget: `capture_egl_makecurrent.sh` (gdb-
   breakpoint på libEGL_POWERVR_ROGUE's eglMakeCurrent offset 0x11d4).
+- [målt] **eglMakeCurrent er en skjult flaskehals (26. aug, 01:2x–01:3x):**
+  med gdb-breakpoint på vendors eglMakeCurrent (stop/continue pr. kald) kører
+  Firefox' kompositor **2,7 FPS** (reproduceret 2×, #100+ uden reset);
+  uden breakpoint: **~1,5 FPS**. gdb-attach UDEN breakpoints giver IKKE
+  2,7 (1,5) → det er breakpointets stop/continue-effekt på eglMakeCurrent,
+  ikke ptrace i sig selv. Forklaring: vendors eglMakeCurrent koster tid pr.
+  kald (2–3 kald pr. present); breakpointet returnerer uden at køre koden.
+- [målt] LD_PRELOAD kan IKKE intercepte eglMakeCurrent i Firefox' GPU-proces
+  (wrapper med EGLSKIP_MAKECURRENT=1: 0 hits — Firefox resolver direkte fra
+  vendor-lib'ens handle, dlsym(handle) ser ikke preload-symboler).
+- [målt] XSync pr. present er IKKE flaskehalsen: X11WS_NO_SYNC=1 gav stadig
+  ~1,6–1,9 FPS (og et reset ved #2) — XSync beholdes (den fanger protokolfejl).
+- [målt] Konverteringen (RGBA→ARGB/565) er IKKE flaskehalsen: standalone
+  benchmark 1280×948 = ~13 ms (88–97 Mpx/s).
 
 ## Status i ét blik
 
@@ -94,14 +108,17 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
 
 ## Næste skridt (i rækkefølge)
 
-1. **Buffer-fixet virker (målt #350+ uden reset/fault, FPS 1,5→2,7) — fortsæt
-   kørslen til 10+ min og test så det RIGTIGE spil (Subway Surfers).** Hvis
-   spillet er stabilt, er sagen i mål (evt. med auto-genstart-workaround som
-   sikkerhedsnet).
-2. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
+1. **Test det RIGTIGE spil (Subway Surfers) med buffer-fixet** — stress-siden
+   har vist #350+ uden reset og PVR-faulten er væk; FPS ~1,5 (2,7 kun med
+   gdb-breakpoint, ikke brugbart i drift). Hvis spillet er stabilt, er sagen i
+   mål; ellers auto-genstart-workaround som sikkerhedsnet.
+2. **Optimering (åbent spor):** eglMakeCurrent koster ~2× pr. present — veje
+   videre hvis FPS skal op: (a) patche vendor-eglMakeCurrent (IMGeglMakeCurrent)
+   til at springe GPU-synkronisering over (risikabelt), (b) reducér antallet af
+   MakeCurrent-kald i Firefox (prefs/kilde), (c) XShm for at fjerne
+   server-side-kopien. XSync og konverteringen er afkræftet som flaskehalse.
+3. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
    tilføj `dmesg -c`-overvågning i start_game.sh.
-3. **Dokumentér FPS-forbedringen** (2,7 vs 1,5) og overvej om kadence-sporet
-   (separat transfer-cap-sag) kan lukkes eller kræver egen indsats.
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)
 

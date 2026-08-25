@@ -19,6 +19,7 @@
 #include <EGL/eglext.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef EGLDisplay (*eglGetDisplay_t)(EGLNativeDisplayType);
 static eglGetDisplay_t real_eglGetDisplay;
@@ -68,4 +69,34 @@ EGLDisplay eglGetDisplay(EGLNativeDisplayType native_display)
     return real_eglGetDisplay
                ? real_eglGetDisplay(native_display)
                : EGL_NO_DISPLAY;
+}
+
+/* ---- eglMakeCurrent-eksperiment (26. aug 2026) ----
+ * Måling: med gdb-breakpoint på vendors eglMakeCurrent (der får kaldet til
+ * at returnere uden at køre) kører Firefox' kompositor 2,7 FPS mod ~1,5 uden.
+ * Hypotesen: vendors eglMakeCurrent venter på GPU-en hver frame og er
+ * flaskehalsen. Denne wrapper logger kaldet og returnerer EGL_TRUE uden at
+ * kalde videre — test-flag EGLSKIP_MAKECURRENT=1 aktiverer. */
+typedef EGLBoolean (*eglMakeCurrent_real_t)(EGLDisplay, EGLSurface, EGLSurface,
+                                            EGLContext);
+static eglMakeCurrent_real_t real_eglMakeCurrent;
+
+EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
+                          EGLContext ctx)
+{
+    static int skip = -1;
+    if (skip < 0)
+        skip = getenv("EGLSKIP_MAKECURRENT") ? atoi(getenv("EGLSKIP_MAKECURRENT")) : 0;
+    if (skip) {
+        fprintf(stderr, "[egl-shim] eglMakeCurrent SKIPPET (dpy=%p draw=%p "
+                        "read=%p ctx=%p)\n", (void *)dpy, (void *)draw,
+                (void *)read, (void *)ctx);
+        return EGL_TRUE;
+    }
+    if (!real_eglMakeCurrent)
+        real_eglMakeCurrent =
+            (eglMakeCurrent_real_t)dlsym(RTLD_NEXT, "eglMakeCurrent");
+    return real_eglMakeCurrent
+               ? real_eglMakeCurrent(dpy, draw, read, ctx)
+               : EGL_FALSE;
 }
