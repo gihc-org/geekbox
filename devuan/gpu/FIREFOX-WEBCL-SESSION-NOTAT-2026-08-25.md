@@ -447,3 +447,23 @@ animerings- og WebGL-siderne kørte uden nedbrud.
   canvas 960x540 på skærmen, lysegrå værktøjslinje, 0 X-fejl.
 - Efter genstart: `patch_android_bindapi.sh` + `patch_driver_minor.sh` +
   `gpu_up.sh` (køres som root på boksen; `/root/gpu_up.sh` ligger der).
+
+## 15. Spillet (poki.com Subway Surfers) — starter men fryser (25. aug, aften)
+
+**Brugerens oplevelse efter §14-fixene:** Firefox starter fint fra ikonet,
+og den tidligere "browseren understøtter ikke WebGL"-besked er VÆK — siden og
+spillet indlæser nu. MEN spillet fryser efter første frame.
+
+**Målt (aflæsning kun, ingen testkørsler):**
+```
+main-process:    118 % CPU (spinner), 15,4 % MEM
+spil-content:     21 % CPU (aktiv)
+load average:     2,1
+to skærmbilleder 4 s fra hinanden: spillet ændrer 0 pixel
+(kun panelets ur, 53 px) → scenen ER tegnet (mørkegrøn, 437k px) men frosset
+```
+Scenen står altså på skærmen (WebGL-kontekst + første frame virker), men der
+kommer ingen nye frames. Hypoteser til næste session: (a) Basic-kompositor-
+readback-stien (WebGL-canvas → glReadPixels → CPU → X) er for langsom/fastlåst
+pr. frame på ARM'en; (b) rAF-throttling; (c) glReadPixels-livelock i main.
+Handover: `devuan/gpu/FIREFOX-WEBCL-HANDOVER-2026-08-25.md`.
