@@ -26,6 +26,7 @@ Du er en elektronik/computer ekspert
 - Ufuldstændige beslutninger (manglende detalje der kan ændre planen) skrives som `afventer` og stilles til brugeren — de må ikke forsvinde i samtalen.
 - Ved sessionslut/komprimering: kontrollér FØR handover at alle aftaler står i notatet (diff mellem "aftalt i samtalen" og "dokumenteret"); ret mangler og sig det højt.
 - Når en plan/beslutning ændres, opdatér også TODO.md og DOKUMENTATION.md samme time (korte pointere, ikke dubletter).
+- **Git-commits:** skriv agent og model i commit-beskeden (fx `[codex:deepseek-v4-flash]` eller den aktuelle model-id), så det altid kan ses hvilken agent/model der lavede ændringen. Notér også agent/modellen i session-notatet hvis den afviger fra den normale.
 
 ## Checkpoint- og tråd-disciplin
 
