@@ -52,6 +52,19 @@
   ~1,6–1,9 FPS (og et reset ved #2) — XSync beholdes (den fanger protokolfejl).
 - [målt] Konverteringen (RGBA→ARGB/565) er IKKE flaskehalsen: standalone
   benchmark 1280×948 = ~13 ms (88–97 Mpx/s).
+- [fundet] **SUBWAY SURFERS' FRYS = SHADER-KOMPILERINGSFEJL, ikke present-**
+  **stien (26. aug, 01:5x):** spillet (Unity WebGL1 på poki.com) kompilerer
+  fragment-shaders med `#extension GL_EXT_draw_buffers : require` og
+  `#extension GL_EXT_frag_depth : require` → begge fejler. Målt direkte med
+  `shader_ext_test.c`: driver-kompileren afviser `#extension
+  GL_EXT_draw_buffers` på BÅDE ES2 og ES3 ("Compile failed.") — SELVOM
+  `GL_EXT_draw_buffers` står i GL_EXTENSIONS (driver-inkonsistens: adverterer
+  men kompilerer ikke). `GL_EXT_frag_depth` står IKKE i GL_EXTENSIONS.
+  Resultat: spillets render-shaders fejler → ingen frames præsenteres (present
+  står ved #2, load stiger) → det kendte frys. GPU-reset/buffer-fix var en
+  parallell (stress-side) mekanisme; selve spillet blokeres af shader-EXT.
+  Bevis: `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log` +
+  `devuan/gpu/eglplatform_x11/shader_ext_test.c`.
 
 ## Status i ét blik
 
@@ -108,16 +121,19 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
 
 ## Næste skridt (i rækkefølge)
 
-1. **Test det RIGTIGE spil (Subway Surfers) med buffer-fixet** — stress-siden
-   har vist #350+ uden reset og PVR-faulten er væk; FPS ~1,5 (2,7 kun med
-   gdb-breakpoint, ikke brugbart i drift). Hvis spillet er stabilt, er sagen i
-   mål; ellers auto-genstart-workaround som sikkerhedsnet.
-2. **Optimering (åbent spor):** eglMakeCurrent koster ~2× pr. present — veje
-   videre hvis FPS skal op: (a) patche vendor-eglMakeCurrent (IMGeglMakeCurrent)
-   til at springe GPU-synkronisering over (risikabelt), (b) reducér antallet af
-   MakeCurrent-kald i Firefox (prefs/kilde), (c) XShm for at fjerne
-   server-side-kopien. XSync og konverteringen er afkræftet som flaskehalse.
-3. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
+1. **Shader-EXT-blokaden er nu det PRIMÆRE spor for selve spillet:** find en
+   vej udenom `GL_EXT_draw_buffers`/`GL_EXT_frag_depth`-kravene — fx (a) tving
+   WebGL1 i Firefox (prefs/webgl.force-enabled-relaterede), (b) undersøg om
+   en nyere PVR-driver/DDK kompilerer dem (vendor-2016 vs nyere DDK),
+   (c) kontrollér om Unity har et lavere kvalitets-flag, eller (d) find et
+   andet spil der ikke bruger MRT-shaders.
+2. **Buffer-fixet står:** stress-siden nåede #350–450 uden reset og
+   PVR-faulten er væk (men et sent reset kom ved ~#450 i én kørsel — flaky
+   mønsteret er reduceret, ikke helt væk).
+3. **Optimering (åbent spor):** eglMakeCurrent koster ~2× pr. present — veje
+   videre hvis FPS skal op: (a) patche vendor-eglMakeCurrent, (b) reducér
+   MakeCurrent-kald, (c) XShm. XSync og konverteringen er afkræftet.
+4. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
    tilføj `dmesg -c`-overvågning i start_game.sh.
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)

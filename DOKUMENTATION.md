@@ -820,6 +820,18 @@ overvågning (1469 kald) viste 0 fejl. Årsagen til forbedringen: ingen
 gralloc-reallokering/re-mapping ved hver resize — GPU'en får tid til at blive
 færdig med bufferen før frigørelse.
 
+**Subway Surfers' frys = shader-kompileringsblokade (26. aug, 01:5x):** spillet
+(Unity WebGL1) bruger `#extension GL_EXT_draw_buffers : require` + `#extension
+GL_EXT_frag_depth : require` i sine fragment-shaders — og driver-kompileren
+afviser begge ("Extension not supported"). Målt direkte (`shader_ext_test.c`):
+`GL_EXT_draw_buffers` afvises på både ES2 og ES3, SELVOM den står i
+GL_EXTENSIONS (driver-inkonsistens); `GL_EXT_frag_depth` er slet ikke i
+GL_EXTENSIONS. Konsekvens: spillets render-shaders kompilerer ikke → ingen
+frames præsenteres → det kendte frys (present #2, load stiger). Dette er den
+EGENTLIGE spil-blokade; GPU-reset/buffer-fix var en separat mekanisme på
+stress-siden. Veje videre: tving WebGL1 (hvis spillet kan køre uden MRT),
+nyere DDK, andet spil. Bevis: `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log`.
+
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
 1986254 → dup af 1667748) viser præcis vores sekvens:
