@@ -768,8 +768,15 @@ TEST_TYPE=EGL.
 "Fallback WR to SW-WR" (mønstre 0x300c/0x3000). Begge er nu LØST (25. aug):
 0x300c via Android-bindAPI/chooseConfig-patches, 0x3000 via stub-libGL (se
 fælde 24), og kompositorvinduets 1x1-frys via platformens live-størrelse.
-WebGL 2.0 er målt virkende (`WEBGL_RESULT OK ... WebGL 2.0`); tilbage er en
-channel-error-race i normale kørsler. Alle spor:
+WebGL 2.0 er nu STABILT virkende i normale kørsler (`WEBGL_RESULT OK ...
+WebGL 2.0`, `present #2 (1280x948)`, korrekt titel). To fælder bag de
+sidste "fejlslagne" kørsler: (a) `MOZ_GL_SPEW=1` lammer compositoren via
+KHR_debug-callback (ingen present, siden loader ikke) — kør UDEN variablen;
+(b) `pkill -9 -x firefox-esr` rammer KUN main-processen (børnene hedder
+"GPU Process", "file:// Content", "Socket Process", "RDD Process" via prctl)
+— når main dør, lukker børnene kanalen og skriver `Exiting due to channel
+error.` + `_exit(0)` (og hybris display-dans kører). Det er altså et
+oprydningsresultat, ikke en browser-race. Alle spor:
 `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`; DOK §5.15c;
 `BROWSER-VEJE.md` eksperiment 2.
 
@@ -802,6 +809,26 @@ Mesa-symptomet tilbage.
 `libEGL.so.1` — en trace-erstatning kun som `libEGL.so.1` bliver aldrig brugt.
 Og `dlsym(libEGL-handle)` foretrækker bibliotekets egne eksporter frem for
 LD_PRELOAD — interposer-vejen virker derfor ikke for EGL-symbolerne.
+
+### Fælde 25: `MOZ_GL_SPEW=1` lammer WebRender-compositoren på hybris-stakken
+
+**Symptom:** fuld Firefox med den grønne stak: shaders 61-64 kompilerer, men
+der kommer ALDRIG en `x11ws: present`, siden loader ikke (titel forbliver
+"Mozilla Firefox"), og alle processer sidder i vent (poll/condvar — målt med
+gdb). Under strace virker det (timing ændres), hvilket fejlagtigt pegede på
+en channel-error-race.
+
+**Årsag:** `MOZ_GL_SPEW=1` får Firefox til at installere en KHR_debug-
+callback, som på PowerVR-stakken stopper compositoren efter shader-
+kompileringen. `MOZ_GL_SPEW` var en del af kørselskommandoen i session-notat
+§6 fra før — den skal IKKE sættes.
+
+**Kur (25. aug 2026):** kør uden `MOZ_GL_SPEW`. Derudover: `pkill -9 -x
+firefox-esr` rammer kun main (børnene har prctl-titler), så `Exiting due to
+channel error.` + display-dans ved kørslens slutning er oprydningsartefakt.
+Og Firefox' kompositorvindue er depth 32 TrueColor — `XPutImage` skal bruge
+vinduets visual/dybde + egen GC, ellers BadMatch og sort vindue (begge fixet
+i `eglplatform_x11.cpp`).
 
 ---
 

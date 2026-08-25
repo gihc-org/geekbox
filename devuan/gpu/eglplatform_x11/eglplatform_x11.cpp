@@ -363,8 +363,12 @@ private:
 
     void put_image(const unsigned char *src, int w, int h, int stride, int fmt)
     {
-        int scr = DefaultScreen(m_dpy);
-        int depth = DefaultDepth(m_dpy, scr);
+        XWindowAttributes a;
+        if (!XGetWindowAttributes(m_dpy, m_win, &a)) {
+            fprintf(stderr, "x11ws: XGetWindowAttributes fejlede i put_image\n");
+            return;
+        }
+        int depth = a.depth;
         if (depth == 16) {
             std::vector<unsigned char> rgb565((size_t)w * h * 2);
             for (int y = 0; y < h; y++) {
@@ -381,7 +385,25 @@ private:
             }
             put_ximage(&rgb565[0], w, h, 16, w * 2);
         } else if (depth == 32) {
-            put_ximage(src, w, h, 32, stride * 4);
+            /* Firefox' kompositorvindue er TrueColor depth 32 (målt 25. aug
+             * 2026: vindue 0x1e00048 = 1280x948 depth 32). Gralloc-bufferen
+             * er RGBA_8888; X forventer pixels i visualets format, så byg en
+             * 32-bit buffer eksplicit. Før dette tegnede vi et 16-bit XImage
+             * på det 32-bit vindue -> XPutImage BadMatch (request 72) og sort
+             * skærm, selvom present/WEBGL ellers virkede. */
+            std::vector<unsigned char> argb((size_t)w * h * 4);
+            for (int y = 0; y < h; y++) {
+                const unsigned char *row = src + (size_t)y * stride * 4;
+                unsigned char *dst = &argb[(size_t)y * w * 4];
+                for (int x = 0; x < w; x++) {
+                    /* LSBFirst-pixel 0xAARRGGBB = bytes [B,G,R,A] */
+                    dst[x * 4 + 0] = row[x * 4 + 2];
+                    dst[x * 4 + 1] = row[x * 4 + 1];
+                    dst[x * 4 + 2] = row[x * 4 + 0];
+                    dst[x * 4 + 3] = 0xff;
+                }
+            }
+            put_ximage(&argb[0], w, h, 32, w * 4);
         } else {
             fprintf(stderr, "x11ws: X-depth %d endnu ikke understøttet (16/32)\n", depth);
         }
@@ -389,17 +411,27 @@ private:
 
     void put_ximage(const unsigned char *data, int w, int h, int depth, int bpl)
     {
-        int scr = DefaultScreen(m_dpy);
-        Visual *vis = DefaultVisual(m_dpy, scr);
-        XImage *img = XCreateImage(m_dpy, vis, depth, ZPixmap, 0,
+        XWindowAttributes a;
+        if (!XGetWindowAttributes(m_dpy, m_win, &a)) {
+            fprintf(stderr, "x11ws: XGetWindowAttributes fejlede i put_ximage\n");
+            return;
+        }
+        XImage *img = XCreateImage(m_dpy, a.visual, depth, ZPixmap, 0,
                                    (char *)data, w, h,
                                    depth == 16 ? 16 : 32, bpl);
         if (!img) {
             fprintf(stderr, "x11ws: XCreateImage fejlede\n");
             return;
         }
-        XPutImage(m_dpy, m_win, DefaultGC(m_dpy, DefaultScreen(m_dpy)),
-                  img, 0, 0, 0, 0, w, h);
+        GC gc = XCreateGC(m_dpy, m_win, 0, NULL);
+        if (!gc) {
+            fprintf(stderr, "x11ws: XCreateGC fejlede\n");
+            img->data = NULL;
+            XDestroyImage(img);
+            return;
+        }
+        XPutImage(m_dpy, m_win, gc, img, 0, 0, 0, 0, w, h);
+        XFreeGC(m_dpy, gc);
         XFlush(m_dpy);
         XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
         img->data = NULL; /* data ejes af kalderen — lad XDestroyImage ikke frigøre */
@@ -462,9 +494,14 @@ static EGLNativeWindowType x11ws_CreateWindow(EGLNativeWindowType win,
     }
     /* Firefox opretter kompositorvinduet som 1x1 og resizer det bagefter;
      * EGL'en spørger kun størrelsen ÉN gang (ved surface-creation) — vent
-     * derfor kort på den reelle størrelse (målt 25. aug 2026: uden dette
-     * fryser EGL-overfladen på 1x1 og compositoren når aldrig første frame). */
-    for (int i = 0; i < 50 && (int)a.width <= 1 && (int)a.height <= 1; i++) {
+     * derfor kort på den reelle størrelse. MEN kun et par hundrede ms: målt
+     * 25. aug 2026 gav 50x40 ms (= 2 s blokering) en channel-error-race —
+     * main-processens synkrone IPC til GPU-processen nåede sit reply-timeout,
+     * GPU-processen blev dræbt og content døde med "Exiting due to channel
+     * error" FØR første present. Sker resize ikke inden for vinduet, klarer
+     * X11NativeWindow's levende størrelse (refresh_size/dequeueBuffer) resten:
+     * strace-bevis 25. aug: 1x1 -> aendret stoerrelse -> present #2 (1280x948). */
+    for (int i = 0; i < 5 && (int)a.width <= 1 && (int)a.height <= 1; i++) {
         usleep(40000);
         if (!XGetWindowAttributes(g_dpy, xid, &a))
             break;

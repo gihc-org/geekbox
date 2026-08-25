@@ -236,9 +236,15 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    størrelsen ved surface-creation) — fix: platformen henter den levende
    X-størrelse og venter op til 2 s ved oprettelse. Resultat: GL 3.1 PowerVR
    Rogue G6110 i Firefox, WebRender-hardware uden SW-fallback, og WebGL 2.0
-   målt virkende (`WEBGL_RESULT OK ... WebGL 2.0`). Tilbage: channel-error-
-   race hvor content-processen i normale kørsler dør før første present
-   (under strace kommer alt igennem). Detaljer:
+   er nu STABILT virkende i normale kørsler (`WEBGL_RESULT OK ... WebGL 2.0`,
+   `present #2 (1280x948)`, korrekt vinduestitel). De sidste to blokeringer
+   var: (a) `MOZ_GL_SPEW=1` — KHR_debug-callback'en lammer compositoren
+   (ingen present, siden loader ikke); uden den variabel kører alt. (b)
+   `XPutImage` BadMatch på det 32-bit TrueColor-kompositorvindue (sort vindue)
+   — fixet i platformen (vinduets visual/dybde + egen GC + 32-bit ARGB).
+   Bemærk desuden at `Exiting due to channel error.` efter en kørsel oftest
+   er vores egen `pkill -9 -x firefox-esr` (rammer kun main; børnene lukker
+   kanalen og exit(0)-kaskader). Detaljer:
    `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md` (handover),
    `DOKUMENTATION.md` §5.15c, `HAANDBOG.md` fælde 23.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.

@@ -2,17 +2,25 @@
 
 ## 1. Status i ét blik
 
-**MØNSTER B ER LØST — WebGL 2.0 ER MÅLT VIRKENDE (én gang, under strace).**
+**MØNSTER B ER LØST — WebGL 2.0 ER STABILT MÅLT VIRKENDE (25. aug, NORMAL
+kørsel, uden strace).**
 Hele kæden virker nu: GL 3.1 PowerVR Rogue G6110 i Firefox, WebRender-
 hardware (ingen SW-fallback), kompositor præsenterer (1280x948), og
 `webgl_test_dump.html` meldte `WEBGL_RESULT OK PowerVR Rogue G6200, or
-similar WebGL 2.0` efter 3 tegnede frames.
+similar WebGL 2.0` efter 3 tegnede frames. Vinduestitlen blev
+`OK PowerVR Rogue G6200, or similar WebGL 2.0 — Mozilla Firefox`, og
+fbdump viser WebGL-gradienten på skærmen (0 X-fejl).
 
-**Tilbage:** en kør-til-kør-race — i normale kørsler dør content-processen med
-`Exiting due to channel error` FØR første present; under strace (alt sænkes
-~10x) kommer hele forløbet igennem. Derudover: skærmen er sort (brugerens
-observation 24/25. aug) selvom fb0 har (mørkt) skrivebordsindhold — separat
-display-pipeline-problem, se §8.
+De sidste tre blokeringer er alle LØST samme dag (detaljer i §3, §7, §8):
+1. Den formodede channel-error-race var dels vores egen `pkill -9 -x
+   firefox-esr` (rammer KUN main; børnene har prctl-titler som "GPU Process",
+   "file:// Content" — de lukker kanalen og exit(0)-kaskader ved main's død),
+   dels `MOZ_GL_SPEW=1`, hvis KHR_debug-callback lammer compositoren.
+2. `XPutImage` fejlede BadMatch (request 72) — kompositorvinduet er TrueColor
+   depth 32, men vi tegnede et 16-bit XImage med root'ens default-GC → sort
+   vindue. Fixet: vinduets egen visual/dybde + dedikeret GC + 32-bit ARGB.
+3. Sizewaiten ved surface-creation er skåret fra 2 s til 200 ms (50→5 × 40 ms),
+   så main-processens synkrone GPU-IPC ikke når sit reply-timeout.
 
 ## 2. Rodårsagen til mønster B (InitImpl fejlede med 0x3000) — LØST
 
@@ -65,7 +73,12 @@ aldrig første frame (ingen `x11ws: present`).
    X-størrelse via `XGetWindowAttributes`; ændring sætter `m_sizeDirty` og
    `dequeueBuffer()` reallokerer.
 2. `x11ws_CreateWindow()` venter op til 2 s (40 ms × 50) på at vinduet får
-   reel størrelse, så overfladen skabes korrekt fra start.
+   reel størrelse, så overfladen skabes korrekt fra start. SENERE (samme dag):
+   ventetiden er skåret til 200 ms (5 × 40 ms) — de 2 s gav
+   `Killing GPU process due to IPC reply timeout` (main's synkrone
+   `SendEnsureConnected` nåede sit ~2 s-reply-timeout, mens GPU-processen stod
+   i sizewaiten). Den levende `refresh_size()` klarer resten: strace-beviset
+   under viser at present #1 sker på 1x1, hvorefter størrelsen opdateres.
 
 **Verificeret (i den vellykkede strace-kørsel):**
 ```
@@ -100,14 +113,16 @@ WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0
   md5 `aa370d75715e73748f08bc5f91127ab4` (minor2-bhi nop).
   Scripts: `patch_android_bindapi.sh`, `patch_driver_minor.sh`.
 - Platformmodul installeret: `/usr/local/lib/libhybris/eglplatform_x11.so`
-  md5 `b5dc98455028bdb0857004eded524c38` (bygget fra repoets
-  `eglplatform_x11.cpp`, §2+§3-fix). Originalkilde også på `/root/eglplatform_x11.cpp`.
+  md5 `78580702ee8b96693b02704fde9b6dcf` (bygget fra repoets
+  `eglplatform_x11.cpp`, §2+§3-fix + 200 ms-sizewait + XPutImage-fix).
+  Originalkilde også på `/root/eglplatform_x11.cpp`.
 - Stub-mapper: `/root/glstub/` (KUN libGL-stubs — brug denne til rene kørsler)
   og `/root/egl_trace/` (trace-libEGL + stubs).
 - Profil `/root/ffprof` indeholder nu `browser.dom.window.dump.enabled=true`
   og `layers.gpu-process.enabled=true` (sidstnævnte EKSPERIMENTEL — giver
-  separat GPU-proces; hjælper delvist, se §7). Ryd `.parentlock` før hver kørsel
-  (ellers "Open Firefox in Troubleshoot Mode?"-dialog).
+  separat GPU-proces; VIRKER nu, når `MOZ_GL_SPEW` IKKE sættes — se §7).
+  Ryd `.parentlock` før hver kørsel (ellers "Open Firefox in Troubleshoot
+  Mode?"-dialog).
 - VT=tty7, HDMI=1, ingen Firefox kører.
 
 ## 6. Kør-selv (reproducer WebGL-verifikationen)
@@ -122,56 +137,75 @@ cd /root
 timeout 90 env LD_PRELOAD="/root/system_shim.so /root/egl_platform_shim.so" \
   LD_LIBRARY_PATH=/opt/hybris:/root/glstub EGL_PLATFORM=x11 DISPLAY=:0 \
   MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 MOZ_DISABLE_GPU_SANDBOX=1 \
-  MOZ_GL_SPEW=1 \
   /usr/lib/firefox-esr/firefox-esr -no-remote -profile /root/ffprof \
   file:///root/webgl_test_dump.html > /root/ff_webgl.log 2>&1
 grep -a WEBGL_RESULT /root/ff_webgl.log
 grep -aE "x11ws: (vindue|ændret|present|.*buffer)" /root/ff_webgl.log
 ```
 
-Under strace (`strace -f ...`) kommer kørslen gennem; i normale kørsler
-kommer content-processen ikke i mål (race, §7).
+**Forvent (målt 25. aug 2026, normal kørsel):**
+```
+x11ws: vindue 0x1e00048 pakket ind (1x1)
+x11ws: vindue 0x1e00048 ændret størrelse -> 1280x948
+x11ws: present #1 (1x1 ...)
+x11ws: present #2 (1280x948 ...)
+WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0
+```
+Titlen skal vise `OK PowerVR Rogue G6200, or similar WebGL 2.0 — Mozilla
+Firefox`, og `grep -c "X-fejl"` skal være 0. NB: slutter kørslen med
+`Exiting due to channel error.` + hybris display-dans, er det pkill'en af
+main (børnene lukker kanalen) — ikke en browser-fejl (§7).
 
-## 7. Tilbageværende blokering: channel-error-racen
+## 7. Den "channel-error-race" — LØST: to målefejl, ikke en browser-race
 
-**Symptom:** normale kørsler: `Exiting due to channel error.` kort efter
-kompositoropstart (1x1-vindue skabt, shaders 61-64 kompileret), content-
-processen forsvinder (exit_group(0) — IKKE et signal), siden loader ikke,
-titlen forbliver "Mozilla Firefox". Under strace virker ALT (sandsynligvis
-fordi timingen ændres — indtil videre det eneste pålidelige gennembrud).
+**Symptomet (målt):** i normale kørsler kom der `Exiting due to channel error.`
+efter shader 61-64, siden loadede ikke, titlen forblev "Mozilla Firefox".
+Under strace virkede ALT. Det så ud som en timing-race.
 
-**Målt:**
-- Uden stub (gammel env): content virker, siden loader, men WebGL fejler
-  (forventet — ingen hardwarekontekst): `WEBGL_RESULT FAIL_NO_CONTEXT`.
-- Med stub + `layers.gpu-process.enabled=true`: separat GPU-proces skaber
-  overfladen direkte i 1280x948, men to channel errors og stadig ingen present.
-- Content-processen (tab) spawner undertiden sent; strace viste den leve med
-  ~35 tråde. `dmesg` har kun seccomp-"syscall 403"-støj (lxpanel m.fl.), ingen
-  segfault.
-- `nspr_use_zone_allocator`-fejl i LD_DEBUG optræder i BÅDE stub og nostub
-  (godartet — ingen eksporterer symbolet på boksen).
+**Faktisk årsag nr. 1 — vores egen pkill:** `pkill -9 -x firefox-esr` matcher
+KUN main-processen. Børnene hedder "GPU Process", "file:// Content",
+"Socket Process", "RDD Process" (prctl-titler), så `-x firefox-esr` rammer
+dem ikke. Når main dræbes (midtsvejs-oprydning eller `timeout`), bryder
+børnenes kanaler → content printer `Exiting due to channel error.` og
+`_exit(0)`, og socket/rdd/gpu følger (målt med exit-hook i `pidtag_shim.c`:
+`EXIT C ... _exit(0)` 1-2 ms før de andre, main `exit(0)` 11 ms efter). Hele
+kaskaden + hybris display-dans ER altså vores oprydning — ikke en browser-fejl.
 
-**Hypoteser (næste skridt, prioriteret):**
-1. Main-processen laver GPU-arbejde in-process og blokerer content-
-   handshaket → prøv at få GPU-processen til at starte rent (check hvorfor
-   `-gpuprocess` ikke exec'es: manglende prefs? fejl i GPU-proces-start med
-   vores env?), evt. `MOZ_GPU_PROCESS...`-logs.
-2. Undersøg hvem der printer "Exiting due to channel error" (pid i loggen):
-   kør med process-rolle-tagget output og sammenlign med strace-tidslinjen.
-3. Prøv at forsinke compositorstarten (fx wrapperens size-wait forlænges), så
-   content-handshaket når i mål før WebRender-init.
-4. Hvis racer: `layers.gpu-process.enabled=true` + `gfx.webrender.enabled=true`
-   eksplicit, og tjek `about:support`-værdier via dump.
+**Faktisk årsag nr. 2 — `MOZ_GL_SPEW=1`:** med variablen sat installerer
+Firefox en KHR_debug-callback, og compositoren stopper efter shader 64
+(ingen present, content idle i poll, siden loader ikke — verificeret med
+gdb-backtraces: alle processer ventede). Uden `MOZ_GL_SPEW` kører den
+fulde kæde i en NORMAL kørsel, både med separat GPU-proces
+(`WEBGL_RESULT OK` fra `G ...`) og uden.
+
+**Biprodukter af eftersøgningen (værktøjer i repoet):**
+- `pidtag_shim.c` fik exit/`_exit`-hooks: logger `EXIT <rolle> <pid>| <fn>(<status>)`
+  med monotont ms — afgjorde hvem der døde hvornår.
+- gdb-attach på de levende processer viste at alle ventede (poll/condvar) —
+  intet spin og ingen blokeret sync-send i content.
+- `pkill -9 -x firefox-esr` efterlader IKKE kørende børn: de lukker selv
+  kanalen og exit(0)-kaskader, som beskrevet ovenfor.
 
 ## 8. Den sorte skærm (brugerobservation)
 
-Brugeren meldte "Skærmen er sort" 24. aug aften. Målt: X kører (fbdev, tty7,
-1920x1080x16), HDMI enable=1, fb0 har mørkt LXDE-indhold (næsten-sort tapet —
-top-farver 1-5/255), men Firefox-vinduets indhold nåede aldrig fb0 (dumps af
-fb0 under Firefox var identiske med baseline). `/dev/fb0`-read returnerer kun
-2 073 600 bytes (= 1920×1080×1) trods 16 bpp — read'en kapres ved halvdelen;
-kontrollér om HDMI'et viser fb0 eller en anden plane/fb. Brug
-`DEBUG-SORT-SKAERM.md`-tjeklisten og `fb_overscan.py --show`.
+**RODÅRSAG FUNDET OG LØST (25. aug):** Firefox' kompositorvindue
+(0x1e00048) er TrueColor **depth 32** (1280x948), mens platformen tegnede et
+16-bit XImage (root'en er 16-bit) med root'ens default-GC → hver
+`XPutImage` fejlede med `BadMatch (request 72)` → Firefox-vinduet forblev
+sort, selvom present/WEBGL kørte (361 X-fejl pr. kørsel). `fb0`-read
+returnerer kun 2 073 600 bytes (= 1920×540×2) trods 16 bpp — read'en kapres
+ved halvdelen.
+
+**Fix i `eglplatform_x11.cpp`:** `put_image()`/`put_ximage()` bruger nu
+vinduets EGEN dybde/visual (XGetWindowAttributes) + en dedikeret GC
+(XCreateGC på vinduet); til depth 32 konverteres gralloc-RGBA eksplicit til
+32-bit X-pixelrækkefølge (bytes [B,G,R,A], LSBFirst). Verificeret: 0 X-fejl,
+og fbdump'en viser WebGL-gradienten i vindueområdet (avg (0,39,58), max
+B=255/G=215 i canvas-området).
+
+Den kortvarige sorte skærm EFTER Firefox lukkes er derimod hybris'
+display-dans (`chvt 7` → sluk/tænd display-enables → `chvt 11` → `chvt 7`),
+der kører ved proces-exit — boksen restituerer selv (VT=7, HDMI enable=1).
 
 ## 9. Vigtige fælder/noter (tilføjelser til fælde 23-notatet)
 
@@ -186,17 +220,31 @@ kontrollér om HDMI'et viser fb0 eller en anden plane/fb. Brug
   segfault ("A fatal error internal to GDB"). Brug egl_trace_lib i stedet.
 - Content-processen afslutter med exit_group(0) — kig IKKE kun efter signaler.
 - `strace -f` ændrer timingen og kan få racen til at forsvinde (og dukke op).
+- **`MOZ_GL_SPEW=1` lammer compositoren** på denne stak (KHR_debug-callback;
+  ingen present, siden loader ikke). Kør UDEN variablen.
+- **`pkill -9 -x firefox-esr` rammer kun main** — børnene har prctl-titler
+  ("GPU Process", "file:// Content", "Socket Process", "RDD Process") og
+  lukker kanalen med `Exiting due to channel error.` + `_exit(0)`, når main
+  dør. Den besked ved kørslens slutning er oprydningsartefakt, ikke en fejl.
+- **Firefox' kompositorvindue er depth 32 TrueColor** — XPutImage skal bruge
+  vinduets visual/dybde + egen GC; et 16-bit XImage giver BadMatch og sort
+  vindue.
 - Ryd `/root/ffprof/.parentlock` før hver kørsel.
 - pkill: ALTID `pkill -9 -x firefox-esr` (aldrig `-f firefox` — dræber
-  ssh-skallet). Tjek VT (tty7) + HDMI-enable efter hvert forsøg.
+  ssh-skallet). Børnene rydder selv op (se ovenfor). Tjek VT (tty7) +
+  HDMI-enable efter hvert forsøg.
 - glibc-reinstall af firefox-esr fjerner glxtest-patchen (backup
   `/root/glxtest.orig`).
 
 ## 10. Næste session — det vigtigste at vide
 
-1. Stakken ER grøn: GL 3.1 + WebRender-hardware + WebGL 2.0 (målt én gang).
-2. De to nødvendige fixes sidder på boksen (stub-libGL + platform-resize).
-3. Den eneste tilbageværende blokering er content-processens channel-error-
-   race; strace-kørslen er reference-beviset på at alt andet virker.
+1. **WebGL 2.0 VIRKER STABILT** i normale kørsler (uden strace): `WEBGL_RESULT
+   OK PowerVR Rogue G6200, or similar WebGL 2.0`, `present #2 (1280x948)`,
+   korrekt titel, 0 X-fejl, indhold på skærmen.
+2. Opskriften: stub-libGL i `/root/glstub` + platformmodul md5
+   `78580702ee8b96693b02704fde9b6dcf` + `layers.gpu-process.enabled=true` +
+   **INGEN `MOZ_GL_SPEW`** + ryd `.parentlock` (§6 har hele kommandoen).
+3. `Exiting due to channel error.` ved kørslens slutning = vores pkill af
+   main (børnene lukker kanalen) — ikke en fejl.
 4. Alle værktøjer er i repoet (`devuan/gpu/eglplatform_x11/`), alle md5'er og
    kommandoer i dette notat.

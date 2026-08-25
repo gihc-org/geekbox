@@ -23,6 +23,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <time.h>
 #include <unistd.h>
 
 static ssize_t (*real_write)(int, const void *, size_t);
@@ -71,6 +72,46 @@ static void init_tag(void)
 __attribute__((constructor)) static void pidtag_init(void)
 {
     init_tag();
+}
+
+/* exit/_exit-hook: log hvilken proces der afslutter (rolle+pid+status) med
+ * monotont ms, så vi kan se hvem der printer "Exiting due to channel error."
+ * og kører hybris' display-dans (system-shim-linjerne). Skriver direkte via
+ * real_write, så linjen ikke selv bliver omtagget af write-interposeren. */
+static long long mono_ms(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+        return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return -1;
+}
+
+static void exit_log(const char *fn, int status)
+{
+    char buf[128];
+    int n;
+    if (!real_write)
+        real_write = dlsym(RTLD_NEXT, "write");
+    n = snprintf(buf, sizeof(buf), "EXIT %s %d| %s(%d) t=%lldms\n",
+                 tag, (int)getpid(), fn, status, mono_ms());
+    if (real_write && n > 0)
+        real_write(2, buf, (size_t)n);
+}
+
+void exit(int status)
+{
+    exit_log("exit", status);
+    void (*real_exit)(int) = (void (*)(int))dlsym(RTLD_NEXT, "exit");
+    real_exit(status);
+    __builtin_unreachable();
+}
+
+void _exit(int status)
+{
+    exit_log("_exit", status);
+    void (*real__exit)(int) = (void (*)(int))dlsym(RTLD_NEXT, "_exit");
+    real__exit(status);
+    __builtin_unreachable();
 }
 
 /* Skriv én "linje" (op til første \n) med tag. Håndterer ikke delvise

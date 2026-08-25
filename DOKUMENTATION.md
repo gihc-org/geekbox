@@ -594,15 +594,26 @@ spurgte kun størrelsen én gang → overfladen frøs på 1x1 og compositoren n�
 aldrig første present. Fix i `eglplatform_x11.cpp` (`X11NativeWindow`):
 `width()/height()/defaultWidth()/defaultHeight()` og `queueBuffer()` henter
 den levende X-størrelse (`refresh_size()`), `dequeueBuffer()` reallokerer ved
-ændring, og `x11ws_CreateWindow()` venter op til 2 s på reel størrelse.
+ændring, og `x11ws_CreateWindow()` venter KORT på reel størrelse (200 ms =
+5×40 ms; de oprindelige 50×40 ms = 2 s gav main-processen tid nok til at nå
+sit GPU-reply-timeout og dræbe GPU-processen med "IPC reply timeout").
 
-**WebGL 2.0 er dermed målt virkende** (25. aug, under strace — se
+**WebGL 2.0 er dermed STABILT målt virkende** (25. aug, NORMAL kørsel — se
 `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`): `WEBGL_RESULT OK
 PowerVR Rogue G6200, or similar WebGL 2.0` efter 3 tegnede frames, med
-`x11ws: present #2 (1280x948 ...)`. Tilbage: en channel-error-race, hvor
-content-processen i normale kørsler dør før første present (under strace
-kommer alt igennem). De øvrige 24. aug-patches: Android-bindAPI-normalisering
-+ chooseConfig-ES2-sti (`patch_android_bindapi.sh`) og driverens minor2-bhi
+`x11ws: present #2 (1280x948 ...)`, vinduestitel `OK PowerVR Rogue G6200,
+or similar WebGL 2.0 — Mozilla Firefox` og 0 X-fejl. De sidste to fund samme
+dag: (a) den formodede "channel-error-race" var dels vores egen
+`pkill -9 -x firefox-esr` (som kun rammer main — børnene hedder "GPU
+Process"/"file:// Content" osv. via prctl og lukker kanalen med exit(0) ved
+main's død), dels `MOZ_GL_SPEW=1`, hvis KHR_debug-callback lammer
+compositoren (ingen present, siden loader ikke) — uden variablen kører alt
+normalt. (b) `XPutImage` fejlede BadMatch (request 72), fordi
+kompositorvinduet er TrueColor depth 32, mens vi tegnede et 16-bit XImage
+med root'ens default-GC → sort vindue; fixet: vinduets egen visual/dybde +
+dedikeret GC + eksplicit 32-bit ARGB-konvertering. De øvrige 24. aug-patches:
+Android-bindAPI-normalisering + chooseConfig-ES2-sti
+(`patch_android_bindapi.sh`) og driverens minor2-bhi
 (`patch_driver_minor.sh`) — alle stadig aktive på boksen.
 
 Verifikation når konteksten virker: about:support + platformens præsent-log
