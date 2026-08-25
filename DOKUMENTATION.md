@@ -691,27 +691,46 @@ Resultater, alle målt:
   ~437.000 px/4 s; present #2→#150; rAF-FPS ~1,5) — derefter kilede det:
   `xdump` (XGetImage root) og `dd if=/dev/fb0` gik i D-state (uafbrydelig),
   GPU-processen spindede ~100 % CPU, load steg til 13+; sysrq-b-genstart
-  nødvendig. **Konklusion: frysen reproduceres UDEN reklamer/Unity/netværk —
-  fejlen ligger i Firefox/GL-layers-present-stien, ikke poki-specifikt.**
+- **Kontrol-kørsel uden måle-læsninger (run C, 22:05–22:16):** stress-siden
+  kørte 8+ min; GPU-processen fik `DeviceResetReason::UNKNOWN
+  WR_POST_UPDATE` ~1 min inde, og derefter:
+  - Bruger-observation: resten af skærmen har fine farver — KUN Firefox-
+    vinduet er sort (openbox-titellinjen med teksten er læsbar).
+  - Vindue-dump (XGetImage af Navigator, depth 32) er ~100 % sort
+    (middel-lysstyrke 0-2, 0 % lyse pixels); de ~78k px/4 s ændringer er
+    støj. rAF/FPS kører videre, presents fortsætter (#800+), men indholdet
+    er sort. Ingen `CONTEXT_LOST`, ingen GL-fejl i loggen.
+  - gdb på GPU-processen efter reset: Renderer-tråd i `present()`s
+    pixel-konverteringsloop (normalt arbejde — presents KØRER).
+  - xrefresh hjælper ikke på det sorte indhold.
+  - **REVIDERET KONKLUSION: frysen er en RENDER-fejl efter GPU-proces-
+    genstart — WebRender tegner sorte frames ind i EGL-overfladen. X-serveren
+    og kompositeringen virker (desktop + openbox-ramme + øvrige vinduer
+    vises fint).** Den tidligere "present-stien er synderen"-fortolkning
+    (fra run 6, hvor måle-læsningerne selv kilede fb-driverens read() i
+    D-state) er hermed skilt ad: fb-read-wedge er et separat kernel-problem
+    i måle-værktøjerne.
 
-**Konklusion:** GL-layers-stien løser spillets render-livelock (spillet
-animerer i vinduet), men præsentationen til den fysiske skærm er stadig i
-stykker for spil-lignende belastning — og spil-kørslerne er ustabile for
-boksen. Basic-kompositoren (status quo i §5.15c) er fortsat den stabile
-opsætning for UI + WebGL-test.
+**Konklusion (revideret):** GL-layers-stien løser spillets render-livelock,
+men efter ~1 min kollapser GPU-processen (`WR_POST_UPDATE`), og den
+genstartede GPU-proces renderer SORT indhold (rAF/presents kører videre).
+Det er forklaringen på "vinduet animerer, skærmen tier": vinduets X-side
+ændres kun af støj/UI, og skærmen viser et sort frosset vindue. X-serverens
+kompositering er sund. Basic-kompositoren (status quo i §5.15c) er fortsat
+den stabile opsætning for UI + WebGL-test.
 
 **Næste skridt (aftalt):**
-1. ~~Lokal WebGL-stress-side~~ — **FÆRDIG:** fejlen reproduceres; present-stien
-   er synderen. Gentag evt. med `tex=1`/`scale=1,5` for belastningsgrænsen,
-   med den rettede `stall_capture.sh` kørende (gdb i D-state-øjeblikket).
-2. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
+1. ~~Lokal WebGL-stress-side~~ — **FÆRDIG:** fejlen reproduceres; rodårsagen
+   er GPU-proces-reset (WR_POST_UPDATE) → sorte frames efter genstart.
+2. **Find det GL-fejl der udløser reset'et** — kør med Firefox' egen
+   gfx-logging (`MOZ_LOG="gfx:5"` eller `gfx.logging.level`-pref, IKKE
+   MOZ_GL_SPEW) og fang fejlkoden omkring `WR_POST_UPDATE`; test også om
+   reset'et er frame-antal-afhængigt (let vs. tung side, `scale`/`tex`).
+3. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
    dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
    bidrage til reset/nedbrud).
-3. **gdb på GPU-processen** når present-kæden sænker farten (`stall_capture.sh`
-   i repoet, GPU-lookup + log-flush rettet) — find den blokerende tråd
-   (gralloc-lock? XSync? buffer-tømning? XPutImage-serialisering?).
-4. **xrefresh-test** (installeret via x11-xserver-utils): tvungen
-   skærmopdatering under en kørende stress-side — server-redraw-fejl → workaround.
+4. **Workaround-jagt:** automatisk genstart af Firefox når canvas'et bliver
+   sort (frisk proces renderer korrekt) — eller undgå reset via prefs.
 5. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
    manglede i dokumentationen): **Shadertoy** (shadertoy.com, pure fragment-
    shaders, ingen reklamer, anden kodevej end Unity), **WebGL-aquarium /

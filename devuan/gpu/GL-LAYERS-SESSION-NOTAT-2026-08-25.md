@@ -8,6 +8,12 @@
 - [udført] Boks genstartet efter D-state-kile (sysrq-b), GPU-init + patches genkørt, værktøjer genopbygget (21:40).
 - [aftalt] Næste: uBlock Origin som kontrol → gdb på GPU-processen ved stall → xrefresh-test → andre WebGL-sider (Shadertoy, aquarium/three.js, Basemark sidst).
 - [afventer] Remote debugging-port 9222 aldrig observeret lyttende — uafklaret, ikke kritisk.
+- [udført] uBlock Origin 1.74.0 installeret i profilen (22:05) — kontrol, ikke årsag.
+- [udført] Run C (ingen læsninger): GPU-proces DeviceReset WR_POST_UPDATE ~1 min inde → skærm sort → desktop tilbage, vinduet animerer i X (87k px/3 s) men når ikke skærmen; gdb viser Renderer-tråd i present()-konverteringsloop (presents KØRER); X sund, vindue+ramme mapped; x32probe4 segfault i denne tilstand (22:11).
+- [målt] system-shim HDMI-dans ved start (chvt 7, HDMI 0, HDMI 1, chvt 11, chvt 7) — sort-øjeblik ved launch.
+- [målt] fb-driver-read-wedge er et SEPARAT kernel-problem: XGetImage(root)/dd(fb0) kiler fb-driverens read() i D-state under present-belastning (run B) — ikke X-serveren.
+- [udført] Run C konklusion (bruger-observation + pixel-analyse 22:14): RESTEN af skærmen har fine farver — KUN Firefox-vinduets indhold er sort; openbox-titellinjen (tekst) er læsbar. Vindue-dump er ~100 % sort (mean 0-2, 0 % lyse pixels); de 78k px/4 s ændringer er støj. rAF/FPS kører videre, presents fortsætter (#800+), men indholdet er SORT. Ingen CONTEXT_LOST logget, ingen GL-fejl i loggen.
+- [revideret] KONKLUSION: frysen er IKKE en present-/kompositeringsfejl — det er en RENDER-fejl efter GPU-proces-genstart: WebRender tegner sorte frames ind i EGL-overfladen. X-serveren kompositerer fint (desktop + openbox-ramme + øvrige vinduer vises). Den tidligere "present-stien er synderen"-konklusion er hermed kvalificeret/ændret.
 
 ## Status i ét blik
 
