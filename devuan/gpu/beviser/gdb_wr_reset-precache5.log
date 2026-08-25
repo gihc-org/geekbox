@@ -1,0 +1,2240 @@
+Breakpoint 1 at 0xe757d000
+Breakpoint 2 at 0xf5b71000
+Breakpoint 3 at 0xe75a008c
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea74bc64 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea758a84 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea77cb58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea77cb7c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea74e358 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea74ce58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xebc4c788 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xebc4dca4 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767af4 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767b54 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xebc1e4a4 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xebc1e4d0 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767af4 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767b54 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767af4 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea767b54 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdfd4e4 in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf2e58 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=20
+#0  0xe75a008c in ?? ()
+#1  0xefdf858c in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xefdf1d58 in ?? () from /usr/lib/firefox-esr/libxul.so
+[Switching to Thread 0xf17fc400 (LWP 2166)]
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea7542d8 in ?? () from /usr/lib/firefox-esr/libxul.so
+glGetError -> 0xf5b3b514 tid=6
+#0  0xe75a008c in ?? ()
+#1  0xea7533dc in ?? () from /usr/lib/firefox-esr/libxul.so
+#2  0xea75446c in ?? () from /usr/lib/firefox-esr/libxul.so
+
+Thread 20 "Renderer" received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0xf3e4a400 (LWP 2152)]
+0x00000000 in ?? ()
+[Inferior 1 (process 2116) detached]

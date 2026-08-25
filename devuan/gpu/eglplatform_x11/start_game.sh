@@ -13,11 +13,18 @@ URL="${GAME_URL:-https://poki.com/en/g/subway-surfers}"
 LOG="${GAME_LOG:-/tmp/ff_game.log}"
 MOZ_LOG="${MOZ_LOG:-}"
 RUST_LOG="${RUST_LOG:-}"
+GL_CAPTURE_SHIM="${GL_CAPTURE_SHIM:-}"
+GL_CAPTURE_LOG="${GL_CAPTURE_LOG:-}"
 
 rm -f "$PROFILE/.parentlock" "$PROFILE/lock"
 
 LXPID=$(pidof lxpanel | tr ' ' '\n' | head -1)
 DBUS=$(tr '\0' '\n' < "/proc/$LXPID/environ" 2>/dev/null | grep '^DBUS_SESSION_BUS_ADDRESS=' | cut -d= -f2-)
+
+CAPTURE_PRELOAD=""
+if [ -n "$GL_CAPTURE_SHIM" ]; then
+    CAPTURE_PRELOAD="$GL_CAPTURE_SHIM "
+fi
 
 runuser -u kristian -- env -i \
   HOME=/home/kristian USER=kristian LOGNAME=kristian SHELL=/bin/bash \
@@ -26,12 +33,13 @@ runuser -u kristian -- env -i \
   XDG_RUNTIME_DIR=/run/user/1000 XDG_CONFIG_HOME=/home/kristian/.config \
   XDG_DATA_HOME=/home/kristian/.local/share XDG_CURRENT_DESKTOP=LXDE \
   XDG_SESSION_TYPE=x11 \
-  LD_PRELOAD="$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
+  LD_PRELOAD="${CAPTURE_PRELOAD}$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
   LD_LIBRARY_PATH=/opt/hybris:"$WEBGL" \
   EGL_PLATFORM=x11 MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 \
   MOZ_DISABLE_GPU_SANDBOX=1 \
   MOZ_LOG="$MOZ_LOG" \
   RUST_LOG="$RUST_LOG" \
+  GL_CAPTURE_LOG="$GL_CAPTURE_LOG" \
   "$FF" -no-remote -profile "$PROFILE" --start-debugging-server 9222 "$URL" \
   > "$LOG" 2>&1 &
 FFPID=$!

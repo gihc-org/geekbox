@@ -766,6 +766,51 @@ den stabile opsætning for UI + WebGL-test.
    nedbrudsrisiko for boksen). Det adskiller tung fragment-belastning fra
    Unity-engine-problemer.
 
+### 5.15e GPU-MMU-fault bag WR_POST_UPDATE-reset + precache-determinisme (26. aug 2026)
+
+**GENNEMBRUD:** reset'et er en RIGTIG GPU-fejl, ikke en userspace-
+falsk-positiv. dmesg viser PVR-kernens fault-recovery (tidligere "dmesg tavs"
+var forkert — dmesg-ringen fyldes med syscall-403-flood på få minutter, så
+beviset skal fanges straks):
+
+```text
+PVR_K: RGX BVNC: 5.9.1.46
+PVR_K:   Recovery 1: PID = 2116, frame = 0, HWRTData = 0x400F1500,
+         EventStatus = 0x00000010, CRTimer = 0x000000036CF1, Innocent Lockup
+PVR_K:     BIF0 - FAULT:
+PVR_K:       * MMU status (0x0000000000007001): PC = 7, Page Size = 0, ...
+PVR_K:       * Request (0x00040E0102FF9540): MCU (128bit word within the Lower
+                 256bits, TPUA_USC, Banks 0-3), Reading from 0x0102FF9540.
+PVR_K: FW logged fault using PC Address: 0x000000005FBB4000
+```
+
+TPUA_USC (tekstur-PU'en) læser fra en **umappet GPU-adresse** — klassisk
+for-tidligt frigivet/ummappet hukommelse (use-after-free-mønster). Driveren
+recoverer ("Innocent Lockup", ødelægger konteksten) → Firefox detekterer
+`WR_POST_UPDATE` → GPU-proces-genstart → WebRender tegner sorte frames.
+gdb-fangsten fangede desuden SIGSEGV i Renderer-tråden (0x0) i den genstartede
+GPU-proces.
+
+**Precache-determinisme (målt 3×):** med `gfx.webrender.precache-shaders=true`
+fejler `cs_border_segment` ved `wr_shaders_resume_warmup` ("Compile failed."),
+og reset kommer deterministisk ved present #50–#150 (~1–3 min). Uden precache
+kompilerer samme shader Success og reset er flaky (#2–#950 / aldrig).
+Shaderen er ikke "i stykker" (kompilerer ved normal opstart) — warmup-fejlen
+er trigger/indikator for det underliggende GPU-fault-mønster.
+
+**Fangstværktøjer (repoet, `devuan/gpu/eglplatform_x11/`):**
+`gl_capture_shim.c` (LD_PRELOAD; virker standalone, men Firefox' GPU-proces
+kalder ikke vendor-lib'ens eksporterede GL-funktioner direkte → intercept
+virker ikke i Firefox), `gdb_wr_reset.cmd` + `capture_gdb_gpu.sh` (gdb med
+adresse-breakpoints på vendor-libs: glCompileShader GLES2+0x3895c,
+eglMakeCurrent EGL+0x11d4, glGetError GLES2+0x2308c). Beviser:
+`devuan/gpu/beviser/ff_precache5-2026-08-26.log` + `gdb_wr_reset-precache5.log`.
+
+**Næste skridt:** find ud af HVAD der er unmappet (shim-buffer-lifecycle
+1×1→resize-dansen vs. WebRender-teksturcache; test 3–4 buffere + fence før
+frigørelse), og fang dmesg straks efter reset (automatisk `dmesg -c` i
+start_game.sh). Fuld detalje: `devuan/gpu/GPU-FAULT-GENNEMBRUD-SESSION-NOTAT-2026-08-26.md`.
+
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
 1986254 → dup af 1667748) viser præcis vores sekvens:
@@ -860,7 +905,7 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
   `eglplatform_x11` (§5.15c) med Basic-kompositoren; **fulde spil fryser dog
   præsentationen til skærmen** — GL-layers-stien løser render-livelocket i
   vinduet, men skærmen opdaterer ikke (og spil-kørsler har taget boksen ned
-  to gange). Status og næste skridt: §5.15d
+  to gange). Status og næste skridt: §5.15d + §5.15e (GPU-MMU-fault fundet)
 - Hardware video-decode/GPU-acceleration — WebGL 2.0 virker i firefox-esr via
   hybris-stakken (§5.15c); spil-præsentationen er det åbne spor (§5.15d).
   Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
