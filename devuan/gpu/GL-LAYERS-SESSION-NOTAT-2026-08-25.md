@@ -71,6 +71,73 @@
 4. Installér `xrefresh` (x11-utils) og test om tvungen skærmopdatering får
    indholdet frem (server-redraw-fejl → workaround).
 
+## Tilføjelse efter run 6 (stress-siden, 25. aug nat, 21:20–21:45)
+
+**Stress-siden er bygget og kørt — fejlen er REPRODUCERET uden Unity/reklamer/
+netværk.** Dermed er hovedspørgsmålet fra planens trin 1 besvaret: det er IKKE
+poki/Unity-specifikt; det er vores Firefox/GL-layers-present-sti.
+
+Målt (live-aflæsninger under kørslen; bevisfiler gik tabt ved genstart, /tmp =
+tmpfs på denne boot):
+
+- `webgl_stress.html` kørte fra kl 21:25:01 med GL-layers
+  (`?scale=1&tiles=32&tex=0`, vindue 1280x814 canvas, 1280x948 surface).
+- De første 4+ min opdaterede skærmen KONTINUERLIGT: root ~1.040.000 px/4 s,
+  fb0 ~437.000 px/4 s, vindue ~1.050.000 px/4 s (fuld canvas ændres hver
+  frame). Present-kæden kørte (#2 → #50 → #150), rAF-FPS ~1,4–1,8 (sænket
+  present-rate, men ingen frys).
+- Kl ~21:26:58 gik det i stå: snapshot-loopen stoppede — `/tmp/xdump`
+  (XGetImage på root) og `dd if=/dev/fb0` gik i **D-state (uafbrydelig)**,
+  ligesom et tab-barn. GPU-processen spindede op til ~100 % CPU.
+- Load steg 1,8 → 9,2 → 13,4. `pkill -9 -x firefox-esr` + `pkill -9 -f
+  "/usr/lib/firefox-es[r]/"` stoppede GPU-processen, men D-state-processerne
+  overlevede — **sysrq-b-genstart nødvendig** (samme strøm-cykling-mønster
+  som spil-kørslerne).
+- Efter genstart: VT=tty7, HDMI=1, patches + `sh /root/gpu_up.sh` genkørt,
+  værktøjer genopbygget, `xrefresh` (x11-xserver-utils) installeret.
+
+**Nyt spor:** XGetImage og fb0-læsninger blokerer i kernen når present-kæden
+kiler — mistænkt serialisering i X-server/fb-driver omkring store XPutImage-
+presents, ikke en X-server-begrænsning (x32proberne kørte isoleret fint).
+
+**Værktøjer opdateret:**
+- `webgl_stress.html` (ny): fuld canvas, rAF, FPS via dump(), params
+  `scale`/`tiles`/`tex`, logger `CONTEXT_LOST`/`RESTORED`.
+- `capture_stress.sh` (ny): tidslinje root/fb0/vindue hver 4. s med
+  rootdiff-diffs + present-nummer + DeviceReset-tæller.
+- `rootdiff.c`: nu 16/32-bpp (vindue-diff).
+- `stall_capture.sh` (rettet): GPU-lookup via `ps -eo pid,args | grep " gpu$"`
+  (pgrep-cmdline matchede ikke), stall-detektion via HØJESTE present-nummer
+  (log-flush-robust) + rate-check < 1 present/s over ~15 s. Fejl rettet under
+  kørsel: `grep -oE "[0-9]+"` fangede også "11" fra "x11ws" → nu
+  `[0-9]+$`-anker.
+
+**Opdateret plan (fuld version — inkl. de sider der blev aftalt i sidste
+session, men manglede i dokumentationen):**
+1. ~~Lokal stress-side~~ — **FÆRDIG:** fejlen reproduceres; present-stien er
+   synderen (ikke poki/Unity). Gentag evt. med `tex=1` og/eller `scale=1,5`
+   for at finde belastningsgrænsen, og kør `stall_capture.sh` (nu rettet)
+   samtidig for at få gdb-backtrace i øjeblikket hvor XGetImage/fb0 går i
+   D-state.
+2. **uBlock Origin** i profilen som kontrol (ikke årsag, men slider på
+   ressourcerne og kan øge reset-risiko). Installeres mens Firefox er stoppet.
+3. **gdb på GPU-processen** ved stall (fixed stall_capture.sh) — find den
+   blokerende tråd (gralloc-lock? XSync? buffer-tømning? XPutImage-serialisering?).
+4. **xrefresh-test** (installeret): kør `DISPLAY=:0 xrefresh` under en
+   kørende stress-side og se om tvungen skærmopdatering får indholdet frem —
+   det ville pege på server-redraw-fejl og give en workaround.
+5. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session, manglede
+   i notaterne):
+   - **Shadertoy** (shadertoy.com) — pure fragment-shaders, anden kodevej end
+     Unity, ingen reklamer; god til at adskille tung fragment-belastning fra
+     Unity-engine-problemer.
+   - **WebGL-aquarium / three.js-eksempler** (fx webglsamples.org/aquarium,
+     threejs.org/examples roterende geometri) — mange draw-calls, kontinuerlig
+     animation, ingen annoncer.
+   - **Basemark WebGL** — rigtigt benchmark med flere scener, men for tungt
+     for boksen (nedbrudsrisiko) → gem til sidst.
+   - (Voxel Space/A-Frame og Khronos conformance kun hvis nødvendigt.)
+
 ## Kommandoer der virker (efter genstart, root)
 
 ```bash

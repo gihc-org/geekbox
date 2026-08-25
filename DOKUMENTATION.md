@@ -683,6 +683,16 @@ Resultater, alle målt:
   0x1ec, colormap 0x100002a ikke installeret, backing NotUseful, gravity)
   matcher Firefox' vinduer. **Fejlen er altså Firefox/GPU-genstart-specifik,
   IKKE en X-server-begrænsning** (uafklaret).
+- **Lokal stress-side (25. aug nat, efter §5.15d's plan trin 1):**
+  `webgl_stress.html` (fuld canvas, kontinuerlig rAF-animation, FPS via
+  `dump()`, justerbar opløsning `?scale=&tiles=&tex=`) kørte i GL-layers med
+  måle-loop (`capture_stress.sh`: root/fb0/vindue-diff hver 4 s). De første
+  4+ min opdaterede skærmen kontinuerligt (root ~1.040.000 px/4 s, fb0
+  ~437.000 px/4 s; present #2→#150; rAF-FPS ~1,5) — derefter kilede det:
+  `xdump` (XGetImage root) og `dd if=/dev/fb0` gik i D-state (uafbrydelig),
+  GPU-processen spindede ~100 % CPU, load steg til 13+; sysrq-b-genstart
+  nødvendig. **Konklusion: frysen reproduceres UDEN reklamer/Unity/netværk —
+  fejlen ligger i Firefox/GL-layers-present-stien, ikke poki-specifikt.**
 
 **Konklusion:** GL-layers-stien løser spillets render-livelock (spillet
 animerer i vinduet), men præsentationen til den fysiske skærm er stadig i
@@ -691,24 +701,31 @@ boksen. Basic-kompositoren (status quo i §5.15c) er fortsat den stabile
 opsætning for UI + WebGL-test.
 
 **Næste skridt (aftalt):**
-1. Byg en **lokal WebGL-stress-side** (ingen reklamer, ingen Unity, ingen
-   netværk): kontinuerlig rAF-animation, fuld canvas, FPS-tæller via dump,
-   justerbar opløsning. Kør 5+ min og se om skærmen opdaterer hele tiden —
-   adskiller present-sti-fejl fra poki/Unity-specifikke problemer.
+1. ~~Lokal WebGL-stress-side~~ — **FÆRDIG:** fejlen reproduceres; present-stien
+   er synderen. Gentag evt. med `tex=1`/`scale=1,5` for belastningsgrænsen,
+   med den rettede `stall_capture.sh` kørende (gdb i D-state-øjeblikket).
 2. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
    dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
    bidrage til reset/nedbrud).
 3. **gdb på GPU-processen** når present-kæden sænker farten (`stall_capture.sh`
-   i repoet) — find den blokerende tråd (gralloc-lock? XSync? buffer-tømning?).
-4. Test om tvungen skærmopdatering (installér `xrefresh` fra x11-utils) får
-   indholdet frem — det ville pege på en server-redraw-fejl og give en
-   workaround.
+   i repoet, GPU-lookup + log-flush rettet) — find den blokerende tråd
+   (gralloc-lock? XSync? buffer-tømning? XPutImage-serialisering?).
+4. **xrefresh-test** (installeret via x11-xserver-utils): tvungen
+   skærmopdatering under en kørende stress-side — server-redraw-fejl → workaround.
+5. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
+   manglede i dokumentationen): **Shadertoy** (shadertoy.com, pure fragment-
+   shaders, ingen reklamer, anden kodevej end Unity), **WebGL-aquarium /
+   three.js-eksempler** (mange draw-calls, kontinuerlig animation, ingen
+   annoncer), og til sidst **Basemark WebGL** (rigtigt benchmark, men
+   nedbrudsrisiko for boksen). Det adskiller tung fragment-belastning fra
+   Unity-engine-problemer.
 
 Oversigt over nye værktøjer: `xdump.c` (XGetImage-dump),
-`rootdiff.c` (16-bpp-diff på boksen), `capture_game_black.sh`
-(snapshot-loop root+fb0+vindue-attributter), `stall_capture.sh`
-(gdb ved present-stall), `start_game.sh` (instrumenteret spil-launcher),
-`x32probe1–4.c` (X-kompositerings-prober). Hele forløbet:
+`rootdiff.c` (16/32-bpp-diff på boksen), `capture_game_black.sh` +
+`capture_stress.sh` (snapshot-loop root+fb0+vindue-attributter, tidslinje
+med diffs), `stall_capture.sh` (gdb ved present-stall, rettet),
+`start_game.sh` (instrumenteret spil-launcher), `x32probe1–4.c`
+(X-kompositerings-prober), `webgl_stress.html` (lokal stress-side). Hele forløbet:
 `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
 
 ## 6. Slutarkitekturen
