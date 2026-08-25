@@ -25,6 +25,10 @@
 - [udført] **gl_reset_probe færdig (23:41): 300 frames 1280×720, glGetError/eglGetError pr. frame → 0 afvigelser** — vendor-GL (hybris/PVR/gralloc → eglplatform_x11 → XPutImage) melder ALDRIG fejl i en lang standalone-kørsel. Bevis: `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`. (Åbent spor 1 i 23:34-opdateringen er hermed besvaret.)
 - [fundet] **Bugzilla 1989579 + 1986254 (dup af 1667748): præcis vores logsignatur.** `Detect DeviceReset DeviceResetReason::UNKNOWN WR_POST_UPDATE` + `[ERROR webrender::device::gl] Failed to compile vertex shader: ps_text_run_ALPHA_PASS_TEXTURE_2D` + `wr_renderer_render: Shader(Compilation(...))` + "Handling webrender error 2" — en kendt desktop-Linux-WebRender-fejl (shader-kompileringsfejl → device-reset), hvor rodårsagen i den sag var FD-inheritance/CLOEXEC (dma-buf fd delt mellem parent/child → driver-korruption). Skal bekræftes på vores boks med `RUST_LOG=webrender=debug`.
 - [målt] Brugerrapport 23:40: skærmen viser **frosset sidste frame fra stress-siden** (fire firkanter, nederste halvdel pixeleret/streger ~1 Hz), selvom hverken Firefox eller probe kører (ps + xwininfo bekræftet) — X destruerer vinduet ved klient-død, men tegner IKKE over området, så fb-indholdet står tilbage. Skærmen er et øjebliksbillede af sidste present, ikke en levende tilstand.
+- [revideret] **RUST_LOG virker på ESR** (mit første "blind"-fund var en grep-fejl: modulnavnet står efter niveauet — `[INFO  webrender::device::gl]`). Run G fangede fuld WR-logning (00:15).
+- [afkræftet] **Shader-kompileringshypotesen (Bugzilla 1989579) er AFKRÆFTET på vores boks:** run G kompilerede alle shaders med Success (inkl. ps_text_run_ALPHA_PASS_TEXTURE_2D + composite_FAST_PATH_TEXTURE_2D) og resettede alligevel ved #950 uden nogen shader-/GL-fejl i loggen (00:15).
+- [målt] **Reset kan komme sent:** run G reset ved present #950 / ~11,3 min (tidligere: #2–#100). "Kun ved start"-mønsteret er forkert; reset-vinduet spænder hele sessionen. dmesg tavs (ingen PVR/ION/fence-linjer) → userspace/driver-kontekst-niveau (00:15).
+- [afbrudt] **Precache-testen (`gfx.webrender.precache-shaders=true`) blev afbrudt af brugeren FØR kørsel** — kommandoen nåede ikke at ændre noget (verificeret). Formålet var at gøre en evt. shader-fejl deterministisk + navngivet; run G besvarede allerede det spørgsmål negativt. Precache kan stadig testes som workaround-kandidat (00:1x).
 
 ## Buffer-race-hypotesen (rodårsag til GPU-proces-reset) — AFTALT 22:55
 
@@ -131,6 +135,101 @@ uden WebRender, har vi en brugbar konfiguration til spillet.
   omkring et reset. Derefter: pref-/workaround-jagt (fx undgå den shader-sti
   eller auto-genstart), uBlock-test, dokumentation + commit.
 
+## Opdatering 23:55 — RUST_LOG blind på ESR; PowerVR-G6110 er WR-blokeret på Android
+
+- **`RUST_LOG=webrender=debug` når GPU-processen (verificeret i
+  /proc/<gpu>/environ), men mit første grep fandt ingen linjer — **FEJLKONKLUSION:
+  RUST_LOG VIRKER på ESR.** Modulnavnene står efter niveauet (`[INFO  webrender::device::gl]`,
+  `[WARN  webrender::device::gl]`), så `grep "\[webrender"` matcher ikke. Run G
+  (23:45) viser fuld webrender-logning (INFO/WARN om GL-kontekst, shader-kompilering,
+  FrameBuilderConfig). RUST_LOG-vejen er altså IKKE blind — det var kun grepet.
+- **Bugzilla-indsigt (PowerVR-ROGUE + WebRender):** Mozilla har BLOCKERET
+  WebRender på Android på netop PowerVR Rogue G6110 (bug 1742987, pga.
+  1742986 border-radius + 1717863 sort boks ved opacity-animation) og på
+  flere Rogue-GPU'er pga. glFenceSync-nedbrud i `UploadPBOPool::end_frame`
+  (bug 1773128; Chromium har tilsvarende workaround i gpu_driver_bug_list).
+  Vores boks er Linux/X11, så Android-bloklisten gælder ikke → vi kører WR
+  på en GPU som Firefox selv har fravalgt til WR på Android. Det styrker
+  "driveren fejler sporadisk under WR" (shader-kompilering/fences), ikke en
+  shim-buffer-race.
+- **Kadence-forklaring revurderes (målerækkefølge):** standalone-loftet er
+  ~2M px/s (640×360→9 fps, 1280×720→2,2 fps, 1280×948→1,4 fps — alle
+  ~2M px/s). Firefox præsenterer ALTID hele vindueoverfladen (1280×948)
+  uanset canvas-scale, så ~1,4 Hz er konsistent med transfer-cap på
+  fuld-vindue-presents — "uafhængig af canvas-størrelse" betyder ikke
+  nødvendigvis vsync-kadence. Skal verificeres (fx present af delvist
+  vindue), men det er den separate kadence-sag, ikke reset'et.
+- **Eksperiment-plan (næste):** `gfx.webrender.precache-shaders=true` —
+  WR kompilerer alle shaders ved start; hvis PowerVR-kompileren er den
+  flaky udløser, bliver fejlen deterministisk ved start OG GFX1-loggen
+  navngiver shaderen. Lykkes starten, er alle shaders i cache → sessionen
+  burde være reset-fri (potentiel workaround). Derefter uBlock-test + spil.
+
+## Opdatering 00:15 (nat → 26. aug) — Run G: RUST_LOG virker; shader-fejl AFKRÆFTET; SENT reset
+
+**Run G (RUST_LOG=webrender=debug, stress-side scale=1, 23:45–23:57) — bevis:
+`devuan/gpu/beviser/ff_rust_runG-2026-08-25.log` (478 linjer, hentet + gemt i
+repoet):**
+- **Fuld webrender-logning virker** (`[INFO webrender::device::gl] Renderer:
+  PowerVR Rogue G6110`, `[INFO webrender::renderer::init] WR FrameBuilderConfig
+  { default_font_render_mode: Alpha, dual_source_blending_is_supported: false,
+  ... gpu_supports_render_target_partial_update: true, compositor_kind: Draw {
+  max_partial_present_rects: 1, ... }, is_software: false }`).
+- **ALLE kompilerede shaders lykkedes** ("Warnings detected on shader: X →
+  Success.") — inkl. `ps_text_run_ALPHA_PASS_TEXTURE_2D` og
+  `composite_FAST_PATH_TEXTURE_2D`, de PRÆCISE shaders fra Bugzilla 1989579.
+  **Ingen "Failed to compile", ingen "wr_renderer_render: Shader(...)",
+  ingen "Handling webrender error" i hele kørslen.**
+- **Reset kom alligevel: `[GFX1-]: Detect DeviceReset DeviceResetReason::UNKNOWN
+  DeviceResetDetectPlace::WR_POST_UPDATE in GPU process` efter present #950**
+  (~11,3 min inde; kørslen startede 23:45:53, reset før 23:57:12). **Uden nogen
+  logget GL-/shader-fejl forud** — det er en ren kontekst-/driver-reset, ikke
+  en kompileringsfejl. Bugzilla-1989579-mekanismen (shader-fejl → reset) er
+  dermed AFKRÆFTET på vores boks; WR_POST_UPDATE-detektionen fanger noget
+  andet (driveren melder context-lost/ukendt status).
+- **pix0=00000000 på ALLE presents** (#1 1×1 → #950) — bufferens første pixel
+  er transparent sort hele kørslen (konsistent med WR-baggrund
+  `ColorF { 0,0,0,0 }` + vindue-chrome i hjørnet; siger ikke at hele overfladen
+  er sort). FPS målte 1,3–2,4 gennem hele kørslen.
+- **dmesg er tavs omkring reset:** ingen PVR/ION/CMA/fence/hang-linjer — kun
+  den kendte harmless syscall-403-flood (clock_gettime64). Reset'et er
+  userspace-/driver-kontekst-niveau, ikke et kernel-meldt GPU-hang.
+- **Efter reset:** GPU-proces-genstart ("init_module færdig" igen, ny
+  WR-init, "vindue pakket ind (1280x948)"), system-shims HDMI-dans (chvt 7,
+  HDMI 0→1, chvt 11 — chvt fejlede "Operation not permitted" som kristian),
+  derefter `Failed as lost WebRenderBridgeChild`, 3×
+  `CompositorBridgeChild receives IPC close with reason=AbnormalShutdown` og
+  IPDL `Msg_NotifyChildRecreated`-fejl — samme kendte mønster som før.
+- **`WaitFlushedEvent`-forsinkelse 2166 ms ÉN gang ved start** (23:45) — ikke
+  gentaget; ikke reset-udløseren.
+
+**Revideret mønster for reset-tidspunkt:** tidlige resets (#2–#100, run D/C/
+probe2) OG nu et sent reset (#950/~11 min, run G). "Kun ved start"-teorien er
+dermed forkert — reset-vinduet spænder hele sessionen; overlevelsesraten er
+bare højere jo længere man kommer.
+
+**Kadence-revurdering (bekræftet af run G):** FPS 1,3–2,4 på 1280×814-canvas
+i et 1280×948-vindue — konsistent med standalone-loftet ~2M px/s på
+fuld-vindue-presents. ~1,4 Hz er transfer-cap, ikke (nødvendigvis) vsync.
+
+**Hvad jeg var i gang med, da brugeren afbrød (dokumenteres nu):**
+`gfx.webrender.precache-shaders=true`-testen — formål: (1) hvis en sporadisk
+shader-kompilering var udløseren, ville precache gøre fejlen deterministisk
+ved start OG navngive shaderen i loggen; (2) lykkes starten, er alle shaders
+kompileret på forhånd → sessionen burde være reset-fri (potentiel workaround).
+**Kommandoen nåede IKKE at køre** (afbrudt før godkendelse; verifikation efter
+afbrydelsen: ingen precache-pref i prefs.js, ingen ff_precache.log — run G
+fortsatte uændret). Med run G's log er formål (1) allerede besvaret NEGATIVT:
+shader-kompilering er ikke udløseren. Precache kan stadig testes som
+workaround-kandidat, men den nye primære hypotese er en **driver-kontekst-reset
+uden shader-fejl** (se næste skridt i handover).
+
+**Box-tilstand ved handover (00:1x, 26. aug):** run G's Firefox kører stadig
+(post-reset, GPU-proces genstartet); VT=tty7, HDMI=1; prefs.js UÆNDRET
+(ingen precache); gl_reset_probe færdig (0 afvigelser); ~2 Firefox-opstarter
+på denne boot (run G + tidligere probe2-rydning) — boksen er frisk nok til
+flere kørsler, men genstart anbefales efter ~8 opstarter samlet.
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`
@@ -154,6 +253,11 @@ uden WebRender, har vi en brugbar konfiguration til spillet.
   eglplatform_x11-sti: 300 frames, 0 GL/EGL-fejl. Reset'et er
   WebRender-intern (shader-kompileringsfejl → WR_POST_UPDATE,
   Bugzilla 1989579-signatur). Næste: `RUST_LOG=webrender=debug`-fangst.
+- **Run G (23:45–23:57) svarer:** RUST_LOG virker; alle shaders kompilerer
+  (inkl. 1989579-shaderne); reset ved #950 (~11 min) kommer UDEN shader-fejl
+  og uden kernel-signatur — **driver-kontekst-reset, ikke kompileringsfejl.**
+  Shader-hypotesen er afkræftet; næste: fang hvad WR_POST_UPDATE faktisk ser
+  (glGetGraphicsResetStatus via GL-shim/gdb) + precache-workaround-test.
 
 ## Hvad vi ved om den sorte skærm (målt)
 

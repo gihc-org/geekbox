@@ -778,6 +778,21 @@ rodårsagen en dma-buf-fd uden CLOEXEC der arves af child-processer
 signaturen giver et konkret mål: fang den fejlende shader med
 `RUST_LOG=webrender=debug` (MOZ_LOG-gfx-vejen er blind i denne build).
 
+**Run G (26. aug nat, RUST_LOG=webrender=debug) afkræfter shader-hypotesen:**
+fuld webrender-logning virker på ESR (modulnavn efter niveauet:
+`[INFO  webrender::device::gl]`), ALLE shaders kompilerede med "Success"
+(inkl. `ps_text_run_ALPHA_PASS_TEXTURE_2D` og
+`composite_FAST_PATH_TEXTURE_2D` fra 1989579), og reset kom alligevel ved
+present #950 / ~11 min — `DeviceResetReason::UNKNOWN WR_POST_UPDATE` UDEN
+shader-/GL-fejl forud, og dmesg er tavs (ingen PVR/ION/fence-linjer).
+Reset-tidspunktet spænder altså hele sessionen (tidligere målt: #2–#100).
+Bevis: `devuan/gpu/beviser/ff_rust_runG-2026-08-25.log`. Ny arbejdshypotese:
+driveren melder context-lost/ukendt status til WR_POST_UPDATE uden logget
+GL-fejl — fang værdien med GL-shim/gdb. PowerVR-G6110 er desuden
+WebRender-blokeret på Android (bug 1742987 pga. 1742986 + 1717863) og
+Rogue-GPU'er har kendt glFenceSync-nedbrud (bug 1773128) — vores
+desktop-Linux-boks rammes ikke af bloklisten.
+
 Oversigt over nye værktøjer: `xdump.c` (XGetImage-dump),
 `rootdiff.c` (16/32-bpp-diff på boksen), `capture_game_black.sh` +
 `capture_stress.sh` (snapshot-loop root+fb0+vindue-attributter, tidslinje
