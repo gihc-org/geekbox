@@ -22,6 +22,9 @@
 - [udført] Run E (gfx:5+WebRender:5, 22:28–22:38): **10 min / present #800+ / 0 DeviceReset** — reset'et er FLAKY (run C ~#50, run D ~#2, run E ingen); MOZ_LOG gav stadig intet ekstra.
 - [udført] Run F (scale=0,5, 22:38–22:47): **9 min / present #800+ / 0 DeviceReset** — hurtigere presents (~4× mindre canvas) fjerner IKKE reset'et (2 af 4 kørsler på denne boot reset: C+D; E+F overlevede). Reset'et er flaky, ikke canvas-størrelses-afhængigt.
 - [målt] Firefox-kompositor-kadence ~1,4 Hz er uafhængig af canvas-størrelse (scale=1 og 0,5 giver samme FPS) — en separat vsync-kadence-problematik, ikke transfer-loftet (som kun gælder standalone-klienten).
+- [udført] **gl_reset_probe færdig (23:41): 300 frames 1280×720, glGetError/eglGetError pr. frame → 0 afvigelser** — vendor-GL (hybris/PVR/gralloc → eglplatform_x11 → XPutImage) melder ALDRIG fejl i en lang standalone-kørsel. Bevis: `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`. (Åbent spor 1 i 23:34-opdateringen er hermed besvaret.)
+- [fundet] **Bugzilla 1989579 + 1986254 (dup af 1667748): præcis vores logsignatur.** `Detect DeviceReset DeviceResetReason::UNKNOWN WR_POST_UPDATE` + `[ERROR webrender::device::gl] Failed to compile vertex shader: ps_text_run_ALPHA_PASS_TEXTURE_2D` + `wr_renderer_render: Shader(Compilation(...))` + "Handling webrender error 2" — en kendt desktop-Linux-WebRender-fejl (shader-kompileringsfejl → device-reset), hvor rodårsagen i den sag var FD-inheritance/CLOEXEC (dma-buf fd delt mellem parent/child → driver-korruption). Skal bekræftes på vores boks med `RUST_LOG=webrender=debug`.
+- [målt] Brugerrapport 23:40: skærmen viser **frosset sidste frame fra stress-siden** (fire firkanter, nederste halvdel pixeleret/streger ~1 Hz), selvom hverken Firefox eller probe kører (ps + xwininfo bekræftet) — X destruerer vinduet ved klient-død, men tegner IKKE over området, så fb-indholdet står tilbage. Skærmen er et øjebliksbillede af sidste present, ikke en levende tilstand.
 
 ## Buffer-race-hypotesen (rodårsag til GPU-proces-reset) — AFTALT 22:55
 
@@ -101,6 +104,33 @@ uden WebRender, har vi en brugbar konfiguration til spillet.
    udløser UNKNOWN-reset).
 4. **Auto-genstart-workaround** (spil i bidder).
 
+## Opdatering 23:45 — vendor-GL ren; næste: RUST_LOG-shader-fangst
+
+- **`gl_reset_probe` (standalone, samme eglplatform_x11-sti): 300 frames
+  1280×720 med `glGetError`/`glGetGraphicsResetStatus`/`eglGetError` pr.
+  frame → 0 afvigelser.** Proben bygges på boksen (gcc), kører 300 frames
+  ~2 min (10 fps), og melder `færdig: 300 frames, 0 afvigelser`. Noter:
+  `robustness-i-extensions: ja`, men `glGetGraphicsResetStatus` er IKKE
+  tilgængelig (eglGetProcAddress → NULL) — tjekket er derfor glGetError/
+  eglGetError, ikke reset-status. Bevis gemt i repoet:
+  `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`.
+- **Konklusion:** vendor-stakken er ren over 300 presents (langt ud over
+  Firefox' flaky reset-punkt #2–#100). Reset'et er dermed WebRender-intern
+  (kompilerings-/detektionsfejl), IKKE et sporadisk vendor-GL-fejl.
+- **Bugzilla-sporet (fundet via håndgreb 23:45):** bug 1989579 viser præcis
+  vores sekvens — `WR_POST_UPDATE`-detektion efter `[ERROR webrender::device::gl]
+  Failed to compile vertex shader: ps_text_run_ALPHA_PASS_TEXTURE_2D` og
+  `wr_renderer_render: Shader(Compilation(...))` → "Handling webrender error 2".
+  Buggen er lukket som dup af 1986254 → dup af 1667748 (desktop: dma-buf
+  fd uden CLOEXEC arves af child → driver-korruption). Vores boks er en
+  anden stak (PowerVR/hybris), men signaturmatch giver os et mål: **fang den
+  fejlende shader i Firefox' egen log med `RUST_LOG=webrender=debug`** (den
+  vej `MOZ_LOG=gfx:5` var blind på).
+- **Næste eksperiment (i gang):** kør stress-siden med `RUST_LOG=webrender=debug`
+  i start_game.sh (env skal udvides), fang `Failed to compile ...`/Shader-fejlen
+  omkring et reset. Derefter: pref-/workaround-jagt (fx undgå den shader-sti
+  eller auto-genstart), uBlock-test, dokumentation + commit.
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`
@@ -120,6 +150,10 @@ uden WebRender, har vi en brugbar konfiguration til spillet.
   simple side:** WEBGL_RESULT OK, og animationen når root (518.481 px/2 s)
   OG fb0 (329.280 px/2 s). Så skærm-stien virker — den knækker kun i
   spil-sessionen efter GPU-reset.
+- **Vendor-GL er ren (23:41):** standalone probe gennem samme
+  eglplatform_x11-sti: 300 frames, 0 GL/EGL-fejl. Reset'et er
+  WebRender-intern (shader-kompileringsfejl → WR_POST_UPDATE,
+  Bugzilla 1989579-signatur). Næste: `RUST_LOG=webrender=debug`-fangst.
 
 ## Hvad vi ved om den sorte skærm (målt)
 

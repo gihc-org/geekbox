@@ -12,6 +12,7 @@ WEBGL=/usr/local/lib/firefox-webgl
 URL="${GAME_URL:-https://poki.com/en/g/subway-surfers}"
 LOG="${GAME_LOG:-/tmp/ff_game.log}"
 MOZ_LOG="${MOZ_LOG:-}"
+RUST_LOG="${RUST_LOG:-}"
 
 rm -f "$PROFILE/.parentlock" "$PROFILE/lock"
 
@@ -30,6 +31,7 @@ runuser -u kristian -- env -i \
   EGL_PLATFORM=x11 MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 \
   MOZ_DISABLE_GPU_SANDBOX=1 \
   MOZ_LOG="$MOZ_LOG" \
+  RUST_LOG="$RUST_LOG" \
   "$FF" -no-remote -profile "$PROFILE" --start-debugging-server 9222 "$URL" \
   > "$LOG" 2>&1 &
 FFPID=$!

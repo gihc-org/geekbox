@@ -727,7 +727,8 @@ den stabile opsætning for UI + WebGL-test.
    MOZ_GL_SPEW) og fang fejlkoden omkring `WR_POST_UPDATE`; test også om
    reset'et er frame-antal-afhængigt (let vs. tung side, `scale`/`tex`).
    NB: `MOZ_LOG=gfx:5` gav intet output i run D — logningen er blind i denne
-   build; alternativet er nedenstående standalone-test.
+   build; alternativet er nedenstående standalone-test **eller
+   `RUST_LOG=webrender=debug`** (se Bugzilla 1989579 nedenfor).
 3. **Standalone GLES-loop gennem samme eglplatform_x11-sti**
    (`test_client_x11`, 3+ min): fejler vendor-stakken selv (eglSwapBuffers-
    fejl/sorte frames efter N swaps) → roden er hybris/PVR/gralloc, ikke
@@ -736,6 +737,10 @@ den stabile opsætning for UI + WebGL-test.
    overlever; fejlen er Firefox/WebRender-specifik.** NB: test_client
    overflade blev fmt=4 (RGB_565) og shim'ens konvertering er hårdkodet
    RGBA8888 → 2×2-tiling/artefakter i testklienten (fix: respekter b->format).
+   **Også UDFØRT (23:41): `gl_reset_probe` — 300 frames 1280×720 med
+   glGetError/eglGetError pr. frame → 0 afvigelser** (bevis:
+   `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`). Vendor-GL er ren;
+   reset'et er WebRender-intern.
 4. **uBlock Origin** i profilen som kontrol (mindsker reklame-SDK-load og
    dermed måske GPU-reset-risiko; reklamer er IKKE årsag til frysen, men kan
    bidrage til reset/nedbrud).
@@ -760,6 +765,18 @@ den stabile opsætning for UI + WebGL-test.
    annoncer), og til sidst **Basemark WebGL** (rigtigt benchmark, men
    nedbrudsrisiko for boksen). Det adskiller tung fragment-belastning fra
    Unity-engine-problemer.
+
+**Bugzilla-signaturmatch (25. aug nat):** bug
+[1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
+1986254 → dup af 1667748) viser præcis vores sekvens:
+`DeviceResetReason::UNKNOWN WR_POST_UPDATE` efter
+`[ERROR webrender::device::gl] Failed to compile vertex shader:
+ps_text_run_ALPHA_PASS_TEXTURE_2D` → `wr_renderer_render:
+Shader(Compilation(...))` → "Handling webrender error 2". På desktop var
+rodårsagen en dma-buf-fd uden CLOEXEC der arves af child-processer
+(driver-korruption). Vores boks er PowerVR/hybris (anden stak), men
+signaturen giver et konkret mål: fang den fejlende shader med
+`RUST_LOG=webrender=debug` (MOZ_LOG-gfx-vejen er blind i denne build).
 
 Oversigt over nye værktøjer: `xdump.c` (XGetImage-dump),
 `rootdiff.c` (16/32-bpp-diff på boksen), `capture_game_black.sh` +
