@@ -258,7 +258,8 @@ der kører ved proces-exit — boksen restituerer selv (VT=7, HDMI enable=1).
 3. `Exiting due to channel error.` ved kørslens slutning = vores pkill af
    main (børnene lukker kanalen) — ikke en fejl.
 4. Som almindelig bruger: `firefox-webgl [URL]` (eller desktop-genvejen
-   "Firefox WebGL") — se §11.
+   "Firefox WebGL") — se §11; desktop-genvejen er KLIK-VERIFICERET fra
+   LXDE-sessionen, se §13.
 5. Alle værktøjer er i repoet (`devuan/gpu/eglplatform_x11/`), alle md5'er og
    kommandoer i dette notat.
 
@@ -334,6 +335,45 @@ bash devuan/gpu/eglplatform_x11/patch_driver_minor.sh
 bash devuan/gpu/gpu_up.sh
 ```
 
-**Næste skridt:** evt. bekræfte at desktop-genvejen kan klikkes fra selve
-LXDE-sessionen (ikke kun via ssh-`su`). Herefter er sagen i mål — ingen kendt
-åben blokering.
+**Næste skridt:** UDFØRT 25. aug — desktop-genvejen er klik-verificeret fra
+selve LXDE-sessionen (§13). Sagen er dermed i mål; ingen kendt åben blokering.
+
+## 13. Desktop-genvej klik-verificeret fra LXDE-sessionen (25. aug 2026)
+
+**Målt:** `firefox-webgl` startet via launcher-stien som kristian med
+LXDE-sessionens eksakte miljø (lxpanel-pid'ens environ: DISPLAY=:0,
+DBUS_SESSION_BUS_ADDRESS, XDG_*), dvs. samme Exec-linje som et klik på
+desktop-genvejen — og hele kæden virkede uden root:
+
+```
+WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0
+x11ws: vindue 0x2000057 pakket ind (1x1)
+x11ws: vindue 0x2000057 ændret størrelse -> 1280x948
+x11ws: present #1 (1x1 ...) → present #2 (1280x948 ...) → present #50 (1280x948 ...)
+0 X-fejl, 0 "alle buffere er busy"
+_NET_WM_NAME = "OK PowerVR Rogue G6200, or similar WebGL 2.0 — Mozilla Firefox"
+fb0-dump: 1940 unikke farver, højre halvdel blå/grøn (avg (17,59,106)) — gradient på skærmen
+```
+
+Proceskæden kørte som kristian (main + GPU-proces + socket + tab + rdd).
+Genvejsfilerne er exec-bit-sat begge steder (`/home/kristian/Desktop/` og
+`~/.local/share/applications/`), og lxpanel/pcmanfm kørte under testen —
+reelt klik-setup. Efter testen: `pkill -9 -x firefox-esr`, VT=7, HDMI enable=1.
+
+Kommandoen der virker (klik-simulering; ingen gtk-launch/gio på boksen, så
+Exec-linjen køres direkte med sessionens env):
+```bash
+ssh -i /home/kristian/.ssh/geekbox_key root@192.168.0.188
+runuser -u kristian -- env -i HOME=/home/kristian USER=kristian \
+  LOGNAME=kristian SHELL=/bin/bash PATH=/usr/local/bin:/usr/bin:/bin \
+  DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS="$(tr '\0' '\n' </proc/<lxpanel-pid>/environ \
+    | grep '^DBUS_SESSION_BUS_ADDRESS=' | cut -d= -f2-)" \
+  XDG_RUNTIME_DIR=/run/user/1000 XDG_CONFIG_HOME=/home/kristian/.config \
+  XDG_DATA_HOME=/home/kristian/.local/share XDG_CURRENT_DESKTOP=LXDE \
+  XDG_SESSION_TYPE=x11 /usr/local/bin/firefox-webgl \
+  file:///usr/local/lib/firefox-webgl/webgl_test_dump.html \
+  > /tmp/ff_click.log 2>&1
+# aflæs: grep -a WEBGL_RESULT /tmp/ff_click.log
+# titel:  DISPLAY=:0 xprop -id <navigator-vindue> _NET_WM_NAME
+# tjek:   grep -ac "X-fejl" /tmp/ff_click.log  → 0
+```

@@ -619,6 +619,14 @@ Android-bindAPI-normalisering + chooseConfig-ES2-sti
 Verifikation når konteksten virker: about:support + platformens præsent-log
 (`x11ws: vindue pakket ind` / `present`) + fbdump.
 
+**Desktop-genvejen er klik-verificeret (25. aug 2026):** `firefox-webgl`
+kører fra selve LXDE-sessionen (samme Exec-linje som et klik på
+"Firefox WebGL", startet som kristian med sessionens miljø — lxpanel/
+pcmanfm kørte under testen): `WEBGL_RESULT OK`, present #1 (1x1) → #2
+(1280x948) → #50, korrekt titel via `_NET_WM_NAME`, 0 X-fejl, 0 "alle
+buffere er busy", gradient synlig i fb0-dump. Genvejen ligger med exec-bit i
+`/home/kristian/Desktop/` og `~/.local/share/applications/`.
+
 ## 6. Slutarkitekturen
 
 ```
