@@ -28,8 +28,28 @@ if pgrep -x firefox-esr >/dev/null 2>&1; then
 fi
 rm -f "$PROFILE/.parentlock" "$PROFILE/lock"
 
-exec env LD_PRELOAD="$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
+env LD_PRELOAD="$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
     LD_LIBRARY_PATH=/opt/hybris:"$WEBGL" \
     EGL_PLATFORM=x11 DISPLAY="${DISPLAY:-:0}" \
     MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 MOZ_DISABLE_GPU_SANDBOX=1 \
-    "$FF" -no-remote -profile "$PROFILE" "$URL"
+    "$FF" -no-remote -profile "$PROFILE" "$URL" &
+FFPID=$!
+
+# Firefox sætter selv _MOTIF_WM_HINTS decorations=0 (målt 25. aug 2026: også
+# med drawInTitlebar=false og med Basic-kompositoren) → openbox tegner ingen
+# titelbjælke/knapper. En openbox-<decor>yes</decor>-regel overskriver det
+# IKKE (målt) — men live-ændring af egenskaben virker og bliver stående.
+# Sæt derfor dekorationerne, så snart Navigator-vinduet er fremme.
+D="${DISPLAY:-:0}"
+for _ in $(seq 1 60); do
+    WID=$(DISPLAY="$D" xwininfo -root -tree 2>/dev/null |
+          grep '"Navigator"' | grep -oE '0x[0-9a-f]+' | head -1)
+    [ -n "$WID" ] && break
+    sleep 1
+done
+if [ -n "$WID" ]; then
+    DISPLAY="$D" xprop -id "$WID" -f _MOTIF_WM_HINTS 32c \
+        -set _MOTIF_WM_HINTS "0x2, 0x1, 0x0, 0x0, 0x0" 2>/dev/null
+fi
+wait "$FFPID"
+exit $?

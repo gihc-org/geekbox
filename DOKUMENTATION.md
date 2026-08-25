@@ -627,6 +627,21 @@ pcmanfm kørte under testen): `WEBGL_RESULT OK`, present #1 (1x1) → #2
 buffere er busy", gradient synlig i fb0-dump. Genvejen ligger med exec-bit i
 `/home/kristian/Desktop/` og `~/.local/share/applications/`.
 
+**Klikket afslørede to ting, der havde været der hele tiden (25. aug, aften):**
+(a) WebRender-hardwarestien renderer HTML/CSS-indhold SORT i
+EGL/gralloc-bufferen (sort chrome-område + hvide felter; divs/tekst bliver
+sort, mens hvid baggrund og WebGL-canvas overlever — Firefox' eget
+`--screenshot` viser siden korrekt). Fix: **Basic-kompositor** i profilen
+(`gfx.webrender.enabled=false` + `layers.acceleration.disabled=true`) — hele
+UI'et tegnes da korrekt via X, og WebGL virker stadig (GLES via hybris/PVR;
+`WEBGL_RESULT OK` + canvas på skærmen). (b) Firefox sætter selv
+`_MOTIF_WM_HINTS` decorations=0 → ingen titelbjælke/knapper (openbox-regel
+overskriver det ikke; drawInTitlebar=false hjælper ikke). Fix:
+`firefox-webgl`-launcher'en sætter `_MOTIF_WM_HINTS = 0x2,0x1,...` når
+Navigator-vinduet er fremme — verificeret: client Relative Y=23, knapper
+synlige. Fælde: en testside med rød body-baggrund fik boksen til at slukke
+HELT to gange (ingen panic-log i 3.10-kernen) — kør ikke den test.
+
 ## 6. Slutarkitekturen
 
 ```

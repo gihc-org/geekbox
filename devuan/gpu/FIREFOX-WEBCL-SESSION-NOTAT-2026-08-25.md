@@ -249,12 +249,15 @@ der kører ved proces-exit — boksen restituerer selv (VT=7, HDMI enable=1).
 
 ## 10. Næste session — det vigtigste at vide
 
-1. **WebGL 2.0 VIRKER STABILT** i normale kørsler (uden strace): `WEBGL_RESULT
-   OK PowerVR Rogue G6200, or similar WebGL 2.0`, `present #2 (1280x948)`,
-   korrekt titel, 0 X-fejl, indhold på skærmen.
-2. Opskriften (root): stub-libGL i `/root/glstub` + platformmodul md5
+1. **WebGL 2.0 VIRKER STABILT + HELE UI'et VIRKER** (aften 25. aug): kør med
+   **Basic-kompositoren** (`gfx.webrender.enabled=false` +
+   `layers.acceleration.disabled=true` i `/home/kristian/ffprof`) — WebRender-
+   hardwarestien renderer CSS sort i EGL-bufferen (§14a). `WEBGL_RESULT OK`,
+   titelbjælke (launcher-watcher, §14b), canvas på skærmen.
+2. Opskriften (root): stub-libGL + platformmodul md5
    `78580702ee8b96693b02704fde9b6dcf` + `layers.gpu-process.enabled=true` +
-   **INGEN `MOZ_GL_SPEW`** + ryd `.parentlock` (§6 har hele kommandoen).
+   **INGEN `MOZ_GL_SPEW`** + ryd `.parentlock` (§6) — men med prefs fra §14a
+   og den opdaterede launcher (§14b).
 3. `Exiting due to channel error.` ved kørslens slutning = vores pkill af
    main (børnene lukker kanalen) — ikke en fejl.
 4. Som almindelig bruger: `firefox-webgl [URL]` (eller desktop-genvejen
@@ -336,7 +339,10 @@ bash devuan/gpu/gpu_up.sh
 ```
 
 **Næste skridt:** UDFØRT 25. aug — desktop-genvejen er klik-verificeret fra
-selve LXDE-sessionen (§13). Sagen er dermed i mål; ingen kendt åben blokering.
+selve LXDE-sessionen (§13), og det efterfølgende brugerfund (sort chrome +
+manglende dekorationer) er løst (§14): Basic-kompositor + dekoration-watcher.
+Sagen er dermed i mål — bekræft blot ét fysisk klik på genvejen efter den nye
+launcher. Åben risiko: body-rød-test slår boksen fra (§14c) — kør den aldrig.
 
 ## 13. Desktop-genvej klik-verificeret fra LXDE-sessionen (25. aug 2026)
 
@@ -377,3 +383,67 @@ runuser -u kristian -- env -i HOME=/home/kristian USER=kristian \
 # titel:  DISPLAY=:0 xprop -id <navigator-vindue> _NET_WM_NAME
 # tjek:   grep -ac "X-fejl" /tmp/ff_click.log  → 0
 ```
+
+## 14. SORT CHROME + MANGLENDE DEKORATIONER — RODÅRSAG OG FIX (25. aug 2026)
+
+**Brugerobservation:** ved fysisk klik på genvejen sås kun en hvid ramme med
+et sort rektangel øverst, ingen vinduesdekorationer/titel. Det viste sig at
+være TO separate problemer, der begge havde været der hele tiden (tidligere
+verificeringer målte kun WebGL-indholdet via fbdump, aldrig UI'et):
+
+### 14a. Sort chrome/indhold — WebRender-hardwarestien renderer CSS sort
+
+**Målt (XGetImage på kompositorvinduet 0x2000057, 1280x948 depth 32):** den
+præsenterede gralloc-buffer indeholdt sort + hvid L-form + støj for
+HTML/CSS-sider — røde/grønne/blå/gule divs og tekst blev SORT, hvid baggrund
+og WebGL-canvas overlevede. Firefox' EGET `--screenshot` viste siden HELT
+korrekt (rødt felt ved (0,0)) → WebRender-scenen er fin; fejlen er i
+gengivelsen ind i EGL/gralloc-vinduets overflade på PVR-stakken.
+
+**Fix: slå WebRender-hardwarestien fra + Basic-kompositor** (profilen
+`/home/kristian/ffprof`):
+```
+user_pref("gfx.webrender.enabled", false);
+user_pref("layers.acceleration.disabled", true);
+```
+Med Basic-kompositoren tegner Firefox UI'et direkte via X (ingen
+eglplatform_x11-overflade; vinduet er depth 16) — HELE vinduet renderer
+korrekt (værktøjslinje, faner, tekst, røde felter). **WebGL VIRKER STADIG:**
+`WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0` og canvas
+(960x540) står på skærmen (GLES-konteksten går stadig gennem hybris/PVR).
+Siden er CPU-tegnet (Basic) → langsommere scroll, men funktionel.
+
+### 14b. Ingen vinduesdekorationer — Firefox sætter selv MWM_DECOR_NONE
+
+**Målt:** `_MOTIF_WM_HINTS = 0x2,0x0,...` (decorations=0) i ALLE kørsler
+(WebRender OG Basic, `browser.tabs.drawInTitlebar=false` hjælper ikke).
+Openbox-`<decor>yes</decor>`-regel overskriver det IKKE (målt). Live-ændring
+af egenskaben virker og bliver stående (openbox dekorerer straks: client får
+Relative Y=23 = titelbjælke, knapper synlige).
+
+**Fix i launcher (`start_firefox_webgl.sh` → `/usr/local/bin/firefox-webgl`):**
+efter start polles der efter Navigator-vinduet, og der sættes:
+```bash
+DISPLAY="$D" xprop -id "$WID" -f _MOTIF_WM_HINTS 32c \
+    -set _MOTIF_WM_HINTS "0x2, 0x1, 0x0, 0x0, 0x0"
+```
+Openbox-reglen er beholdt i `/home/kristian/.config/openbox/lxde-rc.xml`
+(backup `.bak`) — skader ikke, selvom den ikke alene slår til.
+
+### 14c. FÆLDE: body-rød-test slår boksen HELT fra (to gange målt)
+
+Siden med `background:#ff0000` på body (og hvid div) fik boksen til at
+slukke HELT begge gange den blev kørt (anden gang efter frisk genstart +
+GPU-init). Ingen pstore/panic-log (3.10-kernen uden ramoops; kern.log
+overskrives). KØR IKKE body-rød-testen igen. Kvadrant-, rapport-, tekst-,
+animerings- og WebGL-siderne kørte uden nedbrud.
+
+### 14d. Virkende opskrift pr. 25. aug 2026 (aften)
+
+- Profil `/home/kristian/ffprof` med prefs fra §14a + `webgl.force-enabled`,
+  `gfx.x11-egl.force-enabled`, `layers.gpu-process.enabled` (se prefs.js).
+- Launcher med dekoration-watcher (`md5 2890763aa4bbc1eb19c4c9f9e41058a2`).
+- Verificeret: `WEBGL_RESULT OK`, MOTIF=2,1,0,0,0, Relative Y=23 (titelbjælke),
+  canvas 960x540 på skærmen, lysegrå værktøjslinje, 0 X-fejl.
+- Efter genstart: `patch_android_bindapi.sh` + `patch_driver_minor.sh` +
+  `gpu_up.sh` (køres som root på boksen; `/root/gpu_up.sh` ligger der).
