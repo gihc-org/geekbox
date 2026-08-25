@@ -225,14 +225,21 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    **Resultat:** `glxtest` melder nu `TEST_TYPE=EGL`, `VENDOR=Imagination
    Technologies`, `RENDERER=PowerVR Rogue G6110`, GLES 3.1 — ingen
    Mesa-fallback.
-   **Ny blokering (fuld Firefox):** WebRender-hardwarekonteksten kan stadig
-   ikke oprettes → "Fallback WR to SW-WR". Målt med gdb (to mønstre):
-   0x300c — `eglBindAPI(ES)` lykkes, men `eglCreateContext` rammer IKKE
-   wrapperen (Android-intern/libepoxy-mistænkt); og 0x3000 — wrapperens
-   `eglCreateContext` + `eglMakeCurrent` virker, men kontekst-`Init` fejler
-   bagefter. `eglCreateWindowSurface` ramte aldrig wrapperen (0 hits) —
-   Firefox starter med offscreen/pbuffer. Detaljer og næste skridt:
-   `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md` (handover),
+   **Ny blokering (24. aug):** WebRender-hardwarekonteksten kunne stadig ikke
+   oprettes → "Fallback WR to SW-WR" (to gdb-mønstre: 0x300c/0x3000).
+   **LØST (25. aug):** 0x3000's rodårsag var, at Firefox' `SymbolLoader`
+   slår GL-symboler op i **Mesa-libGL** (`dlsym("libGL.so.1")`) FØR
+   `eglGetProcAddress` — Mesa-vindere gjorde kontekst-`Init` til at fejle
+   stille. Fix: tom stub-`libGL.so`/`libGL.so.1` først i `LD_LIBRARY_PATH`,
+   så dlsym fejler og PowerVR-`eglGetProcAddress`-vejen vinder (samme vej som
+   glxtest). Derudover frøs kompositorvinduet på 1x1 (EGL'en spørger kun
+   størrelsen ved surface-creation) — fix: platformen henter den levende
+   X-størrelse og venter op til 2 s ved oprettelse. Resultat: GL 3.1 PowerVR
+   Rogue G6110 i Firefox, WebRender-hardware uden SW-fallback, og WebGL 2.0
+   målt virkende (`WEBGL_RESULT OK ... WebGL 2.0`). Tilbage: channel-error-
+   race hvor content-processen i normale kørsler dør før første present
+   (under strace kommer alt igennem). Detaljer:
+   `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md` (handover),
    `DOKUMENTATION.md` §5.15c, `HAANDBOG.md` fælde 23.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.

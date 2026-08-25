@@ -169,12 +169,33 @@ public:
         : m_dpy(dpy), m_win(win), m_width(w), m_height(h),
           m_format(HAL_PIXEL_FORMAT_RGBA_8888),
           m_usage(GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_SW_READ_OFTEN),
-          m_bufferCount(0), m_nextBuffer(0), m_interval(1)
+          m_bufferCount(0), m_nextBuffer(0), m_interval(1), m_sizeDirty(false)
     {
     }
     virtual ~X11NativeWindow()
     {
         destroyBuffers();
+    }
+
+    /* Hent vinduets LEVENDE X-størrelse. Firefox opretter kompositorvinduet
+     * som 1x1 og resizer det bagefter; EGL'en spørger kun ved
+     * eglCreateWindowSurface → uden dette fryser overfladen på 1x1
+     * (målt 25. aug 2026: x11ws "vindue pakket ind (1x1)" mens xwininfo
+     * viser 1280x948; browseren venter på compositorens første frame). */
+    void refresh_size() const
+    {
+        XWindowAttributes a;
+        if (!m_dpy || !XGetWindowAttributes(m_dpy, m_win, &a))
+            return;
+        unsigned int w = (unsigned int)a.width;
+        unsigned int h = (unsigned int)a.height;
+        if (w != m_width || h != m_height) {
+            fprintf(stderr, "x11ws: vindue 0x%lx ændret størrelse -> %ux%u\n",
+                    (unsigned long)m_win, w, h);
+            m_width = w;
+            m_height = h;
+            m_sizeDirty = true; /* reallokér ved næste dequeueBuffer */
+        }
     }
 
     int set_interval(int interval) { return setSwapInterval(interval); }
@@ -188,6 +209,10 @@ protected:
 
     virtual int dequeueBuffer(BaseNativeWindowBuffer **buffer, int *fenceFd)
     {
+        if (m_sizeDirty) {
+            m_sizeDirty = false;
+            destroyBuffers();
+        }
         if (m_bufList.empty())
             allocateBuffers(2);
         for (unsigned int i = 0; i < m_bufList.size(); i++) {
@@ -210,6 +235,7 @@ protected:
     {
         (void)fenceFd;
         X11NativeWindowBuffer *b = static_cast<X11NativeWindowBuffer *>(buffer);
+        refresh_size();
         present(b);
         b->busy = 0;
         return NO_ERROR;
@@ -229,11 +255,23 @@ protected:
     }
 
     virtual unsigned int type() const { return NATIVE_WINDOW_SURFACE; }
-    virtual unsigned int width() const { return m_width; }
-    virtual unsigned int height() const { return m_height; }
+    virtual unsigned int width() const {
+        refresh_size();
+        return m_width;
+    }
+    virtual unsigned int height() const {
+        refresh_size();
+        return m_height;
+    }
     virtual unsigned int format() const { return m_format; }
-    virtual unsigned int defaultWidth() const { return m_width; }
-    virtual unsigned int defaultHeight() const { return m_height; }
+    virtual unsigned int defaultWidth() const {
+        refresh_size();
+        return m_width;
+    }
+    virtual unsigned int defaultHeight() const {
+        refresh_size();
+        return m_height;
+    }
     virtual unsigned int queueLength() const { return m_bufList.size(); }
     virtual unsigned int transformHint() const { return 0; }
 
@@ -370,13 +408,14 @@ private:
 
     Display *m_dpy;
     Window m_win;
-    unsigned int m_width;
-    unsigned int m_height;
+    mutable unsigned int m_width;
+    mutable unsigned int m_height;
     unsigned int m_format;
     unsigned int m_usage;
     unsigned int m_bufferCount;
     unsigned int m_nextBuffer;
     int m_interval;
+    mutable bool m_sizeDirty;
     std::vector<X11NativeWindowBuffer *> m_bufList;
 };
 
@@ -420,6 +459,15 @@ static EGLNativeWindowType x11ws_CreateWindow(EGLNativeWindowType win,
         fprintf(stderr, "x11ws: XGetWindowAttributes fejlede for 0x%lx\n",
                 (unsigned long)xid);
         return 0;
+    }
+    /* Firefox opretter kompositorvinduet som 1x1 og resizer det bagefter;
+     * EGL'en spørger kun størrelsen ÉN gang (ved surface-creation) — vent
+     * derfor kort på den reelle størrelse (målt 25. aug 2026: uden dette
+     * fryser EGL-overfladen på 1x1 og compositoren når aldrig første frame). */
+    for (int i = 0; i < 50 && (int)a.width <= 1 && (int)a.height <= 1; i++) {
+        usleep(40000);
+        if (!XGetWindowAttributes(g_dpy, xid, &a))
+            break;
     }
     X11NativeWindow *nw = new X11NativeWindow(g_dpy, xid,
                                               (unsigned int)a.width,

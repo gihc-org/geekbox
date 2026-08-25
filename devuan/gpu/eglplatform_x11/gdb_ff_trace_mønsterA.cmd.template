@@ -1,0 +1,46 @@
+# Trin 2 i mønster-A-sporingen (udfyld ANDROID_EGL_BASE fra trin 1):
+#   sed "s/ANDROID_EGL_BASE/<base>/" ... > /root/ff_gdb_trace.cmd
+set pagination off
+set breakpoint pending on
+set follow-fork-mode parent
+set detach-on-fork on
+set environment LD_PRELOAD=/root/system_shim.so:/root/egl_platform_shim.so
+set environment LD_LIBRARY_PATH=/opt/hybris
+set environment EGL_PLATFORM=x11
+set environment DISPLAY=:0
+set environment MOZ_X11_EGL=1
+set environment MOZ_DISABLE_CONTENT_SANDBOX=1
+set environment MOZ_DISABLE_GPU_SANDBOX=1
+# Wrapper-eglGetProcAddress: log navn + hvem der spørger (ikke kald funktionen
+# i handleren — rekursivt breakpoint!)
+break eglGetProcAddress
+commands
+silent
+printf "P eglGetProcAddress(%s) pc=%p\n", $r0, $pc
+bt 4
+continue
+end
+# Wrapper-eglCreateContext (skal rammes i mønster B, IKKE i mønster A)
+break eglCreateContext
+commands
+silent
+printf "G eglCreateContext dpy=%p cfg=%p share=%p attr=%p pc=%p\n", $r0, $r1, $r2, $r3, $pc
+continue
+end
+# Android-intern eglCreateContext (+0x6534) — mønster A-mistænkt
+# Erstat ANDROID_EGL_BASE med basen fra trin 1 (fx 0xdc83d000)
+break *ANDROID_EGL_BASE+0x6534
+commands
+silent
+printf "A! android-eglCreateContext dpy=%p cfg=%p share=%p attr=%p pc=%p\n", $r0, $r1, $r2, $r3, $pc
+continue
+end
+# Wrapper-eglGetError: fang den fejl der meldes 0x300c
+break eglGetError
+commands
+silent
+printf "R eglGetError pc=%p\n", $pc
+bt 3
+continue
+end
+run

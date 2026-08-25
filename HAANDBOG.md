@@ -764,16 +764,44 @@ og uden patchen smed proben det ellers vellykkede EGL-resultat væk (Bug
 1667621). Resultat: `glxtest` = PowerVR Rogue G6110 / GLES 3.1 /
 TEST_TYPE=EGL.
 
-**Ny blokering (fuld Firefox):** WebRender-hardwarekontekst fejler stadig →
-"Fallback WR to SW-WR". Målt med gdb, to mønstre: (1) 0x300c —
-`eglBindAPI(EGL_OPENGL_ES_API)` lykkes, men `eglCreateContext` rammer IKKE
-wrapperen (Android-intern via ikke-kortlagt vej — libepoxy mistænkt), og
-(2) 0x3000 — wrapperens `eglCreateContext` + `eglMakeCurrent` virker (med
-pbuffer), men kontekst-`Init` fejler bagefter. Wrapperens
-`eglCreateWindowSurface` blev aldrig ramt (0 hits) — Firefox starter
-offscreen/pbuffer. Næste skridt og alle spor:
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`; DOK §5.15c;
+**Ny blokering (24. aug):** WebRender-hardwarekontekst fejlede stadig →
+"Fallback WR to SW-WR" (mønstre 0x300c/0x3000). Begge er nu LØST (25. aug):
+0x300c via Android-bindAPI/chooseConfig-patches, 0x3000 via stub-libGL (se
+fælde 24), og kompositorvinduets 1x1-frys via platformens live-størrelse.
+WebGL 2.0 er målt virkende (`WEBGL_RESULT OK ... WebGL 2.0`); tilbage er en
+channel-error-race i normale kørsler. Alle spor:
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`; DOK §5.15c;
 `BROWSER-VEJE.md` eksperiment 2.
+
+### Fælde 24: Firefox' GL-symboler snupper Mesa — kontekst-Init fejler stille
+
+**Symptom:** fuld Firefox med hybris-EGL: `eglCreateContext` +
+`eglMakeCurrent` (pbuffer) lykkes, men kontekst-`Init` fejler og Firefox
+melder `Failed to create EGLContext!: 0x3000` (EGL-fejlen er 0, fordi fejlen
+ikke er i EGL). Der kommer 0 `eglGetProcAddress`-kald efter MakeCurrent
+(let at overse).
+
+**Årsag:** Firefox' `SymbolLoader::GetProcAddress` (`GLLibraryLoader.cpp`)
+slår navne op i `libGL.so.1` (dlsym) FØRST og kalder først
+`eglGetProcAddress`, hvis dlsym fejler. Boksens `libGL.so.1` er Mesas
+vendor-dispatch (allerede loadet, fordi hybris-wrapperens init kalder
+`dlopen("libGL.so")`), så alle `gl*`-symboler peger på Mesa — og
+`glGetError()`/`glGetString()` på en ikke-Mesa-kontekst fejler stille i
+`InitImpl`.
+
+**Kur (25. aug 2026):** tomme stub-`libGL.so` + `libGL.so.1` (ingen
+gl*-eksporter, korrekt SONAME — `devuan/gpu/eglplatform_x11/build_stub_gl.sh`)
+først i `LD_LIBRARY_PATH` (fx `/root/glstub:/opt/hybris`). Dlsym fejler på
+hvert navn → fallback til `eglGetProcAddress` → wrapper → PowerVR GLES
+(samme vej som glxtest, som var grøn). NB: stubben skal hedde BÅDE
+`libGL.so` (wrapperens `dlopen`) og `libGL.so.1` (Firefox'
+`PR_LoadLibrary`), og den må ikke eksportere gl*-navne — ellers vender
+Mesa-symptomet tilbage.
+
+**Relateret fælde (25. aug):** Firefox dlopen'er `libEGL.so` FØRST, derefter
+`libEGL.so.1` — en trace-erstatning kun som `libEGL.so.1` bliver aldrig brugt.
+Og `dlsym(libEGL-handle)` foretrækker bibliotekets egne eksporter frem for
+LD_PRELOAD — interposer-vejen virker derfor ikke for EGL-symbolerne.
 
 ---
 

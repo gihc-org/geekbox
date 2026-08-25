@@ -566,18 +566,47 @@ Technologies`, `RENDERER=PowerVR Rogue G6110`, `OpenGL ES 3.1
 build 1.4@3632227` — ingen Mesa/GLX-fallback.
 
 **Ny blokering (fuld Firefox, kørt 24. aug 2026):** WebRender-hardware-
-kontekst fejler → "Fallback WR to SW-WR". Målt med gdb på boksen, to mønstre:
-0x300c (hardware-WR/GLES-vej: `eglBindAPI(ES)` lykkes, men `eglCreateContext`
-rammer IKKE wrapperen — Android-intern via ikke-kortlagt vej, libepoxy
-mistænkt) og 0x3000 (desktop-GL-vej: wrapperens `eglCreateContext` +
-`eglMakeCurrent` på pbuffer VIRKER, men kontekst-`Init` fejler bagefter).
-Wrapperens `eglCreateWindowSurface` blev aldrig ramt (0 hits) — Firefox
-starter offscreen/pbuffer. Næste skridt: byg/kør epoxy-mimic (libepoxy's
-EGL-dispatch), find mønster-A-kaldets funktionspointer, og diagnosticér
-mønster-B-`Init` (MOZ_LOG="GLContext:5"). Alle spor og kommandoer:
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`. Verifikation når
-konteksten virker: about:support + platformens præsent-log (`x11ws: vindue
-pakket ind` / `present`) + fbdump.
+kontekst fejler → "Fallback WR to SW-WR". To mønstre målt med gdb:
+0x300c (Android-intern create-vej — LØST med bindAPI/chooseConfig-patches,
+se nedenfor) og 0x3000 (kontekst-`Init` fejler efter vellykket
+create+MakeCurrent).
+
+**LØST — 0x3000's rodårsag var Mesa-libGL-shadowing (25. aug 2026):**
+Firefox' `GLContext::InitImpl` loader alle kerne-GL-symboler via
+`SymbolLoader::GetProcAddress`, som slår op i `libGL.so.1` (dlsym) FØRST og
+kun falder tilbage på `eglGetProcAddress`, hvis dlsym fejler
+(`GLLibraryLoader.cpp`). Boksens `/lib/arm-linux-gnueabihf/libGL.so.1` er
+Mesas vendor-dispatch — den loades desuden allerede i processen, fordi
+hybris-wrapperens init kalder `dlopen("libGL.so")`. Resultat: alle
+`gl*`-symboler kom fra Mesa (0 `eglGetProcAddress`-kald efter MakeCurrent,
+målt med `egl_trace_lib.c`), og `glGetError()`/`glGetString()` blev kaldt på
+Mesa uden Mesa-kontekst → Init fejlede stille → 0x3000.
+
+**Fix:** tomme stub-`libGL.so`/`libGL.so.1` (ingen gl*-eksporter, korrekt
+SONAME) i `/root/glstub/` først i `LD_LIBRARY_PATH` — dlsym fejler på hvert
+navn, `eglGetProcAddress`-vejen (→ PowerVR GLES) vinder, præcis som i
+glxtest. Verificeret: `GL version detected: 310`, `OpenGL vendor:
+Imagination Technologies`, `OpenGL renderer: PowerVR Rogue G6110`, ingen
+SW-fallback.
+
+**Andet fund (25. aug):** kompositorvinduet blev skabt 1x1 og Android-EGL'en
+spurgte kun størrelsen én gang → overfladen frøs på 1x1 og compositoren nåede
+aldrig første present. Fix i `eglplatform_x11.cpp` (`X11NativeWindow`):
+`width()/height()/defaultWidth()/defaultHeight()` og `queueBuffer()` henter
+den levende X-størrelse (`refresh_size()`), `dequeueBuffer()` reallokerer ved
+ændring, og `x11ws_CreateWindow()` venter op til 2 s på reel størrelse.
+
+**WebGL 2.0 er dermed målt virkende** (25. aug, under strace — se
+`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`): `WEBGL_RESULT OK
+PowerVR Rogue G6200, or similar WebGL 2.0` efter 3 tegnede frames, med
+`x11ws: present #2 (1280x948 ...)`. Tilbage: en channel-error-race, hvor
+content-processen i normale kørsler dør før første present (under strace
+kommer alt igennem). De øvrige 24. aug-patches: Android-bindAPI-normalisering
++ chooseConfig-ES2-sti (`patch_android_bindapi.sh`) og driverens minor2-bhi
+(`patch_driver_minor.sh`) — alle stadig aktive på boksen.
+
+Verifikation når konteksten virker: about:support + platformens præsent-log
+(`x11ws: vindue pakket ind` / `present`) + fbdump.
 
 ## 6. Slutarkitekturen
 
