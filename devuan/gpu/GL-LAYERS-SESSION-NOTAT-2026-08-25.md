@@ -23,6 +23,38 @@
 - [udført] Run F (scale=0,5, 22:38–22:47): **9 min / present #800+ / 0 DeviceReset** — hurtigere presents (~4× mindre canvas) fjerner IKKE reset'et (2 af 4 kørsler på denne boot reset: C+D; E+F overlevede). Reset'et er flaky, ikke canvas-størrelses-afhængigt.
 - [målt] Firefox-kompositor-kadence ~1,4 Hz er uafhængig af canvas-størrelse (scale=1 og 0,5 giver samme FPS) — en separat vsync-kadence-problematik, ikke transfer-loftet (som kun gælder standalone-klienten).
 
+## Buffer-race-hypotesen (rodårsag til GPU-proces-reset) — AFTALT 22:55
+
+**Hypotese:** en buffer-race i shim'ens resize-sti.
+
+Firefox opretter kompositorvinduet som 1×1 og resizer det bagefter
+(loggen: `2 buffer(e) allokeret (1x1)` → `ændret størrelse -> 1280x948` →
+`2 buffer(e) allokeret (1280x948)`). I `eglplatform_x11.cpp` betyder det:
+2 stk. 1×1-gralloc-buffere allokeres, så kommer resize → `destroyBuffers()`
+kaldes **uden at tjekke om en buffer stadig er i brug** (`busy=1`, GPU'en
+renderer i den) → use-after-free → sporadisk GL-fejl → Firefox detekterer det
+ved `WR_POST_UPDATE` → GPU-proces-reset. Flakinessen er race-timing.
+
+Det forklarer også hvorfor standalone-klienten aldrig reseter: dens log viser
+`vindue pakket ind (1280x720)` — direkte i slutstørrelse, ingen 1×1-dans,
+ingen resize-race. Firefox er den eneste der laver 1×1→resize, og det er
+præcis den der reseter. Samme historie passer med run D (reset ved present
+#2-3, lige efter resize-dansen) og at resets er flaky.
+
+**Plan (små skridt):**
+1. **Fiks buffer-lifecycle i shim'en (vigtigst):** slet aldrig en `busy`
+   buffer — markér `retired`, og destruér kun når ingen buffer er i brug
+   (frigør ved queue/cancel). Genbyg `eglplatform_x11.so`, kør stress-siden
+   4-6 gange, mål om reset-raten (~50 %) falder til ~0.
+2. **Log swap/queue-fejl:** returværdi-logning i queueBuffer/present-stien,
+   så en evt. fejl bekræftes i loggen (ikke kun som Firefox' WR_POST_UPDATE).
+3. **Verificér hvilken kompositor der faktisk kører:** GPU-processens tråde
+   hedder "WRRenderer/WRSceneBuilder" selvom `gfx.webrender.enabled=false`
+   står — tjek om WebRender reelt er aktivt (fx `gfx.webrender.force-disabled`).
+4. **Reproduktionstest:** tving window-resizes under kørslen (xdotool/wmctrl)
+   og se om reset-raten stiger — bekræfter resize-racen som udløser.
+5. **Kadence-problemet (~1,4 Hz)** er en separat sag, tages bagefter.
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`

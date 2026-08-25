@@ -744,7 +744,16 @@ den stabile opsætning for UI + WebGL-test.
    Status 25. aug nat: reset'et er flaky (~50 % af kørslerne; 2 af 4 på
    denne boot), uafhængigt af canvas-størrelse; frisk Firefox-start efter
    reset renderer korrekt, så auto-genstart er en brugbar nødløsning.
-6. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
+6. **Buffer-race-hypotesen (NY, primær):** Firefox opretter kompositorvinduet
+   1×1 og resizer det bagefter; `destroyBuffers()` i eglplatform_x11.cpp
+   sletter buffere uden at tjekke `busy` → use-after-free → sporadisk
+   GL-fejl → WR_POST_UPDATE-reset. Standalone-klienten laver ikke 1×1-dansen
+   og reseter aldrig — stærk indirekte bevis. **Fix:** slet aldrig en busy
+   buffer (retire + frigør ved queue/cancel), genbyg, mål reset-raten over
+   4-6 kørsler. Derefter: swap/queue-fejllogning, kompositor-verifikation
+   (WebRender vs. gammel GL-layers), resize-reproduktionstest, og til sidst
+   kadence-problemet (~1,4 Hz).
+7. **Andre WebGL-sider som andet datapunkt** (aftalt i sidste session,
    manglede i dokumentationen): **Shadertoy** (shadertoy.com, pure fragment-
    shaders, ingen reklamer, anden kodevej end Unity), **WebGL-aquarium /
    three.js-eksempler** (mange draw-calls, kontinuerlig animation, ingen
