@@ -74,6 +74,33 @@ i profilen (hard override) → sanity-tjek at siden stadig renderer (gamle
 GL-layers-kompositor via EGL) → probe igen 5×5 min. Hvis reset'et forsvinder
 uden WebRender, har vi en brugbar konfiguration til spillet.
 
+## Opdatering 23:34 — force-disabled virker ikke; Firefox 128 har kun WebRender
+
+- `gfx.webrender.force-disabled=true` i prefs.js ændrede INTET: GPU-processen
+  har stadig WR*-tråde (WrGlyphRasterizer, WRWorkerLP#0-7), og reset skete
+  igen (~45 s, 1 DeviceReset) → canvas sort igen (mean 4). **Firefox 128 ESR
+  har ikke længere den gamle GL-layers-kompositor: acceleration → WebRender-GL,
+  punktum.** "GL-layers"-tilstanden vi testede = WebRender på OpenGL.
+- **Probe2 med buffer-fixet (retired):** run 1 RESET (98 s, #100), run 2+3
+  ingen reset, men run 4-5 blev ubrugelige: **Firefox' EGNE glxtest-processer
+  gik i D-state** (samme fb-driver-vej som vores måle-læsninger), og WebGL-
+  kontekstoprettelse fejlede derefter (`Exhausted GL driver options` →
+  `FAIL_NO_CONTEXT`). Gentagne Firefox-opstarter forringer altså boksen
+  (D-state-glxtest + load-stigning). Buffer-fixet eliminerede ikke reset'et
+  og udløste ingen retire-hændelser.
+- Efter genstart + re-init renderer en frisk kørsel korrekt indtil det flaky
+  reset (~40-100 s, undertiden aldrig).
+
+**Åbne spor videre:**
+1. **Vendor-GL-fehl-tjek (standalone):** udvid test_client_x11 med
+   `glGetGraphicsResetStatus`/`glGetError` hver frame over 300+ frames — hvis
+   vendor-GL melder sporadiske fejl, er reset'et vendor; hvis altid NO_ERROR,
+   er det Firefox/WebRender-intern.
+2. **Tight watch + gdb** på GPU-processen i reset-øjeblikket.
+3. **Firefox-kilde-analyse** af `WR_POST_UPDATE`-detektionen (hvad præcis
+   udløser UNKNOWN-reset).
+4. **Auto-genstart-workaround** (spil i bidder).
+
 ## Status i ét blik
 
 - **`layers.acceleration.disabled=false` + `gfx.webrender.enabled=false`
