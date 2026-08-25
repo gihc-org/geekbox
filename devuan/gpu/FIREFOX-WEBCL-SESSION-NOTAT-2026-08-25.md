@@ -3,7 +3,7 @@
 ## 1. Status i ét blik
 
 **MØNSTER B ER LØST — WebGL 2.0 ER STABILT MÅLT VIRKENDE (25. aug, NORMAL
-kørsel, uden strace).**
+kørsel, uden strace) — BÅDE som root OG som almindelig bruger (kristian).**
 Hele kæden virker nu: GL 3.1 PowerVR Rogue G6110 i Firefox, WebRender-
 hardware (ingen SW-fallback), kompositor præsenterer (1280x948), og
 `webgl_test_dump.html` meldte `WEBGL_RESULT OK PowerVR Rogue G6200, or
@@ -116,6 +116,16 @@ WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0
   md5 `78580702ee8b96693b02704fde9b6dcf` (bygget fra repoets
   `eglplatform_x11.cpp`, §2+§3-fix + 200 ms-sizewait + XPutImage-fix).
   Originalkilde også på `/root/eglplatform_x11.cpp`.
+- **Wrapper-patchet** (så chvt "lykkes" uden root): `/opt/hybris/libEGL.so`
+  (og `.so.1` + `.so.1.0.0`) — i `chvt()` er de to ioctl-kald (VT_ACTIVATE på
+  offset 0x23c0, VT_WAITACTIVE på 0x23e0) erstattet med `00 20 00 bf`
+  (`movs r0,#0; nop`), så funktionen returnerer 0 uden at skifte VT. Backup:
+  `/root/libEGL_hybris.orig`. md5 efter patch: `de560b862291d4ebf9639d3ae664ba9f`.
+  Genanvend hvis /opt/hybris nogensinde overskrives.
+- **Enhedstilladelser (udev-regler i /etc/udev/rules.d/, permanente):**
+  `/dev/console` (tty-gruppe, 0660), `/dev/pvrsrvkm`, `/dev/ion`,
+  `/dev/pvr_sync`, `/dev/video_state` (video-gruppe, 0660) — uden
+  `/dev/pvr_sync` frigives overflade-buffere aldrig ("alle buffere er busy").
 - Stub-mapper: `/root/glstub/` (KUN libGL-stubs — brug denne til rene kørsler)
   og `/root/egl_trace/` (trace-libEGL + stubs).
 - Profil `/root/ffprof` indeholder nu `browser.dom.window.dump.enabled=true`
@@ -123,6 +133,7 @@ WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0
   separat GPU-proces; VIRKER nu, når `MOZ_GL_SPEW` IKKE sættes — se §7).
   Ryd `.parentlock` før hver kørsel (ellers "Open Firefox in Troubleshoot
   Mode?"-dialog).
+- **Kristian-opsætning (kørsel som almindelig bruger):** se §11.
 - VT=tty7, HDMI=1, ingen Firefox kører.
 
 ## 6. Kør-selv (reproducer WebGL-verifikationen)
@@ -241,10 +252,45 @@ der kører ved proces-exit — boksen restituerer selv (VT=7, HDMI enable=1).
 1. **WebGL 2.0 VIRKER STABILT** i normale kørsler (uden strace): `WEBGL_RESULT
    OK PowerVR Rogue G6200, or similar WebGL 2.0`, `present #2 (1280x948)`,
    korrekt titel, 0 X-fejl, indhold på skærmen.
-2. Opskriften: stub-libGL i `/root/glstub` + platformmodul md5
+2. Opskriften (root): stub-libGL i `/root/glstub` + platformmodul md5
    `78580702ee8b96693b02704fde9b6dcf` + `layers.gpu-process.enabled=true` +
    **INGEN `MOZ_GL_SPEW`** + ryd `.parentlock` (§6 har hele kommandoen).
 3. `Exiting due to channel error.` ved kørslens slutning = vores pkill af
    main (børnene lukker kanalen) — ikke en fejl.
-4. Alle værktøjer er i repoet (`devuan/gpu/eglplatform_x11/`), alle md5'er og
+4. Som almindelig bruger: `firefox-webgl [URL]` (eller desktop-genvejen
+   "Firefox WebGL") — se §11.
+5. Alle værktøjer er i repoet (`devuan/gpu/eglplatform_x11/`), alle md5'er og
    kommandoer i dette notat.
+
+## 11. Kørsel som almindelig bruger (kristian) — LØST 25. aug 2026
+
+WebGL virker også helt uden root, fra skrivebordet. Opsætning:
+
+- `/usr/local/lib/firefox-webgl/` — verdenslæsbare shims
+  (`system_shim.so`, `egl_platform_shim.so`), stub-`libGL.so{,.1}`,
+  `webgl_test_dump.html` og `test_client_x11`.
+- `/usr/local/bin/firefox-webgl` — launcher (repo:
+  `devuan/gpu/eglplatform_x11/start_firefox_webgl.sh`). Bruger
+  `/home/kristian/ffprof` (kopi af root-profilen, ejet af kristian) og
+  åbner URL'en fra argumentet (default `about:blank`).
+- Desktop-genvej "Firefox WebGL" (`firefox-webgl.desktop` i repoet) i
+  `/home/kristian/Desktop/` og `~/.local/share/applications/`.
+- Enhedstilladelser via udev (§5): console til tty-gruppen; pvrsrvkm, ion,
+  pvr_sync, video_state til video-gruppen. `kristian` er i begge grupper.
+- Wrapper-patchen (§5) er nødvendig — uden den fejler hybris-init'ets chvt
+  med EPERM og EGL-displayet starter ikke. File-caps er IKKE en løsning
+  (de sætter AT_SECURE, så LD_PRELOAD/LD_LIBRARY_PATH ignoreres).
+
+**Efter genstart (root, i denne rækkefølge):**
+```bash
+bash devuan/gpu/eglplatform_x11/patch_android_bindapi.sh
+bash devuan/gpu/eglplatform_x11/patch_driver_minor.sh
+bash devuan/gpu/gpu_up.sh          # logd + servicemanager + pvrsrvctl + /dev/graphics
+```
+(udev-reglerne og wrapper-patchen overlever genstart; Android-bind-mounts'ene
+og GPU-init'en gør ikke.)
+
+**Verificeret som kristian (normal kørsel):** `WEBGL_RESULT OK PowerVR Rogue
+G6200, or similar WebGL 2.0`, `present #1 (1x1)` → `ændret størrelse ->
+1280x948` → `present #2 (1280x948)`, titel OK, 0 X-fejl, 0 "alle buffere er
+busy", og fbdump viser WebGL-gradienten. GPU-processen kører som kristian.

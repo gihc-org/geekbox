@@ -830,6 +830,16 @@ Og Firefox' kompositorvindue er depth 32 TrueColor — `XPutImage` skal bruge
 vinduets visual/dybde + egen GC, ellers BadMatch og sort vindue (begge fixet
 i `eglplatform_x11.cpp`).
 
+**Kørsel som almindelig bruger (kristian):** hybris-stakken kræver desuden
+enhedstilladelser — `/dev/pvrsrvkm`, `/dev/ion`, `/dev/pvr_sync` og
+`/dev/video_state` til video-gruppen og `/dev/console` til tty-gruppen
+(udev-regler; uden `/dev/pvr_sync` frigives overflade-buffere aldrig, og
+skærmen forbliver tom trods `WEBGL_RESULT OK`). Og wrapperens `chvt()` er
+patchet til at "lykkes" uden CAP_SYS_TTY (`/opt/hybris/libEGL.so*`: ioctl'erne
+på 0x23c0/0x23e0 → `movs r0,#0; nop`; backup `/root/libEGL_hybris.orig`) —
+file-caps dur ikke, fordi de sætter AT_SECURE og dermed slår vores
+LD_PRELOAD/LD_LIBRARY_PATH-stak fra. Launcher: `/usr/local/bin/firefox-webgl`.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox WebGL
+Comment=Firefox med hybris/WebGL-stakken (hardware PowerVR)
+Exec=/usr/local/bin/firefox-webgl
+Icon=firefox-esr
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
