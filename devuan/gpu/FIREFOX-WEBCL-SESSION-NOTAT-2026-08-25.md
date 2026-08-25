@@ -294,3 +294,46 @@ og GPU-init'en gør ikke.)
 G6200, or similar WebGL 2.0`, `present #1 (1x1)` → `ændret størrelse ->
 1280x948` → `present #2 (1280x948)`, titel OK, 0 X-fejl, 0 "alle buffere er
 busy", og fbdump viser WebGL-gradienten. GPU-processen kører som kristian.
+
+## 12. Checkpoint (kort — opdateret 25. aug 2026)
+
+**Hvad vi ved:** WebGL 2.0 (PowerVR Rogue G6110/G6200) virker STABILT i
+firefox-esr på boks 1 — både som root og som kristian, i normale kørsler
+(uden strace, uden MOZ_GL_SPEW). Hele kæden er grøn: GL 3.1-kontekst,
+WebRender-hardware, GPU-proces, present #2 (1280x948), 0 X-fejl, indhold på
+skærmen.
+
+**Blokeringer løst i dag:** (1) `MOZ_GL_SPEW=1` lammer compositoren
+(KHR_debug-callback) — fjern variablen. (2) `XPutImage` BadMatch på det
+32-bit TrueColor-kompositorvindue — platformen bruger nu vinduets visual/
+dybde + egen GC + 32-bit ARGB. (3) Root-only-enheder — udev:
+`/dev/console`→tty, `/dev/pvrsrvkm`, `/dev/ion`, `/dev/pvr_sync`,
+`/dev/video_state`→video. `/dev/pvr_sync` var den sidste: uden den frigives
+overflade-buffere aldrig ("alle buffere er busy") og skærmen forbliver tom.
+(4) Wrapperens `chvt()` krævede CAP_SYS_TTY — patchet i
+`/opt/hybris/libEGL.so*` (0x23c0/0x23e0 → `movs r0,#0; nop`; backup
+`/root/libEGL_hybris.orig`). (5) Efter reboot: Android-bind-mounts
+(patch_android_bindapi.sh + patch_driver_minor.sh) og GPU-init (gpu_up.sh).
+
+**Forsøgt, men ikke brugt:** file-caps (sætter AT_SECURE → LD_PRELOAD/
+LD_LIBRARY_PATH ignoreres → llvmpipe), LD_PRELOAD-ioctl-shim (machybrisegls
+ioctl rammes ikke via preload), surfaceflinger-afhængighed (kører ikke i
+root-kørsler alligevel).
+
+**"Exiting due to channel error."** ved kørslens slutning = vores egen
+`pkill -9 -x firefox-esr` (rammer kun main; børnene har prctl-titler og
+lukker kanalen med _exit(0)) — ikke en browser-fejl.
+
+**Kommandoer der virker:**
+```bash
+# som kristian (desktop-genvej "Firefox WebGL" eller):
+firefox-webgl file:///usr/local/lib/firefox-webgl/webgl_test_dump.html
+# efter genstart (root):
+bash devuan/gpu/eglplatform_x11/patch_android_bindapi.sh
+bash devuan/gpu/eglplatform_x11/patch_driver_minor.sh
+bash devuan/gpu/gpu_up.sh
+```
+
+**Næste skridt:** evt. bekræfte at desktop-genvejen kan klikkes fra selve
+LXDE-sessionen (ikke kun via ssh-`su`). Herefter er sagen i mål — ingen kendt
+åben blokering.
