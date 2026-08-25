@@ -811,6 +811,15 @@ eglMakeCurrent EGL+0x11d4, glGetError GLES2+0x2308c). Beviser:
 frigørelse), og fang dmesg straks efter reset (automatisk `dmesg -c` i
 start_game.sh). Fuld detalje: `devuan/gpu/GPU-FAULT-GENNEMBRUD-SESSION-NOTAT-2026-08-26.md`.
 
+**Buffer-fix installeret og verificeret (26. aug, 01:1x):** `destroyBuffers()`
+retirer nu ALLE buffere (ikke kun busy) og frigør dem først efter 3 presents
+(`retire_old()`, md5 `4ba7a90d`). Målt på stress-siden uden precache: present
+#350+ med 0 resets (tidligere reset ved #2–#150 i ~50 % af kørslerne), **0
+PVR-faults i dmesg** og **FPS ~2,7 mod tidligere ~1,5**. eglMakeCurrent-
+overvågning (1469 kald) viste 0 fejl. Årsagen til forbedringen: ingen
+gralloc-reallokering/re-mapping ved hver resize — GPU'en får tid til at blive
+færdig med bufferen før frigørelse.
+
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
 1986254 → dup af 1667748) viser præcis vores sekvens:

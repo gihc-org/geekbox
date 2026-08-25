@@ -342,32 +342,37 @@ private:
          * kompositorvinduet 1x1 og resizer bagefter) kan GPU'en stadig
          * rendere i en buffer når destroyBuffers kører → use-after-free →
          * sporadisk GL-fejl → Firefox' WR_POST_UPDATE-reset (målt 25. aug
-         * 2026). Busy-buffere markeres retired og frigøres i release_buffer. */
-        std::vector<X11NativeWindowBuffer *> keep;
+         * 2026). 26. aug 2026: retire ALLE buffere (også ikke-busy) — der er
+         * ingen fence i denne stak, så GPU'en kan stadig læse fra en buffer
+         * selvom den ikke er busy (PVR_K: BIF0 - FAULT, TPUA_USC læser
+         * umappet adresse → recovery → WR_POST_UPDATE). De frigøres først i
+         * retire_old() efter 3 presents. */
         for (size_t i = 0; i < m_bufList.size(); i++) {
             X11NativeWindowBuffer *b = m_bufList[i];
-            if (b->busy) {
+            if (!b->retired) {
                 b->retired = 1;
-                keep.push_back(b);
-            } else {
-                delete b;
+                m_retired.push_back(std::make_pair(b, m_present_seq));
             }
         }
-        m_bufList = keep;
+        m_bufList.clear();
         m_bufferCount = live_count();
-        if (!keep.empty())
-            fprintf(stderr, "x11ws: destroyBuffers: %u buffer(e) venter "
-                    "(busy/retired)\n", (unsigned)keep.size());
+        fprintf(stderr, "x11ws: destroyBuffers: %zu buffer(e) flyttet til "
+                "retired-kø (%zu i kø)\n", m_retired.size(), m_retired.size());
     }
 
     void release_buffer(X11NativeWindowBuffer *b)
     {
         b->busy = 0;
         if (b->retired) {
+            /* GPU-fault-fix (26. aug 2026): slet IKKE med det samme — der er
+             * ingen fence i denne stak (målt), så GPU'en kan stadig læse fra
+             * bufferen (PVR_K: BIF0 - FAULT, TPUA_USC læser umappet adresse
+             * → recovery → WR_POST_UPDATE). Læg den i m_retired; den frigøres
+             * i retire_old() efter 3 presents. */
+            m_retired.push_back(std::make_pair(b, m_present_seq));
             for (size_t i = 0; i < m_bufList.size(); i++) {
                 if (m_bufList[i] == b) {
                     m_bufList.erase(m_bufList.begin() + i);
-                    delete b;
                     break;
                 }
             }
@@ -379,6 +384,8 @@ private:
     {
         void *ptr = NULL;
         g_present_count++;
+        m_present_seq++;
+        retire_old();
         if (g_present_count == 1)
             ensure_x_vt(); /* EGL-init har skiftet VT væk fra X (målt fælde) */
         if (!g_gralloc) {
@@ -403,6 +410,23 @@ private:
         put_image((const unsigned char *)ptr, b->width, b->height,
                   b->stride, b->format);
         g_gralloc->unlock(g_gralloc, b->handle);
+    }
+
+    void retire_old()
+    {
+        if (m_retired.empty())
+            return;
+        for (size_t i = m_retired.size(); i > 0; i--) {
+            X11NativeWindowBuffer *b = m_retired[i - 1].first;
+            unsigned long seq = m_retired[i - 1].second;
+            if (m_present_seq - seq >= 3) {
+                fprintf(stderr, "x11ws: frigør retired buffer (%lu presents "
+                        "gammel, %dx%d fmt=%u)\n",
+                        m_present_seq - seq, b->width, b->height, b->format);
+                delete b;
+                m_retired.erase(m_retired.begin() + (i - 1));
+            }
+        }
     }
 
     void put_image(const unsigned char *src, int w, int h, int stride, int fmt)
@@ -493,6 +517,8 @@ private:
     int m_interval;
     mutable bool m_sizeDirty;
     std::vector<X11NativeWindowBuffer *> m_bufList;
+    std::vector<std::pair<X11NativeWindowBuffer *, unsigned long> > m_retired;
+    unsigned long m_present_seq = 0;
 };
 
 /* ------------------------------------------------------------------ */

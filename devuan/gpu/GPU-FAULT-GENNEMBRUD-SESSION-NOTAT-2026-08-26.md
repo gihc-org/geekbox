@@ -30,6 +30,14 @@
 - [udført] Fangstværktøjer bygget: `gl_capture_shim.c` (LD_PRELOAD; virker
   standalone, men interceptede IKKE Firefox' GPU-proces), `gdb_wr_reset.cmd`
   + `capture_gdb_gpu.sh` (gdb med adresse-breakpoints på vendor-libs).
+- [målt] **Buffer-fix (retire-alle + forsinket frigørelse, md5 4ba7a90d) er
+  installeret og giver markant bedre stabilitet:** stress-kørsel uden precache
+  nåede present #350+ med 0 resets (tidligere: reset ved #2–#150 i ~50 % af
+  kørslerne), **0 PVR-faults i dmesg** (tidligere: BIF0-FAULT ved reset) og
+  **FPS ~2,7 mod tidligere ~1,5**. eglMakeCurrent-overvågning (gdb, 1469 kald)
+  viste 0 fejl-returværdier.
+- [udført] eglMakeCurrent-fangst bygget: `capture_egl_makecurrent.sh` (gdb-
+  breakpoint på libEGL_POWERVR_ROGUE's eglMakeCurrent offset 0x11d4).
 
 ## Status i ét blik
 
@@ -86,19 +94,14 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
 
 ## Næste skridt (i rækkefølge)
 
-1. **Find ud af HVAD der er unmappet når GPU'en fault'er** — fang med
-   buffer-logging: (a) i shim'en log hver gralloc-alloc/free + XPutImage med
-   tid, og korrelér med dmesg-fault-tidspunktet; (b) hold 3–4 buffere i stedet
-   for 2 + frigør først når GPU'en er færdig (eglSwapBuffers-fence/ClientWaitSync
-   hvis tilgængelig) — test om fault'en forsvinder; (c) slå op i vendors
-   pvrsrvkm-kilde hvad `Request 0x0102FF9540`/`FW logged fault PC 0x5FBB4000`
-   peger på.
-2. **Fang dmesg STRAKS efter reset** (ring-roterer på få minutter) — tilføj
-   `dmesg -c`-overvågning i start_game.sh.
-3. **Baseline-kontrol:** kør stress-siden uden precache 10+ min — bekræft at
-   shader-fejlen/reset ikke kommer (allerede set: #300+ uden reset).
-4. **Workaround-tjek:** hvis buffer-count 3–4 + fence fjerner fault'en, er
-   spillet muligvis spillbart i længere bidder; ellers auto-genstart-workaround.
+1. **Buffer-fixet virker (målt #350+ uden reset/fault, FPS 1,5→2,7) — fortsæt
+   kørslen til 10+ min og test så det RIGTIGE spil (Subway Surfers).** Hvis
+   spillet er stabilt, er sagen i mål (evt. med auto-genstart-workaround som
+   sikkerhedsnet).
+2. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
+   tilføj `dmesg -c`-overvågning i start_game.sh.
+3. **Dokumentér FPS-forbedringen** (2,7 vs 1,5) og overvej om kadence-sporet
+   (separat transfer-cap-sag) kan lukkes eller kræver egen indsats.
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)
 
