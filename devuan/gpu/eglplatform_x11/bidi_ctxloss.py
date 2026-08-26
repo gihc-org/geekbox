@@ -221,8 +221,42 @@ def main():
             "});}catch(e){}}"
             "var __gc=HTMLCanvasElement.prototype.getContext;"
             "HTMLCanvasElement.prototype.getContext=function(){"
-            "var r=__gc.apply(this,arguments);__hook(this);"
+            "var args=Array.prototype.slice.call(arguments);"
+            "if(args[1]&&typeof args[1]==='object'){"
+            "var a={};for(var k in args[1])a[k]=args[1][k];"
+            "if(a.alpha===false){a.alpha=true;try{dump('ALPHA-SHIM: alpha tvunget true\\n');}catch(x){}}"
+            "if(a.premultipliedAlpha===false){a.premultipliedAlpha=true;try{dump('ALPHA-SHIM: premultipliedAlpha tvunget true\\n');}catch(x){}}"
+            "args[1]=a;}"
+            "var r=__gc.apply(this,args);__hook(this);"
             "try{dump('GETCONTEXT canvas='+this.width+'x'+this.height+' type='+arguments[0]+' result='+(r?'OK':'NULL')+'\\n');}catch(x){}"
+            "try{if(r&&r.getExtension){"
+            "var __ge=r.getExtension.bind(r);"
+            "r.getExtension=function(n){"
+            "if(String(n).toUpperCase()==='WEBGL_LOSE_CONTEXT'){"
+            "try{dump('LOSECONTEXT-BLOKERET: loseContext er no-op\\n');}catch(x){}"
+            "return{loseContext:function(){try{dump('LOSECONTEXT-KALD BLOKERET\\n');}catch(x){}},"
+            "restoreContext:function(){},__blokeret:true};}"
+            "return __ge(n);};"
+            "}}catch(e){}"
+            "try{if(r&&r.drawArrays){"
+            "var __da=r.drawArrays.bind(r),__dc=0;"
+            "r.drawArrays=function(m,f,c){__dc++;"
+            "if(__dc<=10||__dc%300===0){try{dump('DRAWARRAYS #'+__dc+' mode='+m+' first='+f+' count='+c+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
+            "return __da(m,f,c);};"
+            "var __de=r.drawElements.bind(r);"
+            "r.drawElements=function(m,c,t,i){__dc++;"
+            "if(__dc<=10||__dc%300===0){try{dump('DRAWELEMENTS #'+__dc+' mode='+m+' count='+c+' type='+t+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
+            "return __de(m,c,t,i);};"
+            "var __cl=r.clear.bind(r),__cc=0;"
+            "r.clear=function(m){__cc++;"
+            "if(__cc<=5||__cc%200===0){try{dump('CLEAR #'+__cc+' mask='+m+'\\n');}catch(x){}}"
+            "return __cl(m);};"
+            "if(r.clearColor){"
+            "var __cc2=r.clearColor.bind(r),__cn=0;"
+            "r.clearColor=function(a,b,c2,d){__cn++;"
+            "if(__cn<=5||__cn%200===0){try{dump('CLEARCOLOR #'+__cn+' ='+a+','+b+','+c2+','+d+'\\n');}catch(x){}}"
+            "return __cc2(a,b,c2,d);};}"
+            "}}catch(e){}"
             "try{var le=r&&r.getExtension&&r.getExtension('WEBGL_lose_context');"
             "if(le&&!le.__hooked){le.__hooked=1;var o=le.loseContext;"
             "le.loseContext=function(){"
@@ -288,6 +322,31 @@ def main():
                 "awaitPromise": False, "returnByValue": True,
             })
             print("CTXLOSS-DATA:", json.dumps(r)[:800])
+            if len(sys.argv) > 5 and sys.argv[5] == "dump" and game_ctx:
+                expr = (
+                    "var cvs=document.querySelectorAll('canvas');"
+                    "var out=[];"
+                    "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+                    "if(cv.width<100)continue;"
+                    "try{out.push({w:cv.width,h:cv.height,data:cv.toDataURL('image/png')});}"
+                    "catch(e){out.push({fejl:String(e)});}}"
+                    "JSON.stringify(out)"
+                )
+                r2 = call("script.evaluate", {
+                    "expression": expr, "target": {"context": game_ctx},
+                    "awaitPromise": False, "returnByValue": True,
+                })
+                res = r2.get("result", {}).get("result", {}).get("value")
+                if res:
+                    import base64
+                    for c in json.loads(res):
+                        if "data" in c:
+                            b64 = c["data"].split(",", 1)[1]
+                            open("/tmp/game_canvas_%dx%d.png" % (c["w"], c["h"]), "wb").write(
+                                base64.b64decode(b64))
+                            print("GEMT canvas %dx%d" % (c["w"], c["h"]))
+                else:
+                    print("DUMP-FEJL:", json.dumps(r2)[:300])
     elif mode == "reload":
         r = call("browsingContext.reload", {"context": ctx})
         print("GENINDLASTET:", json.dumps(r)[:200])
@@ -305,8 +364,12 @@ def main():
             "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
             "var r=cv.getBoundingClientRect();"
             "var cs=getComputedStyle(cv);"
+            "var attrs=null;"
+            "var gl=cv.getContext&&(cv.getContext('webgl2')||cv.getContext('webgl'));"
+            "if(gl&&gl.getContextAttributes)attrs=gl.getContextAttributes();"
+            "var glver=gl&&gl.getParameter&&gl.getParameter(gl.VERSION);"
             "out.push({w:cv.width,h:cv.height,rw:Math.round(r.width),rh:Math.round(r.height),"
-            "d:cs.display,v:cs.visibility,o:cs.opacity});}"
+            "d:cs.display,v:cs.visibility,o:cs.opacity,attrs:attrs,glver:glver});}"
             "JSON.stringify({url:location.href,canvasser:out,"
             "iframeRect:(function(){var f=window.frameElement;"
             "if(!f)return null;var r=f.getBoundingClientRect();"
@@ -316,7 +379,66 @@ def main():
             "expression": expr, "target": {"context": game_ctx},
             "awaitPromise": False, "returnByValue": True,
         })
-        print("DOMCHECK:", json.dumps(r)[:900])
+        print("DOMCHECK:", json.dumps(r)[:4000])
+    elif mode == "canvasdump" and game_ctx:
+        expr = (
+            "var cvs=document.querySelectorAll('canvas');"
+            "var out=[];"
+            "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "if(cv.width<100)continue;"
+            "try{var dl=cv.toDataURL('image/png');"
+            "out.push({w:cv.width,h:cv.height,data:dl});"
+            "}catch(e){out.push({w:cv.width,h:cv.height,fejl:String(e)});}}"
+            "JSON.stringify(out)"
+        )
+        r = call("script.evaluate", {
+            "expression": expr, "target": {"context": game_ctx},
+            "awaitPromise": False, "returnByValue": True,
+        })
+        res = r.get("result", {}).get("result", {}).get("value")
+        if res:
+            arr = json.loads(res)
+            for c in arr:
+                if "data" in c:
+                    b64 = c["data"].split(",", 1)[1]
+                    open("/tmp/game_canvas_%dx%d.png" % (c["w"], c["h"]), "wb").write(
+                        __import__("base64").b64decode(b64))
+                    print("GEMT canvas %dx%d -> /tmp/game_canvas_%dx%d.png" % (c["w"], c["h"], c["w"], c["h"]))
+                else:
+                    print("CANVAS-FEJL:", c)
+        else:
+            print("INTET SVAR:", json.dumps(r)[:400])
+    elif mode == "glstate" and game_ctx:
+        expr = (
+            "var cvs=document.querySelectorAll('canvas');"
+            "var out=[];"
+            "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "if(cv.width<100)continue;"
+            "var gl=cv.getContext&&(cv.getContext('webgl2')||cv.getContext('webgl'));"
+            "if(!gl)continue;"
+            "var px=[];"
+            "var pts=[];"
+            "for(var gy=0;gy<15;gy++)for(var gx=0;gx<25;gx++)"
+            "pts.push([Math.floor((gx+0.5)*cv.width/25),Math.floor((gy+0.5)*cv.height/15)]);"
+            "for(var j=0;j<pts.length;j++){var p=new Uint8Array(4);"
+            "try{gl.readPixels(pts[j][0],pts[j][1],1,1,gl.RGBA,gl.UNSIGNED_BYTE,p);"
+            "if(p[0]!==0||p[1]!==255||p[2]!==255)px.push([pts[j][0],pts[j][1],p[0],p[1],p[2],p[3]]);}catch(e){}}"
+            "var dl='';try{dl=cv.toDataURL('image/png').length;}catch(e){}"
+            "out.push({w:cv.width,h:cv.height,"
+            "fbo:gl.getParameter(gl.FRAMEBUFFER_BINDING),"
+            "readFbo:gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),"
+            "viewport:gl.getParameter(gl.VIEWPORT),"
+            "drawBuffers:gl.getParameter(gl.DRAW_BUFFER0),"
+            "err:gl.getError(),"
+            "afvigendePunkter:px.length,dataUrlLen:dl,afvigelser:px.slice(0,10)});}"
+            "JSON.stringify(out)"
+        )
+        r = call("script.evaluate", {
+            "expression": expr, "target": {"context": game_ctx},
+            "awaitPromise": False, "returnByValue": True,
+        })
+        res = r.get("result", {}).get("result", {}).get("value")
+        print("GLSTATE:", res if res else json.dumps(r)[:500])
     ws.s.close()
 
 

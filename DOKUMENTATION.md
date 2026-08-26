@@ -925,6 +925,52 @@ med diffs), `stall_capture.sh` (gdb ved present-stall, rettet),
 (X-kompositerings-prober), `webgl_stress.html` (lokal stress-side). Hele forløbet:
 `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
 
+### 5.15f Gralloc-lock-sporet: præsentationen virker, spillet kører (26.–27. aug 2026)
+
+**Sammenfatning:** DDK 1.5@3830101 kører fuldt, og Subway Surfers loader nu
+STABILT og er spilbart (lyd, HUD, menuer) med den rette konfiguration. Den
+resterende blokade er at spillets 3D-scene renderer cyan (scenen tegnes ikke
+korrekt på 1.5-stakken). Fuld log: `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-
+NOTAT-2026-08-26.md`.
+
+**Rodårsagen til gralloc-lock EINVAL (præsentationen virkede ikke):**
+`/dev/sw_sync` er `0600 root:root`; 1.5-gralloc'ens `lock` laver en sw_sync-
+fence for CPU-låsen, og Firefox' GPU-proces kører som `kristian` → EACCES →
+lock returnerede EINVAL. Standalone virkede fordi den kørte som root.
+`chmod 666 /dev/sw_sync` (i `devuan/myinit.sh` med retry-løkke, da enheden
+oprettes EFTER devtmpfs-mount) løser det.
+
+**Anden blokade:** x11ws låste med `GRALLOC_USAGE_SW_READ_OFTEN=0x80`
+(Android-8-stil), men 1.5-gralloc'en (Android 5.1) genkender kun 0x3
+(SW-bit-maske 0x33) → rc=0 men vaddr=NULL → intet vist. x11ws bruger nu
+`X11WS_SW_READ_OFTEN=0x3`.
+
+**Chrome/Side vises normalt med `layers.acceleration.disabled=true`**
+(software-layers): med acceleration på var Firefox' toppanel sort og
+iframe-WebGL-canvasser viste ikke indhold. Prefen er nødvendig.
+
+**Spillet vises med en shim** (Firefox-udvidelse `poki-webgl-fix@geekbox` i
+`devuan/gpu/eglplatform_x11/poki-fix-extension/`): tvinger
+`alpha:true` + `premultipliedAlpha:true` på WebGL-kontekster (alpha:false-
+canvasser vises ikke af software-compositoren på denne stak) og gør
+`WEBGL_lose_context.loseContext` til no-op (PixiJS-destroy kalder den bevidst
+og taber konteksten permanent). Indlæses midlertidigt via
+`about:debugging → Load Temporary Add-on` (pålideligt; `--install-extension`
+og manuel extensions.json er upålidelige i ESR 140).
+
+**Vigtig fælde fundet:** GLESv2-proxyen (`glesv2_proxy.c`) BRØD WebGL1/ES1-
+kontekstoprettelse → alle poki-sider (SDK'ets webgl-probe) crashede Firefox
+(channel error / "WebGL actor Initialize failed"). Løsning: behold ORIGINAL
+`libGLESv2.so.2.0.0` (md5 `ca71fb2c…` = `/root/hybris_backup`); EGL-proxyen
+har selv shader-hooks via `eglGetProcAddress` og er tilstrækkelig.
+
+**Resten:** spillets scene tegner kun små 18-verts-elementer og canvas'et
+læser cyan; clear-farven er pink. Spillets 3D-renderer sender ikke scene-draws
+til canvas'et på 1.5-stakken (åbent spor — næste skridt: afgør om spillet
+bevidst deaktiverer scenen via en kapabilitets-check, eller om draw-kaldene
+fejler; værktøj: BiDi-preload med draw-/clear-tællere + pixel-prober i
+`devuan/gpu/eglplatform_x11/bidi_ctxloss.py`).
+
 ## 6. Slutarkitekturen
 
 ```

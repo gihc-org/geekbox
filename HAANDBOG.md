@@ -910,6 +910,36 @@ Firefox' GPU-proces er IKKE gralloc-versionen — se handoveren (gralloc-lock-sp
 
 ### Fælde 31: 1.5-shader-kompileren kan ikke heltals-varyings
 
+### Fælde 32: `/dev/sw_sync` er 0600 root:root — gralloc-lock giver EINVAL for ikke-root
+1.5-gralloc'ens `lock` laver en sw_sync-fence (CPU-læsning af
+præsentationsbuffere). Firefox/GPU-processen kører som `kristian` →
+`open("/dev/sw_sync")` = EACCES → lock returnerer -22 (EINVAL). Standalone som
+root virker (derfor forvirrende). Fix: `chmod 666 /dev/sw_sync` — i myinit med
+en retry-løkke, fordi enheden oprettes af kernen EFTER devtmpfs-mount.
+
+### Fælde 33: `GRALLOC_USAGE_SW_READ_OFTEN=0x80` giver vaddr=NULL på 1.5
+x11ws var patchet med Android-8-stil 0x80, men 1.5-gralloc'en (Android 5.1)
+genkender kun 0x3 (SW-bit-maske 0x33) → lock rc=0 men vaddr=NULL → intet vist.
+Brug 0x3.
+
+### Fælde 34: GLESv2-proxyen brød WebGL1/ES1 — poki crashede ved load
+`glesv2_proxy.c` (libGLESv2.so.2.0.0) fik ALLE poki-sider (SDK'ets
+`getContext("webgl")`-probe) til at crashede Firefox ("WebGL actor Initialize
+failed", channel error, minidump-generation fejler). Isoleret med lokal
+webgl1-test. Fix: behold ORIGINAL libGLESv2 (md5 `ca71fb2c…`); EGL-proxyen har
+selv shader-hooks via eglGetProcAddress.
+
+### Fælde 35: alpha:false-WebGL-canvasser vises ikke med software-layers
+Med `layers.acceleration.disabled=true` vises WebGL-canvasser med
+`alpha:false` + `premultipliedAlpha:false` IKKE (tomt/transparent), mens
+alpha:true vises. Spillet (PixiJS v8) anmoder alpha:false → shim tvinger
+alpha:true. Symptom: spilområdet forsvinder/tomt trods at canvas'et renderer
+(readPixels har indhold).
+
+### Fælde 36: `--install-extension` og manuel extensions.json er upålidelige i ESR 140
+Til test: indlæs udvidelsen via `about:debugging → Load Temporary Add-on`
+(vælg manifest.json). Midlertidige udvidelser forsvinder ved genstart.
+
 **Du ser:** WebRender's `cs_blur`-vertex-shader fejler med kun "Compile failed."
 (mens attributter + vec4[2]-retur virker).
 
