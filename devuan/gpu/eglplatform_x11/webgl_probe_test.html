@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>SDK-probe-test</title></head>
+<body>
+<script>
+function report(s){ try{ dump('PROBE ' + s + '\n'); }catch(e){} document.title = s; }
+
+/* Efterligner Poki-SDK'ens bi()-probe + playerfit-check */
+var canvas = document.createElement("canvas");
+var ctx = null;
+try {
+    ctx = canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: true });
+} catch (e) { report("webgl2(failIfMajor) THROW " + e); }
+if (!ctx) {
+    try { ctx = canvas.getContext("webgl", { failIfMajorPerformanceCaveat: true }); }
+    catch (e) { report("webgl(failIfMajor) THROW " + e); }
+}
+if (!ctx) {
+    try { ctx = canvas.getContext("webgl"); } catch (e) { report("webgl THROW " + e); }
+}
+if (!ctx) {
+    report("ALLE KONTEKSTER NULL -> 'WebGL ikke understøttet'");
+} else {
+    report("KONTEKST OK: " + ctx.getParameter(ctx.RENDERER));
+    /* SDK: læs renderer via WEBGL_debug_renderer_info */
+    var ext = ctx.getExtension("WEBGL_debug_renderer_info");
+    if (ext) report("UNMASKED: " + ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+    /* SDK: bi() — kald loseContext på probe-konteksten */
+    var lost = 0, restored = 0;
+    canvas.addEventListener("webglcontextlost", function(e){ lost++; report("CTXLOST event (lost=" + lost + ") statusMessage='" + (e.statusMessage||"") + "'"); });
+    canvas.addEventListener("webglcontextrestored", function(e){ restored++; report("CTXRESTORED event (restored=" + restored + ")"); });
+    try {
+        var le = ctx.getExtension("WEBGL_lose_context");
+        if (le) { report("kalder loseContext()"); le.loseContext(); }
+        else report("WEBGL_lose_context = NULL");
+    } catch (e) { report("loseContext THROW " + e); }
+    setTimeout(function(){
+        report("efter 3s: lost=" + lost + " restored=" + restored +
+               " ctx.isContextLost()=" + ctx.isContextLost() +
+               " canvas.getContext('webgl2') igen=" + (!!canvas.getContext("webgl2")));
+    }, 3000);
+}
+</script>
+</body>
+</html>

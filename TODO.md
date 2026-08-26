@@ -91,6 +91,18 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     WebGL); (e) spil-blokaden: **BESLUTTET (26. aug): gralloc-lock-sporet
     forfølges** (præsentation i GPU-processen); Spor B/accept fravalgt. Detaljer:
     `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
+- [ ] **Subway Surfers: konteksttab ved gameplay-start (26. aug aften, åbent
+  spor):** gralloc-lock-EINVAL er LØST (rodårsag = /dev/sw_sync 0600 root:root
+  → kristian fik EACCES i lock'ens sync-fence-sti; `chmod 666` fixer —
+  **skal gøres persistent i myinit/udev**) + x11ws lock-usage 0x80→0x3.
+  Præsentation virker nu (skærmen viser indhold; pix0-loggen er stale, brug
+  fbdump). 2 GPU-crash-klasser fixet (proxy-shader-overread; hybris-_eglXXX-
+  NULL-tabel → fix_egl_table). RESTERENDE: spillet mister sin WebGL-kontekst
+  ved gameplay-start (sort canvas, "browser understøtter ikke WebGL").
+  SDK'ens loseContext-probe virker (lokal test), så næste skridt er at fange
+  Firefox' faktiske LoseContext-årsag eller teste kontekst-genopretning i
+  1.5-stakken. Detaljer:
+  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md`.
 - [ ] **Python-frontend + GLES-daemon (i gang aug 2026)** — Python tegner UI på /dev/fb0 (skelet: `fb_overscan.py`), taler med en C-daemon over unix-socket (skelet: `devuan/gpu/test_triangle.cpp`), daemonen renderer GLES offscreen og blitter til skærmen. Operationskort + første skridt: `devuan/gpu/README.md`. Regler: X stoppet under brug; strøm-cyklus bagefter
   - **God start i en ny session:** *"Læs `devuan/gpu/README.md` og DOKUMENTATION.md §5.15. Vi skal i gang med Python-frontend + GLES-daemon-projektet — arkitekturen og de første skridt står i README'en og i dette TODO-punkt. Boksen findes med `devuan/find_box.sh`."*
   - **Plan (23. aug 2026): `devuan/gpu/GLES-DAEMON-PLAN.md`** — beslutning om cross-bygning (`g++-arm-linux-gnueabihf` mod `vendor_root`-libs), milestones M0-M4, testcyklus og fælder. Værktøjet er installeret; M0 (baseline-byg af `test_triangle` cross + verifikation på boks 1) er næste skridt.

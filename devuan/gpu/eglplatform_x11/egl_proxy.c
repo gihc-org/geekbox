@@ -31,11 +31,84 @@ static FILE *plog(void)
 typedef EGLContext (*real_eglCreateContext_t)(EGLDisplay, EGLConfig, EGLContext,
                                               const EGLint *);
 
+typedef EGLBoolean (*real_eglMakeCurrent_t)(EGLDisplay, EGLSurface, EGLSurface,
+                                            EGLContext);
+typedef EGLBoolean (*real_eglSwapBuffers_t)(EGLDisplay, EGLSurface);
+typedef EGLint (*real_eglGetError_t)(void);
+
+/* 26. aug 2026: hybris' _eglXXX-funktionstabel i libEGL_r.so er stort set
+ * TOM (kun et par slots udfyldt) på denne boks → eglDestroySurface/-
+ * eglDestroyContext kalder en NULL-pointer → GPU-processen crasher (ip=0x0,
+ * målt 19:14 og 19:24). Udfyld alle tomme slots med de ægte Android-libEGL-
+ * funktioner via android_dlopen/android_dlsym (libhybris-common). */
+static void fix_egl_table(void)
+{
+    static const struct { const char *name; unsigned off; } tab[] = {
+        { "eglGetError", 0xe498 }, { "eglGetDisplay", 0xe49c },
+        { "eglInitialize", 0xe4a0 }, { "eglTerminate", 0xe4a4 },
+        { "eglQueryString", 0xe4a8 }, { "eglGetConfigs", 0xe4ac },
+        { "eglChooseConfig", 0xe4b0 }, { "eglGetConfigAttrib", 0xe4b4 },
+        { "eglCreateWindowSurface", 0xe4b8 },
+        { "eglCreatePbufferSurface", 0xe4bc },
+        { "eglCreatePixmapSurface", 0xe4c0 },
+        { "eglDestroySurface", 0xe4c4 }, { "eglQuerySurface", 0xe4c8 },
+        { "eglBindAPI", 0xe4cc }, { "eglQueryAPI", 0xe4d0 },
+        { "eglWaitClient", 0xe4d4 }, { "eglReleaseThread", 0xe4d8 },
+        { "eglCreatePbufferFromClientBuffer", 0xe4dc },
+        { "eglSurfaceAttrib", 0xe4e0 }, { "eglBindTexImage", 0xe4e4 },
+        { "eglReleaseTexImage", 0xe4e8 }, { "eglSwapInterval", 0xe4ec },
+        { "eglCreateContext", 0xe4f0 }, { "eglDestroyContext", 0xe4f4 },
+        { "eglMakeCurrent", 0xe4f8 }, { "eglGetCurrentContext", 0xe4fc },
+        { "eglGetCurrentSurface", 0xe500 }, { "eglGetCurrentDisplay", 0xe504 },
+        { "eglQueryContext", 0xe508 }, { "eglWaitGL", 0xe50c },
+        { "eglWaitNative", 0xe510 }, { "eglSwapBuffers", 0xe514 },
+        { "eglCopyBuffers", 0xe518 }, { "eglCreateImageKHR", 0xe51c },
+        { "eglDestroyImageKHR", 0xe520 }, { NULL, 0 }
+    };
+    void *(*adlopen)(const char *, int) =
+        (void *(*)(const char *, int))dlsym(RTLD_DEFAULT, "android_dlopen");
+    void *(*adlsym)(void *, const char *) =
+        (void *(*)(void *, const char *))dlsym(RTLD_DEFAULT, "android_dlsym");
+    if (!adlopen || !adlsym)
+        return;
+    Dl_info info;
+    void *egl_wrap = dlsym(RTLD_NEXT, "eglDestroySurface");
+    if (!egl_wrap || !dladdr(egl_wrap, &info) || !info.dli_fbase)
+        return;
+    unsigned char *base = (unsigned char *)info.dli_fbase;
+    void *ah = adlopen("libEGL.so", 0);
+    if (!ah)
+        return;
+    int fixed = 0;
+    for (int i = 0; tab[i].name; i++) {
+        void **slot = (void **)(base + tab[i].off);
+        if (!*slot) {
+            void *fn = adlsym(ah, tab[i].name);
+            if (fn) {
+                *slot = fn;
+                fixed++;
+            }
+        }
+    }
+    fprintf(stderr, "egl_proxy: fix_egl_table udfyldte %d tomme slots "
+            "(libEGL_r base=%p)\n", fixed, (void *)base);
+}
+
+static void fix_egl_table_once(void)
+{
+    static int done = 0;
+    if (!done) {
+        done = 1;
+        fix_egl_table();
+    }
+}
+
 EGLContext eglCreateContext(EGLDisplay dpy, EGLConfig cfg, EGLContext share,
                             const EGLint *attr)
 {
     static real_eglCreateContext_t real;
     if (!real) real = (real_eglCreateContext_t)dlsym(RTLD_NEXT, "eglCreateContext");
+    fix_egl_table_once();
     int ver = 0;
     for (const EGLint *a = attr; a && *a != EGL_NONE; a += 2) {
         if (a[0] == EGL_CONTEXT_CLIENT_VERSION) ver = a[1];
@@ -46,6 +119,46 @@ EGLContext eglCreateContext(EGLDisplay dpy, EGLConfig cfg, EGLContext share,
         fclose(f);
     }
     return real(dpy, cfg, share, attr);
+}
+
+EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
+                          EGLContext ctx)
+{
+    static real_eglMakeCurrent_t real;
+    static real_eglGetError_t err;
+    if (!real) {
+        real = (real_eglMakeCurrent_t)dlsym(RTLD_NEXT, "eglMakeCurrent");
+        err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
+    }
+    EGLBoolean rc = real(dpy, draw, read, ctx);
+    EGLint e = err ? err() : EGL_SUCCESS;
+    FILE *f = plog();
+    if (f) {
+        fprintf(f, "eglMakeCurrent dpy=%p draw=%p read=%p ctx=%p rc=%d err=0x%x\n",
+                (void *)dpy, (void *)draw, (void *)read, (void *)ctx, (int)rc,
+                (unsigned)e);
+        fclose(f);
+    }
+    return rc;
+}
+
+EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
+{
+    static real_eglSwapBuffers_t real;
+    static real_eglGetError_t err;
+    if (!real) {
+        real = (real_eglSwapBuffers_t)dlsym(RTLD_NEXT, "eglSwapBuffers");
+        err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
+    }
+    EGLBoolean rc = real(dpy, surface);
+    EGLint e = err ? err() : EGL_SUCCESS;
+    FILE *f = plog();
+    if (f) {
+        fprintf(f, "eglSwapBuffers dpy=%p surf=%p rc=%d err=0x%x\n",
+                (void *)dpy, (void *)surface, (int)rc, (unsigned)e);
+        fclose(f);
+    }
+    return rc;
 }
 
 /* ---- shader-omskrivning (glShaderSource via eglGetProcAddress) ---- */
@@ -77,6 +190,20 @@ static char *str_replace_all(const char *in, const char *from, const char *to)
     }
     out[outlen] = 0;
     return out;
+}
+
+/* Længde-begrænset substring-søgning: WebGL kan sende shader-kilder med
+ * eksplicit længde UDEN NUL-terminator (glShaderSource), og uafgrænset
+ * strstr() læste forbi bufferet → GPU-processen crashede i memchr på en
+ * guard-side (SEGV_ACCERR 0xf3eff000, målt 26. aug 2026 ~19:00). */
+static int contains_sub(const char *s, int slen, const char *sub)
+{
+    size_t l = strlen(sub);
+    if (slen <= 0 || (size_t)slen < l) return 0;
+    for (int i = 0; i + (int)l <= slen; i++) {
+        if (!memcmp(s + i, sub, l)) return 1;
+    }
+    return 0;
 }
 
 /* 1.5-kompileren kan ikke heltals-varyings (målt 26. aug: ivec2/int varying →
@@ -113,12 +240,14 @@ void hook_glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
 
     FILE *f = fopen("/tmp/fragdepth_probe.log", "a");
     for (GLsizei i = 0; i < count && str && str[i]; i++) {
-        fprintf(f, "=== shader %u[%d] SRC: %.20000s\n", shader, i, str[i]);
+        int sl = (len && len[i] >= 0) ? len[i] : (int)strlen(str[i]);
+        fprintf(f, "=== shader %u[%d] SRC len=%d\n", shader, i, sl);
+        fwrite(str[i], 1, (size_t)(sl < 20000 ? sl : 20000), f);
+        fputc('\n', f);
         char path[128];
         snprintf(path, sizeof path, "/tmp/shaders/%u_%d.glsl", shader, i);
         FILE *sf = fopen(path, "w");
         if (sf) {
-            int sl = (len && len[i] >= 0) ? len[i] : (int)strlen(str[i]);
             fwrite(str[i], 1, sl, sf);
             fclose(sf);
         }
@@ -127,8 +256,10 @@ void hook_glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
 
     int changed = 0;
     for (GLsizei i = 0; i < count && str && str[i]; i++) {
-        if (strstr(str[i], "GL_EXT_frag_depth") || strstr(str[i], "gl_FragDepthEXT") ||
-            strstr(str[i], "vSupport")) {
+        int sl = (len && len[i] >= 0) ? len[i] : (int)strlen(str[i]);
+        if (contains_sub(str[i], sl, "GL_EXT_frag_depth") ||
+            contains_sub(str[i], sl, "gl_FragDepthEXT") ||
+            contains_sub(str[i], sl, "vSupport")) {
             changed = 1;
             break;
         }
@@ -149,7 +280,7 @@ void hook_glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
         while (j < slen) {
             if ((j == 0 || s[j - 1] == '\n') &&
                 !strncmp(s + j, "#extension", 10) &&
-                strstr(s + j, "frag_depth")) {
+                contains_sub(s + j, slen - j, "frag_depth")) {
                 while (j < slen && s[j] != '\n') j++;
                 continue;
             }
@@ -204,6 +335,24 @@ void hook_glCompileShader(GLuint shader)
     }
 }
 
+static void (*real_glGetError_fn)(void);
+
+GLenum hook_glGetError(void)
+{
+    if (!real_glGetError_fn)
+        real_glGetError_fn = (void (*)(void))
+            real_eglGetProcAddress_fn("glGetError");
+    GLenum e = real_glGetError_fn ? ((GLenum (*)(void))real_glGetError_fn)() : 0;
+    if (e != GL_NO_ERROR) {
+        FILE *f = fopen("/tmp/fragdepth_probe.log", "a");
+        if (f) {
+            fprintf(f, "!!! glGetError -> 0x%04x\n", (unsigned)e);
+            fclose(f);
+        }
+    }
+    return e;
+}
+
 typedef __eglMustCastToProperFunctionPointerType (*real_eglGetProcAddress_ret_t)(const char *);
 
 __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
@@ -216,5 +365,7 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
         return (__eglMustCastToProperFunctionPointerType)hook_glShaderSource;
     if (name && !strcmp(name, "glCompileShader"))
         return (__eglMustCastToProperFunctionPointerType)hook_glCompileShader;
+    if (name && !strcmp(name, "glGetError"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glGetError;
     return ((real_eglGetProcAddress_ret_t)real_eglGetProcAddress_fn)(name);
 }

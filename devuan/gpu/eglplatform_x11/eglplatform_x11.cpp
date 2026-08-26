@@ -23,14 +23,15 @@ extern "C" {
 #include <hybris/eglplatformcommon/nativewindowbase.h>
 #include <android/hardware/gralloc.h>
 #include <android/system/graphics.h>
+#include <sys/time.h>
 
-/* 26. aug 2026: hybris-gralloc-headerne har FORKERTE GRALLOC_USAGE-værdier
- * (HW_FB=0x1000, SW_READ_OFTEN=0x3) vs. Android-standard (0x10 hhv. 0x80).
- * 1.5-gralloc'en afviser dem (EINVAL) → tving de korrekte værdier. */
-#undef GRALLOC_USAGE_HW_FB
-#define GRALLOC_USAGE_HW_FB 0x10
-#undef GRALLOC_USAGE_SW_READ_OFTEN
-#define GRALLOC_USAGE_SW_READ_OFTEN 0x80
+/* 26. aug 2026, rettet sent: hybris-headeren (SW_READ_OFTEN=0x3, HW_FB=0x1000)
+ * er KORREKT for 1.5-gralloc'en (Android 5.1-semantik). Tidligere blev
+ * konstanterne ændret til Android-8-stil (0x80/0x10) — men 1.5-gralloc'ens
+ * SW-bit-maske er 0x33 (5.1: SW_READ=0x3, SW_WRITE=0x30), så lock med 0x80
+ * gav rc=0 men vaddr=NULL (ingen CPU-mapping) → present viste intet. Brug
+ * eksplicit 5.1-værdien til lock/alloc: */
+#define X11WS_SW_READ_OFTEN 0x3
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -58,6 +59,12 @@ extern "C" {
 
 static gralloc_module_t *g_gralloc = NULL;
 static alloc_device_t *g_alloc = NULL;
+static long long now_ms(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 static Display *g_dpy = NULL;
 static unsigned long g_present_count = 0;
 
@@ -176,8 +183,9 @@ public:
     X11NativeWindow(Display *dpy, Window win, unsigned int w, unsigned int h)
         : m_dpy(dpy), m_win(win), m_width(w), m_height(h),
           m_format(HAL_PIXEL_FORMAT_RGBA_8888),
-          m_usage(GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_SW_READ_OFTEN),
-          m_bufferCount(0), m_nextBuffer(0), m_interval(1), m_sizeDirty(false)
+          m_usage(GRALLOC_USAGE_HW_FB | X11WS_SW_READ_OFTEN),
+          m_bufferCount(0), m_nextBuffer(0), m_interval(1), m_sizeDirty(false),
+          m_present_seq(0)
     {
     }
     virtual ~X11NativeWindow()
@@ -289,7 +297,7 @@ protected:
 
     virtual int setUsage(int usage)
     {
-        m_usage = (unsigned int)usage | GRALLOC_USAGE_SW_READ_OFTEN;
+        m_usage = (unsigned int)usage | X11WS_SW_READ_OFTEN;
         return NO_ERROR;
     }
     virtual int setBuffersFormat(int format)
@@ -331,8 +339,8 @@ private:
             m_bufList.push_back(b);
         }
         m_bufferCount = live_count();
-        fprintf(stderr, "x11ws: %u buffer(e) allokeret (%ux%u fmt=%u usage=%x)\n",
-                m_bufferCount, m_width, m_height, m_format, m_usage);
+        fprintf(stderr, "x11ws: [%lld] %u buffer(e) allokeret (%ux%u fmt=%u usage=%x)\n",
+                now_ms(), m_bufferCount, m_width, m_height, m_format, m_usage);
     }
 
     unsigned int live_count() const
@@ -390,6 +398,8 @@ private:
 
     void present(X11NativeWindowBuffer *b)
     {
+        struct timeval t0, t1, t2, t3;
+        gettimeofday(&t0, NULL);
         void *ptr = NULL;
         g_present_count++;
         m_present_seq++;
@@ -401,24 +411,58 @@ private:
             return;
         }
         int rc = g_gralloc->lock(g_gralloc, b->handle,
-                                 GRALLOC_USAGE_SW_READ_OFTEN,
+                                 X11WS_SW_READ_OFTEN,
                                  0, 0, b->width, b->height, &ptr);
+        gettimeofday(&t1, NULL);
         if (rc != 0 || !ptr) {
-            fprintf(stderr, "x11ws: gralloc lock fejlede (rc=%d) fmt=%u usage=%x handle=%p w=%d h=%d\n",
-                    rc, b->format, b->usage, (void *)b->handle, b->width, b->height);
+            int nv = -1, nf = -1, ni = -1;
+            if (b->handle) {
+                const int *hd = (const int *)b->handle;
+                nv = hd[0]; nf = hd[1]; ni = hd[2];
+            }
+            fprintf(stderr, "x11ws: gralloc lock fejlede (rc=%d) lockusage=%x fmt=%u usage=%x handle=%p w=%d h=%d nhandle(v=%d f=%d i=%d)\n",
+                    rc, (unsigned)X11WS_SW_READ_OFTEN, b->format, b->usage,
+                    (void *)b->handle, b->width, b->height, nv, nf, ni);
+            /* selvt est: allokér + lock en frisk buffer med samme usage */
+            if (g_alloc) {
+                buffer_handle_t th = NULL;
+                int tstride = 0;
+                int trc = g_alloc->alloc(g_alloc, 320, 240, b->format, b->usage,
+                                         &th, &tstride);
+                if (trc == 0 && th) {
+                    void *tp = NULL;
+                    int trc2 = g_gralloc->lock(g_gralloc, th, X11WS_SW_READ_OFTEN,
+                                               0, 0, 320, 240, &tp);
+                    fprintf(stderr, "x11ws: SELVTEST alloc=%d lock=%d lockptr=%p\n",
+                            trc, trc2, (void *)g_gralloc->lock);
+                    if (trc2 == 0) g_gralloc->unlock(g_gralloc, th);
+                    g_alloc->free(g_alloc, th);
+                } else {
+                    fprintf(stderr, "x11ws: SELVTEST alloc fejlede (%d)\n", trc);
+                }
+            }
             return;
         }
         if (g_present_count <= 2 || g_present_count % 50 == 0) {
             const unsigned char *p = (const unsigned char *)ptr;
-            fprintf(stderr,
-                    "x11ws: present #%lu (%dx%d fmt=%u stride=%d) pix0=%02x%02x%02x%02x "
-                    "pix1=%02x%02x%02x%02x\n",
-                    g_present_count, b->width, b->height, b->format, b->stride,
+        fprintf(stderr,
+                "x11ws: [%lld] present #%lu (%dx%d fmt=%u stride=%d) pix0=%02x%02x%02x%02x "
+                "pix1=%02x%02x%02x%02x\n",
+                now_ms(), g_present_count, b->width, b->height, b->format, b->stride,
                     p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
         }
         put_image((const unsigned char *)ptr, b->width, b->height,
                   b->stride, b->format);
+        gettimeofday(&t2, NULL);
         g_gralloc->unlock(g_gralloc, b->handle);
+        gettimeofday(&t3, NULL);
+        if (g_present_count <= 5 || g_present_count % 25 == 0)
+            fprintf(stderr,
+                    "x11ws: present #%lu tid lock=%ldms put=%ldms unlock=%ldms\n",
+                    g_present_count,
+                    (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_usec - t0.tv_usec) / 1000,
+                    (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_usec - t1.tv_usec) / 1000,
+                    (t3.tv_sec - t2.tv_sec) * 1000 + (t3.tv_usec - t2.tv_usec) / 1000);
     }
 
     void retire_old()
@@ -510,11 +554,7 @@ private:
         XPutImage(m_dpy, m_win, gc, img, 0, 0, 0, 0, w, h);
         XFreeGC(m_dpy, gc);
         XFlush(m_dpy);
-        static int no_sync = -1;
-        if (no_sync < 0)
-            no_sync = getenv("X11WS_NO_SYNC") ? atoi(getenv("X11WS_NO_SYNC")) : 0;
-        if (!no_sync)
-            XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
+        XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
         img->data = NULL; /* data ejes af kalderen — lad XDestroyImage ikke frigøre */
         XDestroyImage(img);
     }
@@ -530,8 +570,8 @@ private:
     int m_interval;
     mutable bool m_sizeDirty;
     std::vector<X11NativeWindowBuffer *> m_bufList;
+    unsigned long m_present_seq;
     std::vector<std::pair<X11NativeWindowBuffer *, unsigned long> > m_retired;
-    unsigned long m_present_seq = 0;
 };
 
 /* ------------------------------------------------------------------ */
