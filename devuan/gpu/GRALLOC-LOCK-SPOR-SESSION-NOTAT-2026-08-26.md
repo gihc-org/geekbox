@@ -58,6 +58,41 @@
   loseContext kan en NY WebGL-kontekst oprettes OG rendere (grøn quad,
   readPixels=0,255,0, glError=0; webgl_probe_test.html). → spillets ekstra
   konteksttab (2 ud over SDK-proben) skyldes IKKE manglende genopretning.
+- [udført] **STOR KONFIG-FIX: `layers.acceleration.disabled=true`** (26. aug
+  ~21:0x): med præsentationen virkende var Firefox' toppanel (chrome) SORT og
+  iframe-WebGL-canvasser viste sort. `layers.acceleration.disabled=true`
+  (software-layers) får chrome + side til at vise NORMALT (brugerbekræftet) OG
+  iframe-WebGL-canvas til at composite korrekt (lokal test: grøn quad i iframe
+  med software-layers; sort uden). Prefen er i /home/kristian/ffprof/prefs.js.
+- [målt] **Spillet kører i en IFRAME** (5dd312fa….gdn.poki.com). BiDi-preload
+  (script.addPreloadScript, da ESR 140 kun har WebDriver BiDi) fangede:
+  spillet laver webgl (300x150) → PIXIJS-destroy kalder bevidst loseContext()
+  (tom statusMessage) → nye webgl2-kontekster oprettes OK → ingen JS-fejl →
+  men spilområdet forsvinder ved gameplay-start. Samme-canvas-getContext efter
+  permanent loseContext returnerer NULL (målt lokalt) — Firefox genbruger ikke
+  et permanent tabt canvas.
+- [målt] **Med software-layers oprettes x11ws-vinduet IKKE** (ingen "vindue
+  pakket ind"/presents i loggen; vindue 10x10) — Firefox præsenterer da via
+  direkte X-software-compositing, ikke EGL/gralloc-stien. → spilområdet er
+  blankt ved gameplay fordi den software-compositede WebGL-canvas-læsning
+  fejler efter renderer-overgangen (åbent spor).
+- [målt] **readPixels-probe (BiDi-preload): spillets canvas RENDERER korrekt!**
+  Spillets rigtige canvas er 836x470 (300x150-konteksterne er prober/små
+  canvasser) — readPixels midt i canvas giver CYAN (0,255,255) og
+  isContextLost=false gennem hele forløbet. MEN skærmen viser ikke canvas-
+  indholdet (kun spredte cyan-spor; skærmen domineres af tapet/sidebaggrund).
+  → fejlen ligger i Firefox' software-compositors visning af spillets
+  WebGL-canvas (composite/readback-til-X), IKKE i spillets rendering.
+- [målt] **Skærmbillede-tidslinje (brugerbekræftet):** ~20-30 s = siden loader
+  (spilområde synligt, loading), ~40 s = spilområde sort med "Loading"-tekst,
+  ~60 s = spilområdet mangler helt. Resten af siden forbliver.
+- [målt] **fbdump(/dev/fb0) er PÅLIDELIG for vindue-regionen** (Xorg bruger
+  fb0 med shadow framebuffer) — men vindue kan være 10x10 hvis x11ws ikke
+  bruges; tjek xwininfo før konklusion.
+- [målt] **GPU-processen crashede igen med eglDestroySurface-NULL-mønsteret**
+  under iframe-testene trods fix_egl_table (fixet kørte, men crash i en
+  genstartet GPU-proces før første eglCreateContext). Boksen er ustabil efter
+  mange kørsler; hele Firefox crashede én gang (ufuldstændig rapport).
 - [aftalt] **Nyt spor bagefter: sorte Firefox-chrome (26. aug ~20:1x):** med
   præsentationen virkende er det nu synligt at Firefox' eget toppanel
   (adressefelt, bogmærke-ikon, fanelinje) renderer SORT, mens sideindholdet
@@ -72,10 +107,18 @@
 - **Præsentation virker NU** (26. aug aften): sw_sync-fixet + usage-0x3-fixet
   gjorde at Firefox-vinduet faktisk viser indhold (webgl-test grøn, probe-side
   hvid). Gralloc-lock EINVAL er løst og verificeret som kristian.
+- **Chrome + side viser normalt med `layers.acceleration.disabled=true`**
+  (brugerbekræftet) — iframe-WebGL compositerer også korrekt med software-
+  layers.
 - **Stabilitet:** 2 GPU-crash-klasser fixet (shader-overread, _eglXXX-NULL).
-- **Subway Surfers:** loader, men mister WebGL-konteksten ved gameplay-start →
-  sort canvas. Åbent spor (se Næste skridt). Kontekst-genopretning er afkræftet
-  som årsag (ny kontekst renderer fint efter loseContext).
+- **Subway Surfers:** loader, men spilområdet forsvinder ved gameplay-start
+  (resten af siden forbliver). Åbent spor: software-compositing af spillets
+  canvas efter renderer-overgangen (PixiJS-destroy → loseContext → ny
+  webgl2-kontekst). **Spillets canvas renderer korrekt (cyan via readPixels) —
+  men compositoren viser det ikke → næste skridt: hvorfor Firefox' software-
+  compositor ikke viser det 836x470-canvas (nested cross-origin iframe?).
+  Værktøjer klar (BiDi-preload med getContext/loseContext/fejl/readPixels-
+  logning).**
 - Boks: 192.168.0.108; bring-up = insmod + gpu_up + bindapi; sw_sync-chmod
   skal gøres PERSISTENT (udev-rule eller myinit) — IKKE endnu.
 
