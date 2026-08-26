@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>WebGL1-test</title></head>
+<body style="margin:0;background:#222">
+<h1 style="color:#fff">WebGL1 (ES1) kontekst — poki-SDK-probe-stil</h1>
+<canvas id="c" width="320" height="200"></canvas>
+<script>
+function report(s){ try{ dump('W1 ' + s + '\n'); }catch(e){} document.title = s; }
+var cv = document.getElementById('c');
+var gl = cv.getContext('webgl');
+if (!gl) { report('WEBGL1 NULL'); }
+else {
+    report('WEBGL1 OK: ' + gl.getParameter(gl.VERSION));
+    var ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) report('renderer: ' + gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+    report('extensions: ' + gl.getSupportedExtensions().join(','));
+    try {
+        var le = gl.getExtension('WEBGL_lose_context');
+        if (le) { report('kalder loseContext (probe-stil)'); le.loseContext(); }
+    } catch(e) { report('loseContext fejl: ' + e); }
+    setTimeout(function(){ report('efter 3s: isContextLost=' + gl.isContextLost()); }, 3000);
+}
+</script>
+</body>
+</html>

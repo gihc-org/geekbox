@@ -137,6 +137,23 @@
   ustabiliteten (prøv preserveDrawingBuffer:true i shim, eller alternativ
   compositor-sti); (c) cyan-scenen kan være en driver/shader-kombination der
   renderer forkert — sammenlign spillets vertex-shader-matematik.
+- [udført] **RODÅRSAG TIL "poki crasher ved load" (27. aug ~00:0x):**
+  GLESv2-proxyen (glesv2_proxy.c) BRØD WebGL1/ES1-kontekstoprettelse → alle
+  poki-sider (SDK'ets webgl-probe) crashede Firefox (channel error / "WebGL
+  actor Initialize failed" / minidump-generation fejlede). Isoleret med lokal
+  webgl1-test: med begge proxyer = crash; med ORIGINAL libGLESv2 + EGL-proxy =
+  webgl1 OK. FIX: behold ORIGINAL libGLESv2.so.2.0.0 (md5 ca71fb2c = backup);
+  EGL-proxyen har selv shader-hooks via eglGetProcAddress (bevist: 183 shaders
+  logget uden glesv2-proxyen). → poki loader STABILT, spillet loader og er
+  spilbart.
+- [udført] **FULD VIRKENDE KONFIGURATION (27. aug ~00:2x, brugerbekræftet):**
+  EGL-proxy (fix_egl_table + shader-hooks) + ORIGINAL libGLESv2 + udvidelsen
+  "poki-webgl-fix@geekbox" (alpha:true + premultipliedAlpha:true +
+  loseContext-block; indlæst midlertidigt via about:debugging da
+  --install-extension/manuel extensions.json ikke indlæser pålideligt) +
+  layers.acceleration.disabled=true. Subway Surfers loader og er klar til at
+  spille. RESTERENDE: scenen renderer cyan (3D-scenen tegnes ikke korrekt på
+  1.5-stakken).
 - [målt] **GPU-processen crashede igen med eglDestroySurface-NULL-mønsteret**
   under iframe-testene trods fix_egl_table (fixet kørte, men crash i en
   genstartet GPU-proces før første eglCreateContext). Boksen er ustabil efter
