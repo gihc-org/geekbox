@@ -840,6 +840,19 @@ spor), spil uden MRT-shaders, eller accept. Bevis:
 `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log` +
 `devuan/gpu/beviser/ff_game5-webgl1-tvang.log`.
 
+**DDK-sporet (26. aug 2026): DDK 1.5@3830101 fundet og verificeret som
+kandidat.** Kilde: `leddaz-dump-stash/android_rk3368_box_dump` (GitHub,
+Android 6.0.1 rk3368_box, bygget nov 2018) — komplet 32-bit userspace +
+arm64 `pvrsrvkm.ko` med samme vermagic som vores kernel
+(`3.10.0 SMP preempt mod_unload aarch64`). 1.5's `libglslcompiler.so`
+indeholder `GL_EXT_draw_buffers` i extension-listen (1.4's gør ikke —
+det forklarer "Extension not supported"). Alle 1.5-runtime-afhængigheder
+(libsync/libunwind/libc++/libcutils/libhardware) findes i boksens
+Android 5.1.1-/system. DDK 1.8 (Rogue 1.8.RTM@4610191) er kun fundet til
+kernel 4.4 (Firefly, Android 7) — ikke offentligt til 3.10. Prøveinstallation
+er planlagt men ikke startet: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`
+(backup/restore, kommandoer, md5).
+
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
 1986254 → dup af 1667748) viser præcis vores sekvens:

@@ -80,6 +80,20 @@
   fejl:** Subway Surfers (Unity) kræver MRT (multiple render targets) via
   GL_EXT_draw_buffers, og 2016-æra PowerVR-blob'en kan ikke kompilere de
   shaders. Ikke løsbart på userspace-siden (prefs/patch af udvidelsesstreng).
+- [fundet] **DDK-sporet (26. aug, 02:3x): en nyere DDK findes og kan hentes**
+  — se "DDK-sporet (research)" nedenfor. Kort: 2018-boks-dump
+  (leddaz-dump-stash/android_rk3368_box_dump, Android 6.0.1 rk3368_box,
+  ACON1-G) indeholder en KOMPLET DDK 1.5@3830101-stak (32-bit userspace +
+  arm64 pvrsrvkm.ko med SAME vermagic som vores kernel:
+  `3.10.0 SMP preempt mod_unload aarch64`). DDK 1.5's GLSL-kompiler
+  (`libglslcompiler.so`) kender `GL_EXT_draw_buffers` — DDK 1.4's gør IKKE
+  (målt med strings på begge). Alle 1.5-afhængigheder (libsync/libunwind/
+  libc++/libcutils/libhardware) findes allerede i boksens Android 5.1-/system.
+  DDK 1.8 findes kun til kernel 4.4 (Firefly, Android 7) — ikke fundet
+  offentligt til 3.10; 1.5 er det konkrete kandidat-spring.
+- [afventer] **Prøveinstallation af DDK 1.5 på boksen er IKKE påbegyndt** —
+  brugeren bad om dokumentation + handover først (26. aug, ~02:45). Plan,
+  backup- og restore-vej: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
 
 ## Status i ét blik
 
@@ -93,6 +107,10 @@
   SIGSEGV (gdb-fanget) og tegner sorte frames.
 - **Kadence ~1,4 Hz** er fortsat den separate transfer-cap-sag (~2M px/s på
   fuld-vindue-presents), ikke reset'et.
+- **DDK-sporet er åbent og konkret:** DDK 1.5@3830101 (32-bit UM + arm64 KM,
+  samme vermagic) er hentet og verificeret til at kende GL_EXT_draw_buffers i
+  shader-kompileren — det manglende stykke for Subway Surfers. Prøveinstallation
+  venter på næste session (handover: `DDK-HANDOVER-2026-08-26.md`).
 
 ## PVR_K-dmesg-sekvensen (målt 00:41, precache run 5 — bevis fanget før
 ringrotation; gdb-log: `devuan/gpu/beviser/gdb_wr_reset-precache5.log`)
@@ -139,9 +157,10 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
 1. **MRT-blokaden er afklaret som driver-begrænsning:** Subway Surfers (Unity)
    kræver `GL_EXT_draw_buffers`-shaders, og 2016-æra PowerVR-blob'ens
    shader-kompiler afviser direktivet (uanset udvidelsesliste/patch). Veje
-   videre: (a) nyere DDK/driver (stort projekt), (b) find et andet spil der
-   ikke bruger MRT-shaders (WebGL1-spil uden Unity-modern-renderer),
-   (c) acceptér begrænsningen for moderne Unity-spil.
+   videre: (a) nyere DDK — **DDK 1.5 fundet, prøveinstallation planlagt i
+   `DDK-HANDOVER-2026-08-26.md`**, (b) find et andet spil der ikke bruger
+   MRT-shaders (WebGL1-spil uden Unity-modern-renderer), (c) acceptér
+   begrænsningen for moderne Unity-spil.
 2. **Buffer-fixet står:** stress-siden nåede #350–450 uden reset og
    PVR-faulten er væk (men et sent reset kom ved ~#450 i én kørsel — flaky
    mønsteret er reduceret, ikke helt væk).
@@ -176,6 +195,73 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
   nyere PowerVR-DDK til RK3368 (fx fra Android 7/8-enheder med G6110) med
   draw_buffers-understøttelse — og om den kan køre på 3.10-kernen. Det er et
   afgrænset research-spor, ikke et build-projekt vi starter nu.
+
+## DDK-sporet (research, 26. aug 02:3x)
+
+**DDK = Device Driver Kit** — Imagination Technologies' samlede PowerVR-
+driverpakke: kernelmodul (`pvrsrvkm`), userspace-biblioteker
+(`libEGL`/`libGLESv2`/`libIMGegl`/`libsrv_um`/`libusc`/`libglslcompiler`),
+USC-shaderkompileren og GPU-firmwaren. Vores nuværende stak er
+**DDK 1.4@3632227** (`GL_VERSION=OpenGL ES 3.1 build 1.4@3632227`).
+
+### Fund (kilder + beviser)
+
+1. **geekboxzone/mmallow_vendor_rockchip_common (Android 6.0-SDK-mirror,
+   gren `geekbox`)** — `gpu/libG6110/` indeholder hele DDK-userspace:
+   - `G6110_32/` = DDK **1.4@3632227** (identisk build med vores; verificeret
+     via `strings`: "OpenGL ES 3.1 build 1.4@3632227", md5 på kernen
+     matcher boksens filer).
+   - `G6110_64/` = DDK **1.5@3830101** (aarch64) — commit-historikken viser
+     Rockchip kun opgraderede 64-bit til 1.5 (M1.30/M1.31, dec 2015:
+     "Merge 1.5_ED3830101 DDK code").
+2. **leddaz-dump-stash/android_rk3368_box_dump (2018-11-30, Android 6.0.1,
+   rk3368_box-userdebug, produkt ACON1-G)** — en KOMPLET **32-bit
+   DDK 1.5@3830101**-stak:
+   - 32-bit UM: `libEGL/libGLESv1_CM/libGLESv2_POWERVR_ROGUE.so`,
+     `libIMGegl/libsrv_um/libusc/libglslcompiler/libufwriter/
+     libpvrANDROID_WSEGL/libcreatesurface/libPVRScopeServices/libPVROCL/
+     liboclcompiler.so`, `gralloc.rk3368.so`, `memtrack.rk3368.so`,
+     `pvrsrvctl`, `pvrtld`.
+   - **arm64 KM: `pvrsrvkm.ko` = Rogue 1.5@3830101, vermagic
+     `3.10.0 SMP preempt mod_unload aarch64` — samme som vores kernels
+     nuværende 1.4-ko.**
+3. **GL_EXT_draw_buffers i GLSL-kompileren (strings-måling):**
+   - 32-bit DDK 1.4 `libglslcompiler.so`: **0** forekomster → kompileren
+     kender ikke extension-navnet (matcher den målte "Extension not supported").
+   - 32-bit DDK 1.5 `libglslcompiler.so`: **1** forekomst (i extension-listen).
+   - DDK 1.5 `libGLESv2`: `GL_EXT_draw_buffers` + `GL_EXT_draw_buffers_indexed`.
+   → stærk indikation på at 1.5's kompiler kan kompilere Unity-shaderne.
+4. **Afhængigheder (readelf -d):** 1.5-libs kræver libc/libdl/libm/libcutils/
+   libhardware/libsync/libz/libunwind/libc++ — **alle findes allerede i boksens
+   Android 5.1.1-/system** (målt via SSH: libc++.so, libunwind.so, libsync.so
+   osv. til stede). 1.5-libGLESv2 kræver IKKE libcrypto (1.4 gør).
+5. **Boksens profil (målt via SSH, 02:4x):** kernel `3.10.0 #168 SMP PREEMPT
+   aarch64` (27. jan 2016, gouwa@Wesion = GeekBox-vendor), Android
+   5.1.1 LMY48G SDK 22, nuværende `pvrsrvkm.ko` = 1.4@3632227 med vermagic
+   `3.10.0 SMP preempt mod_unload aarch64`.
+
+### DDK 1.8 (hvorfor vi ikke starter der)
+
+DDK 1.8 (Rogue 1.8.RTM@4610191) findes til RK3368 (Firefly-kernel-4.4-repo:
+`Rogue_DDK_Android_REL_1.8.RTM@4610191_kbuild_overlay.tgz`, juli-aug 2017;
+Khadas/RKDocs nævner `DDK_1.8_on_rk3368_6.0_v5.tar.gz` som WebView-
+browser_faq-patch), men den er knyttet til **kernel 4.4 / Android 7** — ikke
+fundet offentligt som 3.10-pakke, og selve tarball'en er ikke dukket op.
+DDK 1.5@3830101 er den nyeste 3.10-kompatible stak vi har kunnet finde, og den
+er nok til at løse kompiler-blokaden. (Rogue 5.12 nævnt i Firefly-kernen er
+4.4-æra.)
+
+### Kilder (download)
+
+- 1.5-sæt: `https://raw.githubusercontent.com/leddaz-dump-stash/android_rk3368_box_dump/<branch>/system/...`
+  (branch `rk3368_box-userdebug-6.0.1-MXC89K-user.root.20181130.004438-test-keys`)
+  — filer: `vendor/lib/egl/lib{EGL,GLESv1_CM,GLESv2}_POWERVR_ROGUE.so`,
+  `vendor/lib/lib{IMGegl,srv_um,usc,glslcompiler,ufwriter,pvrANDROID_WSEGL,
+  createsurface,PVRScopeServices,PVROCL,oclcompiler}.so`,
+  `vendor/lib/hw/{gralloc,memtrack}.rk3368.so`, `vendor/bin/{pvrsrvctl,pvrtld}`,
+  `lib/modules/pvrsrvkm.ko`.
+- 1.4-reference (restore): `geekboxzone/mmallow_vendor_rockchip_common/geekbox/gpu/libG6110/G6110_32/...`.
+- md5'er for alle hentede filer: `devuan/gpu/DDK-HANDOVER-2026-08-26.md` (§Filer).
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)
 
