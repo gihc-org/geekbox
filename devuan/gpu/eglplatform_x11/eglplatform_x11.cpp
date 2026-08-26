@@ -396,7 +396,8 @@ private:
                                  GRALLOC_USAGE_SW_READ_OFTEN,
                                  0, 0, b->width, b->height, &ptr);
         if (rc != 0 || !ptr) {
-            fprintf(stderr, "x11ws: gralloc lock fejlede (rc=%d)\n", rc);
+            fprintf(stderr, "x11ws: gralloc lock fejlede (rc=%d) fmt=%u usage=%x handle=%p w=%d h=%d\n",
+                    rc, b->format, b->usage, (void *)b->handle, b->width, b->height);
             return;
         }
         if (g_present_count <= 2 || g_present_count % 50 == 0) {

@@ -34,6 +34,12 @@ void glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
     static real_glShaderSource_t real;
     if (!real) real = (real_glShaderSource_t)dlsym(RTLD_NEXT, "glShaderSource");
 
+    FILE *f = plog();
+    for (GLsizei i = 0; i < count && str && str[i]; i++) {
+        fprintf(f, "=== shader %u[%d] SRC: %.3000s\n", shader, i, str[i]);
+    }
+    fflush(f);
+
     int changed = 0;
     for (GLsizei i = 0; i < count && str && str[i]; i++) {
         if (strstr(str[i], "GL_EXT_frag_depth") || strstr(str[i], "gl_FragDepthEXT")) {
@@ -42,11 +48,11 @@ void glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
         }
     }
     if (!changed) {
+        if (f) fclose(f);
         real(shader, count, str, len);
         return;
     }
 
-    FILE *f = plog();
     GLchar **newstr = calloc(count ? count : 1, sizeof(GLchar *));
     GLint *newlen = calloc(count ? count : 1, sizeof(GLint));
     for (GLsizei i = 0; i < count; i++) {
@@ -78,4 +84,36 @@ void glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
     real(shader, count, (const GLchar **)newstr, newlen);
     /* Læk bevidst: driveren kan holde pointerne til glCompileShader.
      * (newstr/newlen beholdes også — minimalt læk pr. shader.) */
+}
+
+typedef void (*real_glCompileShader_t)(GLuint);
+
+void glCompileShader(GLuint shader)
+{
+    static real_glCompileShader_t real_compile;
+    static void (*real_getinfo)(GLuint, GLenum, GLint *);
+    static void (*real_getlog)(GLuint, GLsizei, GLsizei *, GLchar *);
+    if (!real_compile) {
+        real_compile = (real_glCompileShader_t)dlsym(RTLD_NEXT, "glCompileShader");
+        real_getinfo = (void (*)(GLuint, GLenum, GLint *))dlsym(RTLD_NEXT, "glGetShaderiv");
+        real_getlog = (void (*)(GLuint, GLsizei, GLsizei *, GLchar *))dlsym(RTLD_NEXT, "glGetShaderInfoLog");
+    }
+    real_compile(shader);
+    GLint ok = 0;
+    real_getinfo(shader, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        GLint len = 0;
+        real_getinfo(shader, GL_INFO_LOG_LENGTH, &len);
+        if (len > 1) {
+            GLchar *buf = malloc(len);
+            GLsizei n = 0;
+            real_getlog(shader, len, &n, buf);
+            FILE *f = plog();
+            if (f) {
+                fprintf(f, "!!! shader %u COMPILE_FAIL: %s\n", shader, buf);
+                fclose(f);
+            }
+            free(buf);
+        }
+    }
 }

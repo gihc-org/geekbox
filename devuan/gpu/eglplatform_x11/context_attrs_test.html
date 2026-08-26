@@ -1,0 +1,19 @@
+<html><body><script>
+function t(name, opts) {
+    try {
+        var gl = document.createElement("canvas").getContext("webgl2", opts) ||
+                 document.createElement("canvas").getContext("webgl", opts);
+        dump("TEST " + name + " => " + (gl ? "OK" : "NULL") + "\n");
+    } catch (e) {
+        dump("TEST " + name + " => EXC " + e + "\n");
+    }
+}
+t("baseline", {});
+t("pixi-defaults", {alpha:true, depth:true, stencil:true, antialias:false,
+                   premultipliedAlpha:true, preserveDrawingBuffer:false,
+                   failIfMajorPerformanceCaveat:false});
+t("aa", {antialias:true});
+t("caveat", {failIfMajorPerformanceCaveat:true});
+t("stencil", {stencil:true});
+document.title = "DONE";
+</script></body></html>

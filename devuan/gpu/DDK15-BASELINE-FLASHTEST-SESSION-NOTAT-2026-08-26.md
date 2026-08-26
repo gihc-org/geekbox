@@ -291,6 +291,12 @@
   virker kun hvis spillet kører WebGL2/ES3; dages arbejde), (b) Spor B (4.4-kernel
   + DDK 1.8 med frag_depth — uger), (c) acceptér (spillet kræver nyere driver).
   Bevis i `/tmp/ff_poki.log` på boksen; `frag_depth_test.c` i repoet.
+- AFTALT (26. aug ~17:2x): **Shader-omskrivningen er afprøvet og virker** (frag_depth
+  + cs_blur løst; spilsiden loader, kontekst oprettes) — men spillet fejler stadig på
+  GPU-/kompositorproces-niveau ("WebGL actor Initialize failed" / AbnormalShutdown),
+  et separat stabilitetsspor. Næste valg: (a) jagte GPU-processtabiliteten (nyt,
+  åbent spor), (b) Spor B (4.4 + DDK 1.8), (c) stop ved fungerende 1.5 (alt WebGL
+  undtagen dette spil virker).
 - [målt] **#1 AFKLARET (26. aug ~16:3x): spillet er PixiJS og kører WebGL2/ES3 på
   desktop** (`PREFER_ENV = isMobile ? WEBGL : WEBGL2` i dependencies.bundle.js;
   ES3-kernens `gl_FragDepth` kompilerer OK) → shader-omskrivning er farbar.
@@ -319,6 +325,32 @@
 - [afventer] **Beslutning: retest af den FIKSEDE proxy (kort, kontrolleret kørsel)
   eller stop ved kendt-god 1.5.** Originalerne er sikret; fixet (ingen free) er i
   glesv2_proxy.c. Risiko: endnu en lockup (koster strømcyklus).
+- [målt] **Proxy-arkitektur afklaret (26. aug ~17:0x):** Firefox henter
+  EGL/GLES-funktioner via dlsym fra libEGL-handlen OG eglGetProcAddress →
+  hook'en ligger i EGL-proxy'en (`egl_proxy.c`: eglCreateContext + eglGetProcAddress
+  → glShaderSource/glCompileShader-hooks). Hybris-libberne var KOPIER (ikke
+  symlinks) → .so.1/.so måtte gøres til symlinks mod proxy'erne.
+- [målt] **Shader-blokaderne for spillet er LØST via omskrivning:**
+  (a) `GL_EXT_frag_depth`-probe: direktivet strippes → kompilerer (0 frag_depth-
+  fejl i loggen); (b) **WebRender cs_blur: `flat varying ivec2 vSupport` — 1.5-
+  kompileren kan ikke heltals-varyings** (målt: ivec2/int-varying FEJL; attributter
+  OK; vec4[2]-retur OK som vertex) → omskrevet til vec2 + int()-casts → cs_blur
+  kompilerer. Efter omskrivning: **0 compile-fejl, 0 cs_blur-fejl, kontekst
+  oprettet (version=3), spilsiden loader (titel = "Subway Surfers ... | Poki")**.
+- [målt] **1.4-gralloc duer IKKE mod 1.5-stakken** (mangler
+  `PVRSRVDeferredFreeDeviceMem` → linkerfejl) — 1.5-gralloc genskabt. Gralloc-lock-
+  fejlen (rc=-22) viste sig intermitterende (0 i sidste kørsel); gralloc-testen
+  (alle fmt/usage-kombinationer) virker.
+- [målt] **RESTERENDE SPIL-BLOKADE (26. aug ~17:1x):** "WebGL actor Initialize
+  failed" + "CompositorBridgeChild ... AbnormalShutdown" / "Failed as lost
+  WebRenderBridgeChild" — GPU-/kompositorprocessen fejler intermitterende under
+  spillet. IKKE shader-relateret: webgl_test_dump = OK med proxy, og ALLE
+  kontekst-attributter (pixi-defaults/aa/caveat/stencil) passerer. → dybere
+  Firefox/1.5-GPU-integrationsstabilitet, et nyt spor.
+- [udført] **Værktøjer tilføjet repoet:** egl_proxy.c, glesv2_proxy.c,
+  patch_soname.py, fragdepth_probe_shim.c, vertex_tex_test.c, compile_file_probe.c,
+  gralloc_test.c, context_attrs_test.html; eglplatform_x11.cpp fik debug-print
+  (fmt/usage ved lock-fejl) + genbygget på boksen.
 
 ## Nøglekommandoer
 
