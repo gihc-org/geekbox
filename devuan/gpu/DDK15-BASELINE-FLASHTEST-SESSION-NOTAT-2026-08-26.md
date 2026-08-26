@@ -281,9 +281,9 @@
 
 ## Næste skridt
 
-- **Brugerens valg står åbent:** (1) jagte GPU-processens gralloc-lock (åbent
-  reverse-engineering-spor — se handover), (2) Spor B (4.4-kernel + DDK 1.8, uger),
-  (3) acceptér 1.5 (alt WebGL undtagen Subway Surfers).
+- **BRUGERENS VALG (26. aug ~18:3x): gralloc-lock-sporet** — find hvorfor
+  gralloc-lock giver EINVAL i Firefox' GPU-proces (standalone virker). Spor B og
+  accept er fravalgt. Undersøgelses-skridt + afkræftelser i handoveren.
 - Uanset valg: næste kernel-byg bør slå `CONFIG_ANDROID_PARANOID_NETWORK` FRA +
   tilføje bcmdhd (wifi mangler); 07-scriptet har allerede inet-gruppen.
 - NTP-undersøgelse (chrony: "No suitable source" selv efter 403-fix).

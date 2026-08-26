@@ -88,8 +88,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     (wifi mangler); (b) bindapi-patchen er bind-mount og genkøres efter reboot;
     (c) chrony/NTP afvises på vores byg ("No suitable source") — arbejdsfix = HTTP-
     ur-sync i myinit.sh; (d) cs_blur-WR-shaderstøj i Firefox-loggen (blokerer ikke
-    WebGL); (e) spil-blokaden: muligheder = shader-omskrivnings-shim (WebGL2/ES3),
-    Spor B (4.4 + DDK 1.8) eller accept. Detaljer:
+    WebGL); (e) spil-blokaden: **BESLUTTET (26. aug): gralloc-lock-sporet
+    forfølges** (præsentation i GPU-processen); Spor B/accept fravalgt. Detaljer:
     `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
 - [ ] **Python-frontend + GLES-daemon (i gang aug 2026)** — Python tegner UI på /dev/fb0 (skelet: `fb_overscan.py`), taler med en C-daemon over unix-socket (skelet: `devuan/gpu/test_triangle.cpp`), daemonen renderer GLES offscreen og blitter til skærmen. Operationskort + første skridt: `devuan/gpu/README.md`. Regler: X stoppet under brug; strøm-cyklus bagefter
   - **God start i en ny session:** *"Læs `devuan/gpu/README.md` og DOKUMENTATION.md §5.15. Vi skal i gang med Python-frontend + GLES-daemon-projektet — arkitekturen og de første skridt står i README'en og i dette TODO-punkt. Boksen findes med `devuan/find_box.sh`."*
