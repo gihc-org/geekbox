@@ -89,6 +89,26 @@
 - [målt] **fbdump(/dev/fb0) er PÅLIDELIG for vindue-regionen** (Xorg bruger
   fb0 med shadow framebuffer) — men vindue kan være 10x10 hvis x11ws ikke
   bruges; tjek xwininfo før konklusion.
+- [målt] **BRUGERBEKRÆFTET (efter genstart + software-layers):** simpel WebGL-
+  quad (webgl_test_dump) VISES på TV'et (firkant der skifter farve); dobbelt-
+  nested iframe med grøn quad VISES også. Men spillets canvas (836x470,
+  webgl2, i dyb cross-origin iframe) RENDERER (readPixels cyan, dataURL har
+  indhold, DOM: display=block visible opacity=1) og vises IKKE på skærmen.
+- [målt] **gfx.offscreencanvas.enabled=false ændrer spillets canvas-sti**
+  (836x470 oprettes nu via almindelig getContext — hook'en ser den) men
+  spilområdet forbliver tomt; readPixels skifter mellem cyan/sort afhængig af
+  kørsel.
+- [målt] **loseContext-genopretning i samme dokument er USTABILT:** efter-
+  loss-testen (tab kontekst på canvas A, ny webgl2-canvas B i samme dokument)
+  hængte BOKSEN HÅRDT (load >6, ssh uden svar; tidligere dmesg: "BUG: Bad
+  page state in process Renderer") → krævede strømcyklus. Spillets dokument
+  laver netop loseContext-cyklusser → MISTANKE: konteksttabs-/genopretnings-
+  tilstanden i 1.5-stakken er roden til både ustabilitet og manglende
+  canvas-visning.
+- [foreslået] **Næste fix-idé: neutralisér WEBGL_lose_context.loseContext
+  (no-op) via preload-shim i spil-iframe'en** — hvis spillets blanke canvas
+  skyldes loseContext/genopretnings-tilstanden, kan blokering af tabene få
+  canvas'et til at vise. Skal testes på en frisk bootet boks.
 - [målt] **GPU-processen crashede igen med eglDestroySurface-NULL-mønsteret**
   under iframe-testene trods fix_egl_table (fixet kørte, men crash i en
   genstartet GPU-proces før første eglCreateContext). Boksen er ustabil efter
@@ -117,8 +137,9 @@
   webgl2-kontekst). **Spillets canvas renderer korrekt (cyan via readPixels) —
   men compositoren viser det ikke → næste skridt: hvorfor Firefox' software-
   compositor ikke viser det 836x470-canvas (nested cross-origin iframe?).
-  Værktøjer klar (BiDi-preload med getContext/loseContext/fejl/readPixels-
-  logning).**
+  Simpel + nested WebGL VISES (brugerbekræftet) → forskellen er spillets
+  loseContext-cyklus i dokumentet. Næste skridt: neutralisér loseContext
+  (no-op-shim) eller gentest afterloss-scenariet på frisk boksen.**
 - Boks: 192.168.0.108; bring-up = insmod + gpu_up + bindapi; sw_sync-chmod
   skal gøres PERSISTENT (udev-rule eller myinit) — IKKE endnu.
 

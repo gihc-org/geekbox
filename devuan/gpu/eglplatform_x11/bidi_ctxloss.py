@@ -152,6 +152,13 @@ def main():
             ctx = c.get("context")
             print("kontekst:", ctx, url)
             break
+    game_ctx = None
+    for c in contexts:
+        url = c.get("url", "")
+        if "gdn.poki.com" in url or "index.html" in url:
+            game_ctx = c.get("context")
+            print("spil-kontekst:", game_ctx, url[:80])
+            break
     if not ctx:
         print("INGEN SIDE-KONTEKST; har:", [(c.get("context"), c.get("url")) for c in contexts])
         sys.exit(1)
@@ -237,19 +244,35 @@ def main():
             "try{dump('PAGE-ERROR: '+e.message+' ved '+e.filename+':'+e.lineno+'\\n');}catch(x){}});"
             "window.addEventListener('unhandledrejection',function(e){"
             "try{dump('PAGE-REJECTION: '+e.reason+'\\n');}catch(x){}});"
+            "var __lastpx='';"
             "setInterval(function(){"
             "try{"
             "var cvs=document.querySelectorAll('canvas');"
             "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "if(cv.width<100||cv.height<100)continue;"
+            "var r=cv.getBoundingClientRect();"
+            "var cs=getComputedStyle(cv);"
+            "dump('CANVAS-DOM canvas='+cv.width+'x'+cv.height+' rect='+Math.round(r.width)+'x'+Math.round(r.height)+' display='+cs.display+' vis='+cs.visibility+' opac='+cs.opacity+'\\n');"
+            "}"
+            "}catch(e){}}"
+            ",10000);"
+            "setInterval(function(){"
+            "try{"
+            "var cvs=document.querySelectorAll('canvas');"
+            "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "if(cv.width<100||cv.height<100)continue;"
             "var gl=cv.getContext&&(cv.getContext('webgl2')||cv.getContext('webgl'));"
             "if(gl&&gl.readPixels){"
             "var px=new Uint8Array(4);"
             "try{gl.readPixels(Math.floor(cv.width/2),Math.floor(cv.height/2),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);"
-            "dump('CANVAS-PIXEL canvas='+cv.width+'x'+cv.height+' midte='+px[0]+','+px[1]+','+px[2]+','+px[3]+' lost='+gl.isContextLost()+'\\n');"
-            "}catch(e){dump('CANVAS-PIXEL fejl: '+e+'\\n');}"
+            "var key=px[0]+','+px[1]+','+px[2]+','+px[3];"
+            "if(key!==__lastpx){__lastpx=key;"
+            "var dl='';try{dl=',dataURL-len='+(cv.toDataURL&&cv.toDataURL().length);}catch(e){dl=',dataURL-fejl';}"
+            "dump('CANVAS-PIXEL canvas='+cv.width+'x'+cv.height+' midte='+key+' lost='+gl.isContextLost()+dl+'\\n');"
+            "}}catch(e){dump('CANVAS-PIXEL fejl: '+e+'\\n');}"
             "}}"
             "}catch(e){}}"
-            ",10000);"
+            ",500);"
             "}catch(e){}}"
         )
         r = call("script.addPreloadScript", {"functionDeclaration": pre})
@@ -275,6 +298,25 @@ def main():
             "awaitPromise": False, "returnByValue": True,
         })
         print("CTXLOSS-DATA:", json.dumps(r)[:800])
+    elif mode == "domcheck" and game_ctx:
+        expr = (
+            "var out=[];"
+            "var cvs=document.querySelectorAll('canvas');"
+            "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "var r=cv.getBoundingClientRect();"
+            "var cs=getComputedStyle(cv);"
+            "out.push({w:cv.width,h:cv.height,rw:Math.round(r.width),rh:Math.round(r.height),"
+            "d:cs.display,v:cs.visibility,o:cs.opacity});}"
+            "JSON.stringify({url:location.href,canvasser:out,"
+            "iframeRect:(function(){var f=window.frameElement;"
+            "if(!f)return null;var r=f.getBoundingClientRect();"
+            "return {w:Math.round(r.width),h:Math.round(r.height),d:getComputedStyle(f).display};})()})"
+        )
+        r = call("script.evaluate", {
+            "expression": expr, "target": {"context": game_ctx},
+            "awaitPromise": False, "returnByValue": True,
+        })
+        print("DOMCHECK:", json.dumps(r)[:900])
     ws.s.close()
 
 

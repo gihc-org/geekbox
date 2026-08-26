@@ -21,7 +21,14 @@ if [ -f /usr/local/share/libhybris/system.img ]; then
     # præsentationsbuffere); /dev/sw_sync er 0600 root:root, men Firefox/GPU-
     # processen kører som kristian -> EACCES -> gralloc-lock EINVAL -> sort
     # skærm. Gør enheden åben for alle (fixet verificeret 26. aug aften).
-    chmod 666 /dev/sw_sync 2>/dev/null
+    # Enheden oprettes af kernen EFTER devtmpfs-mount -> prøv i baggrunden
+    # så vi rammer den når den dukker op.
+    ( i=0
+      while [ $i -lt 20 ]; do
+          [ -e /dev/sw_sync ] && chmod 666 /dev/sw_sync 2>/dev/null
+          sleep 3
+          i=$((i+1))
+      done ) &
 fi
 
 # Den gamle 14.04-initramfs starter sin EGEN udevd (/sbin/udevd --resolve-names=never),

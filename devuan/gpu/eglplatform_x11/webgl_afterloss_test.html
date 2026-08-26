@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>canvas efter konteksttab i samme dokument</title></head>
+<body style="margin:0;background:#222">
+<h1 style="color:#fff">Canvas B efter loseContext på canvas A (forvent grøn B)</h1>
+<canvas id="a" width="100" height="100"></canvas>
+<canvas id="b" width="660" height="410" style="background:#0000ff"></canvas>
+<script>
+function report(s){ try{ dump('AFTERLOSS ' + s + '\n'); }catch(e){} document.title = s; }
+function makeGreen(gl){
+    function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o;}
+    var pr=gl.createProgram();
+    gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}'));
+    gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,'precision mediump float;void main(){gl_FragColor=vec4(0.0,1.0,0.0,1.0);}'));
+    gl.linkProgram(pr);gl.useProgram(pr);
+    var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    var l=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0);
+    return function(){gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);};
+}
+/* Canvas A: tab konteksten som PixiJS-destroy (ingen preventDefault) */
+var ca = document.getElementById('a');
+var ga = ca.getContext('webgl');
+if (ga) {
+    var le = ga.getExtension('WEBGL_lose_context');
+    le.loseContext();
+    report('canvas A kontekst tabt');
+}
+/* Canvas B: ny webgl2-kontekst i samme dokument, render grøn */
+setTimeout(function(){
+    var cb = document.getElementById('b');
+    var gb = cb.getContext('webgl2') || cb.getContext('webgl');
+    if (!gb) { report('canvas B NULL'); return; }
+    var draw = makeGreen(gb);
+    (function f(){ draw(); requestAnimationFrame(f); })();
+    setTimeout(function(){
+        var px = new Uint8Array(4);
+        gb.readPixels(1,1,1,1,gb.RGBA,gb.UNSIGNED_BYTE,px);
+        report('canvas B renderer, pixel=' + px[0]+','+px[1]+','+px[2]);
+    }, 1000);
+}, 1500);
+</script>
+</body>
+</html>
