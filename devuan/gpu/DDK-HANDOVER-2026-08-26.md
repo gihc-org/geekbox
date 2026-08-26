@@ -5,6 +5,17 @@
 > Mål: få Subway Surfers (poki.com) til at spille i firefox-esr på boks 1
 > (192.168.0.188).
 
+> **OPDATERET (26. aug, ~04:0x): prøveinstallationen er UDFØRT og rullet tilbage.**
+> Resultat: **DDK 1.5@3830101-userspace (32-bit) hænger boksens indbyggede KM HÅRDT
+> ved EGL-init — 2× bekræftet wedge (anden gang på rent filsystem + 6.0-libc).**
+> Desuden: pvrsrvkm er **bygget ind i kernen** (ikke .ko — tom /proc/modules,
+> kallsyms-symboler, "Module unloading is not supported", bootlog "Rogue L 0.22" ved
+> 2,7 s), så 1.5-KM kan ikke byttes ind uden kernel-rebuild. 1.5-UM kræver Android
+> 6.0's libc (`__register_atfork` — ikke i 5.1-libc), og dumpets pvrsrvctl er 64-bit
+> (ikke brugbar på 32-bit userspace). Restore til 1.4 er gennemført og verificeret
+> (baseline: "Extension not supported"). Fuld detalje: `DDK-PROEVEINSTALLATION-
+> SESSION-NOTAT-2026-08-26.md`.
+
 ## Hvad DDK er
 
 **DDK = Device Driver Kit** — Imagination Technologies' PowerVR-driverpakke:
@@ -188,15 +199,15 @@ curl -sSL -o /tmp/ddk16/libGLESv2_POWERVR_ROGUE.so \
 
 ## Næste skridt (prioriteret)
 
-1. Prøveinstallation af DDK 1.5 (plan ovenfor) → verificér
-   `GL_EXT_draw_buffers`-kompilering + spillet.
-2. Hvis KM-load fejler: byg 1.5-KM fra mmallow_kernel (3.10) — kræver
-   aarch64-krydskompiler + kernen mod samme config.
-3. Hvis 1.5 virker: gem beviser (GL_VERSION, shader_ext_test-output,
-   spil-log) i `devuan/gpu/beviser/`, beslut om blobberne skal ind i repoet,
-   opdater DOK/TODO/HAANDBOG + commit.
-4. Fortsæt separat: buffer-fix/kadence (stress-siden) — kun hvis spillet nu
-   virker og ydeevnen er for lav.
+1. ~~Prøveinstallation af DDK 1.5~~ — **UDFØRT med NEGATIVT resultat**
+   (1.5-UM hænger indbygget KM; se `DDK-PROEVEINSTALLATION-SESSION-NOTAT-
+   2026-08-26.md`). Boksen er tilbage i 1.4-baseline (verificeret).
+2. **Beslut spor-videre (foreslået, kræver brugerens valg):**
+   (a) 1.5-KM via kernel-rebuild (mmallow_kernel 3.10 + aarch64-krydskompiler
+   + flash — stort projekt), (b) spil uden MRT-shaders (WebGL1 uden Unity-
+   modern-renderer), (c) acceptér begrænsningen for moderne Unity-spil.
+3. Opdater DOK/TODO/HAANDBOG med resultatet + commit (gjort i denne session).
+4. Fortsæt separat: buffer-fix/kadence (stress-siden) — uafhængigt af DDK-sporet.
 
 ## Kan vi bare opgradere til en 4.4-kernel? (bruger-spørgsmål 26. aug)
 

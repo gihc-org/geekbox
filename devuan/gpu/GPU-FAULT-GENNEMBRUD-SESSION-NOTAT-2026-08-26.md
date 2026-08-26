@@ -91,9 +91,12 @@
   libc++/libcutils/libhardware) findes allerede i boksens Android 5.1-/system.
   DDK 1.8 findes kun til kernel 4.4 (Firefly, Android 7) — ikke fundet
   offentligt til 3.10; 1.5 er det konkrete kandidat-spring.
-- [afventer] **Prøveinstallation af DDK 1.5 på boksen er IKKE påbegyndt** —
-  brugeren bad om dokumentation + handover først (26. aug, ~02:45). Plan,
-  backup- og restore-vej: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
+- [udført] **Prøveinstallation af DDK 1.5 gennemført med NEGATIVT resultat**
+  (26. aug, ~03:1x–04:0x): 1.5-userspace (32-bit) + Android 6.0-libc hænger den
+  indbyggede KM hårdt ved EGL-init (2× wedge; anden gang på rent filsystem).
+  KM'en er bygget ind i kernen ("Rogue L 0.22", tom /proc/modules) → 1.5-KM kan
+  ikke byttes som .ko. Restore til 1.4 gennemført og verificeret. Detaljer:
+  `devuan/gpu/DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md`.
 - [vurderet] **4.4-kernel-opgradering (26. aug, ~03:0x): muligt, men et
   porteprojekt — ikke nødvendigt for spillet.** Fakta: Firefly
   `firefly-linux-kernel-4.4.55` har RK3368 + PVR-DDK-1.8-kbuild-overlay
@@ -118,10 +121,12 @@
   SIGSEGV (gdb-fanget) og tegner sorte frames.
 - **Kadence ~1,4 Hz** er fortsat den separate transfer-cap-sag (~2M px/s på
   fuld-vindue-presents), ikke reset'et.
-- **DDK-sporet er åbent og konkret:** DDK 1.5@3830101 (32-bit UM + arm64 KM,
-  samme vermagic) er hentet og verificeret til at kende GL_EXT_draw_buffers i
-  shader-kompileren — det manglende stykke for Subway Surfers. Prøveinstallation
-  venter på næste session (handover: `DDK-HANDOVER-2026-08-26.md`).
+- **DDK-sporet er AFPRØVET og afsluttet (26. aug, ~04:0x):** DDK 1.5@3830101
+  (32-bit UM + arm64 KM) er hentet og prøveinstalleret — men 1.5-userspace
+  hænger boksens indbyggede KM hårdt ved EGL-init (2× wedge; anden gang på rent
+  filsystem + 6.0-libc). KM'en er bygget ind i kernen ("Rogue L 0.22") og kan
+  ikke byttes som .ko. Boksen er tilbage i 1.4-baseline (verificeret). Detaljer:
+  `DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md`.
 
 ## PVR_K-dmesg-sekvensen (målt 00:41, precache run 5 — bevis fanget før
 ringrotation; gdb-log: `devuan/gpu/beviser/gdb_wr_reset-precache5.log`)

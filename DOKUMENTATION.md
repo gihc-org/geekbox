@@ -840,18 +840,21 @@ spor), spil uden MRT-shaders, eller accept. Bevis:
 `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log` +
 `devuan/gpu/beviser/ff_game5-webgl1-tvang.log`.
 
-**DDK-sporet (26. aug 2026): DDK 1.5@3830101 fundet og verificeret som
-kandidat.** Kilde: `leddaz-dump-stash/android_rk3368_box_dump` (GitHub,
-Android 6.0.1 rk3368_box, bygget nov 2018) — komplet 32-bit userspace +
-arm64 `pvrsrvkm.ko` med samme vermagic som vores kernel
-(`3.10.0 SMP preempt mod_unload aarch64`). 1.5's `libglslcompiler.so`
-indeholder `GL_EXT_draw_buffers` i extension-listen (1.4's gør ikke —
-det forklarer "Extension not supported"). Alle 1.5-runtime-afhængigheder
-(libsync/libunwind/libc++/libcutils/libhardware) findes i boksens
-Android 5.1.1-/system. DDK 1.8 (Rogue 1.8.RTM@4610191) er kun fundet til
-kernel 4.4 (Firefly, Android 7) — ikke offentligt til 3.10. Prøveinstallation
-er planlagt men ikke startet: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`
-(backup/restore, kommandoer, md5).
+**DDK-sporet (26. aug 2026): DDK 1.5@3830101 fundet og PRØVEINSTALLERET med
+NEGATIVT resultat.** Kilde: `leddaz-dump-stash/android_rk3368_box_dump`
+(GitHub, Android 6.0.1 rk3368_box, bygget nov 2018) — 32-bit userspace + arm64
+`pvrsrvkm.ko`. 1.5's `libglslcompiler.so` indeholder `GL_EXT_draw_buffers`
+(1.4's gør ikke), men **1.5-userspace hænger boksens indbyggede KM hårdt ved
+EGL-init (2× bekræftet wedge, anden gang på rent filsystem + 6.0-libc)**.
+Vigtige målinger: (a) **pvrsrvkm er bygget ind i kernen** (tom /proc/modules,
+kallsyms-symboler, "Module unloading is not supported", bootlog
+`sys.gpvr.version=Rogue L 0.22` ved 2,7 s) → KM kan ikke byttes som .ko;
+(b) 1.5-UM kræver Android 6.0's bionic-libc (`__register_atfork` — findes ikke
+i 5.1-libc, kun `__cxa_atexit`); (c) dumpets `pvrsrvctl` er 64-bit (ubrugbar på
+32-bit userspace); (d) 1.5's `libIMGegl.so` har minor-tjek på 0xa180 (ikke
+0x9194 som 1.4). DDK 1.8 er kun fundet til kernel 4.4. Restore til 1.4
+gennemført og verificeret. Fuld detalje: `devuan/gpu/DDK-PROEVEINSTALLATION-
+SESSION-NOTAT-2026-08-26.md`; plan/backup: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
 
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
