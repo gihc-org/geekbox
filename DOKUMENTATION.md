@@ -222,6 +222,13 @@ LXDE-bakken eller `nmtui` i terminal (virker også over ssh).
 
 ### 5.13 WebGL: browseren er frisk — grafikstakken er lukket (aug 2026)
 
+**OPDATERING (26. aug 2026): LØST — se §5.15.** DDK 1.5@3830101 kører nu (genbygget
+3.10-kernel + 1.5-KM `.ko` + 1.5-UM), så Firefox WebGL virker (GL_VERSION "OpenGL
+ES 3.1 build 1.5@3830101", draw_buffers OK). Dette afsnit er den historiske
+analyse fra før kernel-rebuild-vejen. Subway Surfers er stadig blokeret på et
+præsentationslag (gralloc-lock i GPU-processen) — se
+`devuan/gpu/DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md`.
+
 Webspil melder "browseren understøtter ikke WebGL" i firefox-esr. Det er hverken
 browseren (140.12esr, fuld WebGL2-støtte — og `webgl.disabled` står ikke i
 `firefox-esr.js`) eller manglende GL-biblioteker (Mesa 25.0.7 ER installeret som
@@ -297,13 +304,21 @@ i pædagogisk form: HAANDBOG.md fælde 17.
 
 **OPDATERING (26. aug 2026): DDK 1.5@3830101 KØRER — GL_EXT_draw_buffers virker.
 ** Kernel-rebuild-vejen (DDK15-KERNEL-REBUILD-LØSNING) er gennemført: genbygget
-3.10-kernel (PVR fra + TRACING + VT) + 1.5-KM `.ko` + 1.5-UM (32-bit) + 64-bit
-pvrsrvctl + frisk 6.0-libc. Verificeret: `shader_ext_test` draw_buffers OK (ES2+ES3),
-Firefox WebGL OK, GL_VERSION = "OpenGL ES 3.1 build 1.5@3830101". To nye
-kernel-config-fælder fundet: `CONFIG_ANDROID_PARANOID_NETWORK` blokerer ikke-root-
-sockets (fix: inet-gruppe 3003; slå fra i næste byg) og bcmdhd mangler (wifi);
-chrony/NTP afvises på vores byg → HTTP-ur-sync i myinit.sh. Detaljer:
-`devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md` + TODO.md.
+3.10-kernel (PVR fra + TRACING + VT + compat-403-fix) + 1.5-KM `.ko` + 1.5-UM
+(32-bit) + 64-bit pvrsrvctl + frisk 6.0-libc. Verificeret: `shader_ext_test`
+draw_buffers OK (ES2+ES3), Firefox WebGL OK, GL_VERSION = "OpenGL ES 3.1 build
+1.5@3830101". **Subway Surfers er dog stadig blokeret:** shader-blokaderne
+(GL_EXT_frag_depth-probe + WebRender `cs_blur` heltals-varying) er LØST via
+shader-omskrivning (eglGetProcAddress-hooks i `egl_proxy.c`), men præsentationen
+til skærmen fejler — gralloc-lock EINVAL i Firefox' GPU-proces (processpecifik
+PVR-klient/driver-tilstand; standalone virker). Nye fælder: `CONFIG_ANDROID_
+PARANOID_NETWORK` blokerer ikke-root-sockets (fix: inet-gruppe 3003; slå fra i
+næste byg); bcmdhd mangler (wifi); 3.10-compat mangler syscall 403
+(clock_gettime64 — nu patchet i build_kernel.sh); chrony/NTP afvises på vores byg
+→ HTTP-ur-sync i myinit.sh; hybris-gralloc-headerne har forkerte GRALLOC_USAGE-
+værdier (rettet i eglplatform_x11.cpp); system.img-overskrivninger via loop-mount
+overlever ikke genstart (brug debugfs). Detaljer: `devuan/gpu/DDK15-1.5-KOMPLET-
+HANDOVER-2026-08-26.md` + TODO.md + HAANDBOG.md fælde 26+.
 
 Status: `pvrsrvkm` er loadet og fuldt initialiseret (kernel-tråde kører: `pvr_timer`,
 `pvr_sync_check_` m.fl.), men resten af stakken mangler. Tre veje ind:

@@ -548,6 +548,12 @@ kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
 
 ### Fælde 16: WebGL virker ikke — og det kan ikke installeres
 
+**OPDATERET (26. aug 2026):** dette er nu LØST — DDK 1.5@3830101 kører (genbygget
+3.10-kernel + 1.5-KM `.ko` + 1.5-UM), `shader_ext_test` accepterer
+GL_EXT_draw_buffers (ES2+ES3), og Firefox WebGL virker (GL_VERSION "OpenGL ES 3.1
+build 1.5@3830101"). Resten af fælden er den historiske baggrund. Se §5.15 +
+fælde 26-31 for de nye fælder.
+
 **Du ser:** et webspil melder "browseren understøtter ikke WebGL". Firefox er ny
 (140-esr) og har ikke slået WebGL fra i indstillingerne. Alligevel nægter den.
 
@@ -846,6 +852,72 @@ patchet til at "lykkes" uden CAP_SYS_TTY (`/opt/hybris/libEGL.so*`: ioctl'erne
 på 0x23c0/0x23e0 → `movs r0,#0; nop`; backup `/root/libEGL_hybris.orig`) —
 file-caps dur ikke, fordi de sætter AT_SECURE og dermed slår vores
 LD_PRELOAD/LD_LIBRARY_PATH-stak fra. Launcher: `/usr/local/bin/firefox-webgl`.
+
+### Fælde 26: Ikke-root kan ikke oprette sockets (EACCES på `socket()`)
+
+**Du ser:** Firefox som bruger kristian kan ikke nå nettet ("ingen internet"),
+men root kan; `strace` viser `socket(AF_INET, SOCK_DGRAM) = -1 EACCES`.
+
+**Årsag:** vores genbyggede 3.10-kerner har `CONFIG_ANDROID_PARANOID_NETWORK=y`
+(marts-defconfig) — kun root (CAP_NET_RAW) eller gruppe 3003 (`inet`) må oprette
+sockets.
+
+**Fix:** `groupadd -g 3003 inet; usermod -aG inet kristian` + genstart sessionen
+(07-scriptet gør det nu). Slå config'en FRA i næste kernel-byg.
+
+### Fælde 27: Overskrivninger i system.img overlever ikke genstart (loop-mount)
+
+**Du ser:** en fil du skrev ind i /system (via loop-mount, rw) er væk efter reboot
+— men NYE filer overlever. (Loop/page-cache-aliasing på vendor-kernen.)
+
+**Fix:** skriv overskrivninger med debugfs direkte i billedet:
+```bash
+umount /system; printf "rm <sti>\nwrite <lokal-fil> <sti>\n" > /tmp/x.cmd
+debugfs -w -f /tmp/x.cmd /usr/local/share/libhybris/system.img
+e2fsck -fy /usr/local/share/libhybris/system.img; mount -o loop,ro ... /system
+```
+Efter `mv` af billedet: detach/re-attach loop FØR skrivning. Billedet må aldrig
+fyldes helt (var korrupt da det var 100 % fuldt).
+
+### Fælde 28: Hybris-gralloc-headerne har forkerte GRALLOC_USAGE-værdier
+
+**Du ser:** gralloc-alloc/lock fejler med EINVAL på usage-værdier som 0xCB.
+
+**Årsag:** `/usr/local/include/android/hardware/gralloc.h` bruger forkerte værdier
+(HW_FB=0x1000, SW_READ_OFTEN=0x3) i forhold til Android-standard (0x10 hhv. 0x80),
+som 1.5-gralloc'en forventer. Det ramte x11ws' præsentation.
+
+**Fix:** `eglplatform_x11.cpp` tvinger nu de korrekte konstanter (#undef/#define).
+
+### Fælde 29: 3.10-compat mangler syscall 403 (clock_gettime64)
+
+**Du ser:** konstant "syscall 403"-spam i dmesg fra 32-bit processer (fx Firefox'
+GPU-proces), og bionic 6.0-kode kan fejle (fx gralloc-lock EINVAL).
+
+**Årsag:** bionic 6.0-libc bruger clock_gettime64 (syscall 403); 3.10-kernens
+compat-tabel har kun 384 poster.
+
+**Fix:** `build_kernel.sh` udvider tabellen til 404 + 403 → `sys_clock_gettime`
+(timespec64 matcher native på arm64). Verificeret: 0 "syscall 403"-spam.
+
+### Fælde 30: 1.4-gralloc kan ikke bruges mod 1.5-stakken (SIGILL)
+
+**Du ser:** 1.4-gralloc.rk3368.so kan ikke loade (mangler
+`PVRSRVDeferredFreeDeviceMem` i 1.5-libsrv_um); selv efter symbol-patch → SIGILL.
+
+**Løsning:** behold 1.5-gralloc'en (md5 `380658e4`). Præsentationsproblemet i
+Firefox' GPU-proces er IKKE gralloc-versionen — se handoveren (gralloc-lock-sporet).
+
+### Fælde 31: 1.5-shader-kompileren kan ikke heltals-varyings
+
+**Du ser:** WebRender's `cs_blur`-vertex-shader fejler med kun "Compile failed."
+(mens attributter + vec4[2]-retur virker).
+
+**Årsag:** 1.5-kompileren afviser `flat varying ivec2/int` (heltals-varyings).
+
+**Fix:** shader-omskrivning i `egl_proxy.c` (eglGetProcAddress-hook): vSupport
+ivec2→vec2 + int()-casts. Generel regel: 1.5-kompileren er kræsen — verificér
+konstruktioner isoleret med `compile_file_probe.c`/`vertex_tex_test.c`.
 
 ---
 

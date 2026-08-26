@@ -6,6 +6,12 @@ bruger hverdagssprog og billeder i stedet for fagudtryk — de tekniske detaljer
 beviserne står i de dokumenter, der henvises til undervejs. Det er skrevet til at
 læse selv, læse højt eller give videre.
 
+**OPDATERING (26. aug 2026):** WebGL VIRKER nu — vi fik en nyere grafikkdriver
+(DDK 1.5) til at køre, så Firefox tegner med hardware-3D (GL_VERSION "OpenGL ES
+3.1 build 1.5@3830101"). Resten af dette dokument er den historiske rejse der
+gjorde det muligt. Ét spil (Subway Surfers på poki.com) er stadig blokeret på et
+teknisk præsentationslag — se `devuan/gpu/DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md`.
+
 ---
 
 ## 1. Hvad er en GeekBox?
