@@ -103,6 +103,14 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   Firefox' faktiske LoseContext-årsag eller teste kontekst-genopretning i
   1.5-stakken. Detaljer:
   `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md`.
+- [ ] **Sorte Firefox-chrome (26. aug aften, bagefter konteksttabet):** med
+  præsentationen virkende er det nu synligt at Firefox' toppanel (adressefelt,
+  bogmærke-ikon, fanelinje) renderer SORT mens sideindholdet vises korrekt
+  (hvid side / farverig Poki-side). Brugeren: "en mørk film hen over" — også
+  over Poki-logoet øverst. Mistanke: accelereret/GL-lags-sti i Firefox-
+  compositoren der fejler på 1.5-stakken (chrome tegnes separat fra
+  sideindholdet). AFTALT: køres når konteksttabs-sporet er færdigt. Detaljer:
+  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md`.
 - [ ] **Python-frontend + GLES-daemon (i gang aug 2026)** — Python tegner UI på /dev/fb0 (skelet: `fb_overscan.py`), taler med en C-daemon over unix-socket (skelet: `devuan/gpu/test_triangle.cpp`), daemonen renderer GLES offscreen og blitter til skærmen. Operationskort + første skridt: `devuan/gpu/README.md`. Regler: X stoppet under brug; strøm-cyklus bagefter
   - **God start i en ny session:** *"Læs `devuan/gpu/README.md` og DOKUMENTATION.md §5.15. Vi skal i gang med Python-frontend + GLES-daemon-projektet — arkitekturen og de første skridt står i README'en og i dette TODO-punkt. Boksen findes med `devuan/find_box.sh`."*
   - **Plan (23. aug 2026): `devuan/gpu/GLES-DAEMON-PLAN.md`** — beslutning om cross-bygning (`g++-arm-linux-gnueabihf` mod `vendor_root`-libs), milestones M0-M4, testcyklus og fælder. Værktøjet er installeret; M0 (baseline-byg af `test_triangle` cross + verifikation på boks 1) er næste skridt.

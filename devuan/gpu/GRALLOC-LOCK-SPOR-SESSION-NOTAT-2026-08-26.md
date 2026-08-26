@@ -58,6 +58,14 @@
   loseContext kan en NY WebGL-kontekst oprettes OG rendere (grøn quad,
   readPixels=0,255,0, glError=0; webgl_probe_test.html). → spillets ekstra
   konteksttab (2 ud over SDK-proben) skyldes IKKE manglende genopretning.
+- [aftalt] **Nyt spor bagefter: sorte Firefox-chrome (26. aug ~20:1x):** med
+  præsentationen virkende er det nu synligt at Firefox' eget toppanel
+  (adressefelt, bogmærke-ikon, fanelinje) renderer SORT, mens sideindholdet
+  vises korrekt (hvid test-side, farverig Poki-side). Brugeren beskriver det
+  som "en mørk film hen over" — også over Poki-logoet øverst på siden. Det er
+  browser-UI-rendering (sandsynligvis en accelereret/GL-lags-sti i
+  compositoren), SEPARAT fra spillets konteksttab. Køres EFTER
+  konteksttabs-sporet er færdigt. TODO + handover opdateret.
 
 ## Status i ét blik
 
