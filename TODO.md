@@ -71,12 +71,19 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     1.5-UM (32-bit) + 64-bit pvrsrvctl + frisk 6.0-libc installeret;
     `pvrsrvctl-exit=0`; **`shader_ext_test` = draw_buffers OK (ES2+ES3)**; **Firefox
     WebGL = OK**; **GL_VERSION = "OpenGL ES 3.1 build 1.5@3830101"** (gl_version_probe).
+    **MEN Subway Surfers fryser STADIG (26. aug ~16:0x):** spillet kræver også
+    `GL_EXT_frag_depth` (ES2-probe: "Extension GL_EXT_frag_depth not supported" →
+    WebGL context lost — bevis `/tmp/ff_poki.log`); 1.5's ES2-sti mangler både
+    udvidelsen og `gl_FragDepthEXT` (kun ES3-kernens `gl_FragDepth` virker;
+    `frag_depth_test.c`). → draw_buffers var nødvendigt men ikke nok.
     Restpunkter: (a) næste kernel-byg: `CONFIG_ANDROID_PARANOID_NETWORK` FRA
     (blokerede ikke-root-sockets; fixet på boksen med inet-gruppe 3003) + bcmdhd
     (wifi mangler); (b) bindapi-patchen er bind-mount og genkøres efter reboot;
     (c) chrony/NTP afvises på vores byg ("No suitable source") — arbejdsfix = HTTP-
     ur-sync i myinit.sh; (d) cs_blur-WR-shaderstøj i Firefox-loggen (blokerer ikke
-    WebGL). Detaljer: `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
+    WebGL); (e) spil-blokaden: muligheder = shader-omskrivnings-shim (WebGL2/ES3),
+    Spor B (4.4 + DDK 1.8) eller accept. Detaljer:
+    `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
 - [ ] **Python-frontend + GLES-daemon (i gang aug 2026)** — Python tegner UI på /dev/fb0 (skelet: `fb_overscan.py`), taler med en C-daemon over unix-socket (skelet: `devuan/gpu/test_triangle.cpp`), daemonen renderer GLES offscreen og blitter til skærmen. Operationskort + første skridt: `devuan/gpu/README.md`. Regler: X stoppet under brug; strøm-cyklus bagefter
   - **God start i en ny session:** *"Læs `devuan/gpu/README.md` og DOKUMENTATION.md §5.15. Vi skal i gang med Python-frontend + GLES-daemon-projektet — arkitekturen og de første skridt står i README'en og i dette TODO-punkt. Boksen findes med `devuan/find_box.sh`."*
   - **Plan (23. aug 2026): `devuan/gpu/GLES-DAEMON-PLAN.md`** — beslutning om cross-bygning (`g++-arm-linux-gnueabihf` mod `vendor_root`-libs), milestones M0-M4, testcyklus og fælder. Værktøjet er installeret; M0 (baseline-byg af `test_triangle` cross + verifikation på boks 1) er næste skridt.

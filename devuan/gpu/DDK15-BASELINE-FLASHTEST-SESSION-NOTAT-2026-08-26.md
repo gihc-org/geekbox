@@ -234,6 +234,25 @@
   compile=OK, GL_VERSION "OpenGL ES 3.1 build 1.5@3830101", alle 1.5-nøglefiler
   md5-korrekte i billedet (libIMGegl 077f5079, libsrv_um e175098a, libusc, egl-sæt,
   linker64, pvrsrvctl 4e4aa6f6), inet-gruppen overlevede genstarten.
+- [målt] **SUBWAY SURFERS FRYSER STADIG (26. aug ~16:0x) — GL_EXT_frag_depth er
+  den resterende blokade:** Firefox-loggen viser præcis:
+  ```
+  GetShaderInfoLog() -> Compile failed.
+  ERROR: 0:2: Extension GL_EXT_frag_depth not supported
+  GetShaderSource() ->
+  #extension GL_EXT_frag_depth: require
+  void main() {}
+  JavaScript warning: ... WebGL context was lost.
+  ```
+  Spillet sender en ES2-stil (ingen #version) kapabilitets-probe; 1.5-kompileren
+  afviser udvidelsen → Unity taber konteksten → frys. dmesg ren (ingen GPU-fault).
+- [målt] **1.5's frag_depth-status (frag_depth_test.c, 6 varianter):** ES2/ES3 +
+  `#extension GL_EXT_frag_depth` + gl_FragDepthEXT = FEJL; ES3-kernens `gl_FragDepth`
+  (med #version 300 es) = OK; ES2 gl_FragDepthEXT/gl_FragDepth uden direktiv =
+  FEJL (ikke erklærede). → ES2-stien har HVERKEN udvidelsesnavnet eller builtin'et;
+  dybde-skrivning findes kun i ES3-kernen. "GL_EXT_frag_depth" findes slet ikke i
+  libglslcompiler.so/driveren (kun GL_EXT_draw_buffers). → draw_buffers-fixet (1.5)
+  var nødvendigt men ikke tilstrækkeligt for spillet.
 - [foreslået] **Sandsynlig byg-forskel hvis kontrol booter:** marts-defconfig
   har `CONFIG_RTL8188EU=y` + `WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP=y`, men boksen
   bruger bcmdhd (wlan0, /system/etc/firmware) → rtl8188eu-probe ved boot er en
@@ -266,6 +285,12 @@
   (b) 07-script: opret inet-gruppe (3003); (c) bindapi-patchen er bind-mount og
   skal genkøres efter reboot; (d) chrony-undersøgelse (NTP afvises på vores byg —
   HTTP-sync i myinit er arbejdsfixet); (e) cs_blur-WR-støj.
+- AFTALT (26. aug ~16:1x): **Spillet kræver GL_EXT_frag_depth, som 1.5's ES2-sti
+  mangler.** Muligheder til brugeren: (a) shader-omskrivnings-shim (hook
+  glShaderSource i GPU-processen; strip direktivet + gl_FragDepthEXT→gl_FragDepth —
+  virker kun hvis spillet kører WebGL2/ES3; dages arbejde), (b) Spor B (4.4-kernel
+  + DDK 1.8 med frag_depth — uger), (c) acceptér (spillet kræver nyere driver).
+  Bevis i `/tmp/ff_poki.log` på boksen; `frag_depth_test.c` i repoet.
 
 ## Nøglekommandoer
 
