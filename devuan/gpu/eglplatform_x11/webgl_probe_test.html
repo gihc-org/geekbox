@@ -38,6 +38,29 @@ if (!ctx) {
         report("efter 3s: lost=" + lost + " restored=" + restored +
                " ctx.isContextLost()=" + ctx.isContextLost() +
                " canvas.getContext('webgl2') igen=" + (!!canvas.getContext("webgl2")));
+        /* Kan en NY kontekst RENDERE efter tabet? (1.5-genopretningstest) */
+        var c2 = document.createElement("canvas");
+        var gl2 = c2.getContext("webgl2") || c2.getContext("webgl");
+        if (!gl2) { report("NY KONTEKST NULL"); return; }
+        try {
+            var vs = 'attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0); }';
+            var fs = 'precision mediump float; void main(){ gl_FragColor=vec4(0.0,1.0,0.0,1.0); }';
+            function sh(t,s){var o=gl2.createShader(t);gl2.shaderSource(o,s);gl2.compileShader(o);return o;}
+            var pr=gl2.createProgram();
+            gl2.attachShader(pr,sh(gl2.VERTEX_SHADER,vs));
+            gl2.attachShader(pr,sh(gl2.FRAGMENT_SHADER,fs));
+            gl2.linkProgram(pr); gl2.useProgram(pr);
+            var b=gl2.createBuffer(); gl2.bindBuffer(gl2.ARRAY_BUFFER,b);
+            gl2.bufferData(gl2.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl2.STATIC_DRAW);
+            var l=gl2.getAttribLocation(pr,'p'); gl2.enableVertexAttribArray(l);
+            gl2.vertexAttribPointer(l,2,gl2.FLOAT,false,0,0);
+            gl2.clearColor(0,0,0,1); gl2.clear(gl2.COLOR_BUFFER_BIT);
+            gl2.drawArrays(gl2.TRIANGLE_STRIP,0,4);
+            var px=new Uint8Array(4);
+            gl2.readPixels(1,1,1,1,gl2.RGBA,gl2.UNSIGNED_BYTE,px);
+            report("NY KONTEKST RENDERER: pixel=" + px[0]+","+px[1]+","+px[2]+","+px[3] +
+                   " glError=" + gl2.getError().toString(16));
+        } catch(e) { report("NY KONTEKST RENDER THROW: " + e); }
     }, 3000);
 }
 </script>

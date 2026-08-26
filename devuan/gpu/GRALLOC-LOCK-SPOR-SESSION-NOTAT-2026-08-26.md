@@ -51,6 +51,13 @@
   egl_proxy.c (længde-sikker + eglMakeCurrent/eglSwapBuffers-hooks +
   fix_egl_table + glGetError-hook), gralloc_test3.c, webgl_probe_test.html,
   cdp_ctxloss.py, gralloc_lock_probe.gdb, gpu_segv_probe.gdb.
+- [udført] **sw_sync-fixet gjort persistent** (26. aug ~20:0x): chmod 666
+  /dev/sw_sync tilføjet til /root/myinit.sh på boksen + devuan/myinit.sh i
+  repoet (overlever reboot). Commit b4edb38.
+- [målt] **Kontekst-genopretning virker i 1.5-stakken:** efter et bevidst
+  loseContext kan en NY WebGL-kontekst oprettes OG rendere (grøn quad,
+  readPixels=0,255,0, glError=0; webgl_probe_test.html). → spillets ekstra
+  konteksttab (2 ud over SDK-proben) skyldes IKKE manglende genopretning.
 
 ## Status i ét blik
 
@@ -59,7 +66,8 @@
   hvid). Gralloc-lock EINVAL er løst og verificeret som kristian.
 - **Stabilitet:** 2 GPU-crash-klasser fixet (shader-overread, _eglXXX-NULL).
 - **Subway Surfers:** loader, men mister WebGL-konteksten ved gameplay-start →
-  sort canvas. Åbent spor (se Næste skridt).
+  sort canvas. Åbent spor (se Næste skridt). Kontekst-genopretning er afkræftet
+  som årsag (ny kontekst renderer fint efter loseContext).
 - Boks: 192.168.0.108; bring-up = insmod + gpu_up + bindapi; sw_sync-chmod
   skal gøres PERSISTENT (udev-rule eller myinit) — IKKE endnu.
 

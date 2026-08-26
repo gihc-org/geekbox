@@ -17,6 +17,11 @@ if [ -f /usr/local/share/libhybris/system.img ]; then
     mkdir -p /system
     mount -o loop,ro /usr/local/share/libhybris/system.img /system 2>/dev/null
     ln -sfn /system/vendor /vendor 2>/dev/null
+    # 26. aug 2026: 1.5-gralloc'ens lock laver sw_sync-fence (CPU-læsning af
+    # præsentationsbuffere); /dev/sw_sync er 0600 root:root, men Firefox/GPU-
+    # processen kører som kristian -> EACCES -> gralloc-lock EINVAL -> sort
+    # skærm. Gør enheden åben for alle (fixet verificeret 26. aug aften).
+    chmod 666 /dev/sw_sync 2>/dev/null
 fi
 
 # Den gamle 14.04-initramfs starter sin EGEN udevd (/sbin/udevd --resolve-names=never),
