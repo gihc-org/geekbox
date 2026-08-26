@@ -22,6 +22,12 @@ dd er nødvendig (se DOKUMENTATION.md §10). Scripts i `devuan/`:
 - [x] **Ren uovervåget boot til runlevel 2 med ssh verificeret** (aug 2026)
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
+- [ ] **Kernel-rebuild-regression: WiFi mangler (26. aug 2026)** — vores genbyggede
+  3.10-kerner (marts-defconfig) har `RTL8188EU=y`/`RKWIFI=y` men INGEN `bcmdhd` →
+  wlan0 findes ikke, og NetworkManager har ingen wifi-mulighed (original-kernen
+  har bcmdhd indbygget). Fix: næste kernel-byg med bcmdhd slået på; firmware ligger
+  i /system/etc/firmware (kræver velfungerende system.img). Se
+  `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)

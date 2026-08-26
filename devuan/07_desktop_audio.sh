@@ -29,6 +29,11 @@ chroot "$ROOTFS" /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get in
 # nodm skal være default display manager, uanset debconf-defaults (lightdm's
 # logind-seat-detektion virker ikke på denne boks — derfor nodm)
 echo /usr/sbin/nodm > "$ROOTFS/etc/X11/default-display-manager"
+# lightdm må heller ikke have rc-links (26. aug 2026: S04lightdm + S05nodm i rc2.d
+# kæmpede om :0 og dræbte X-sessionen på boks 1)
+if [ -x "$ROOTFS/usr/sbin/lightdm" ]; then
+    chroot "$ROOTFS" update-rc.d -f lightdm remove >/dev/null 2>&1 || true
+fi
 
 echo "== bruger + grupper + nøgler =="
 chroot "$ROOTFS" /usr/sbin/useradd -m -s /bin/bash kristian || true

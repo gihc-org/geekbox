@@ -76,6 +76,14 @@ if [ "$MODE" = test ]; then
     ./scripts/config --enable MODULES --enable MODULE_UNLOAD
     make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
 fi
+# Ekstra symboler der skal tændes (fx CONFIG_TRACING for 1.5-.ko'ens ftrace-symboler)
+if [ -n "${CONFIG_ENABLE:-}" ]; then
+    for c in $CONFIG_ENABLE; do
+        echo "   -- enable $c"
+        ./scripts/config --enable "$c"
+    done
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+fi
 cp .config "$OUT.config" 2>/dev/null || { mkdir -p "$OUT"; cp .config "$OUT.config"; }
 
 echo "== byg Image (gcc-9, -j8) =="
