@@ -198,6 +198,33 @@ curl -sSL -o /tmp/ddk16/libGLESv2_POWERVR_ROGUE.so \
 4. Fortsæt separat: buffer-fix/kadence (stress-siden) — kun hvis spillet nu
    virker og ydeevnen er for lav.
 
+## Kan vi bare opgradere til en 4.4-kernel? (bruger-spørgsmål 26. aug)
+
+**Svaret: teknisk muligt, men det er et porteprojekt (uger), ikke en
+opgradering — og det er IKKE nødvendigt for spillet.** Begrundelse:
+
+- Firefly `firefly-linux-kernel-4.4.55` har RK3368-understøttelse + PVR-DDK-
+  1.8-kbuild-overlay (`Rogue_DDK_Android_REL_1.8.RTM@4610191`, commits
+  juli-aug 2017 af Rockchip), men kun Firefly-board-DTS (`rk3368-r88.dtb`).
+  En GeekBox-4.4-DTS findes ikke nogen steder (radtw har kun 3.10 og 3.18;
+  mainline-`rk3368-geekbox.dts` er fra 2016 og kun headless: seriel, USB,
+  GMAC, eMMC, IR, TSADC — ingen display/GPU).
+- Rockchip skiftede display til **DRM/KMS fra kernel 4.4** ("从 linux 4.4
+  内核开始，Rockchip 显示驱动全部切到 DRM 显示框架"). Vores nuværende stak er
+  bygget på rk_fb-fbdev + rk_fb-hwcomposer → hele display-integrationen
+  (myinit, X-konfig, eglplatform_x11-hwcomposer-vejen) og Android-system.img
+  (Android 7.1-æra med DRM-hwcomposer + DDK 1.8-userspace) skal skiftes med.
+  Android 7.1 RK3368-userspace er formentlig 64-bit → kollision med vores
+  bevidste 32-bit armhf-hybris-valg (DOK §2).
+- Boot-kæden skal også med: nyere U-Boot/ATF (Android 7-æra) eller tilpasset
+  nuværende loader; kræver seriel konsol (USB-TTL) + Mask ROM-redning klar.
+- **DDK 1.5 på nuværende 3.10 er den hurtige vej** (15 min-test, draw_buffers
+  allerede i kompileren). 4.4 giver først mening bagefter (nyere DDK 1.8+,
+  nyere kernel, KMS) som en separat Spor B-udvidelse.
+
+Kilder: TODO.md "Spor B", DOKUMENTATION.md §2/§3/§6, DRIVER-PORTERING.md,
+Firefly-kernel-repoet (plrg-mirror), Rockchip-DRM-udviklingsguide (16rd BBS).
+
 ## God start i en ny session
 
 > "Læs `devuan/gpu/DDK-HANDOVER-2026-08-26.md` og `devuan/gpu/GPU-FAULT-

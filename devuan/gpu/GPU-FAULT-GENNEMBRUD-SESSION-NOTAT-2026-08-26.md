@@ -94,6 +94,17 @@
 - [afventer] **Prøveinstallation af DDK 1.5 på boksen er IKKE påbegyndt** —
   brugeren bad om dokumentation + handover først (26. aug, ~02:45). Plan,
   backup- og restore-vej: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
+- [vurderet] **4.4-kernel-opgradering (26. aug, ~03:0x): muligt, men et
+  porteprojekt — ikke nødvendigt for spillet.** Fakta: Firefly
+  `firefly-linux-kernel-4.4.55` har RK3368 + PVR-DDK-1.8-kbuild-overlay
+  (`Rogue_DDK_Android_REL_1.8.RTM@4610191`), men kun Firefly-board-DTS
+  (`rk3368-r88`); Rockchip skiftede display til DRM/KMS fra 4.4 → hele vores
+  rk_fb/hwcomposer/myinit-integration og Android-system.img (Android 7.1-æra,
+  formentlig 64-bit userspace) skal følge med. Ingen GeekBox-4.4-DTS findes
+  (mainline-`rk3368-geekbox.dts` er kun headless; radtw har 3.10/3.18, ikke
+  4.4). Kræver seriel konsol + Mask ROM-redning. Anbefaling: DDK 1.5 på
+  nuværende 3.10 først (hurtig test, draw_buffers allerede til stede); 4.4 er
+  en separat uge+-opgave der hører til Spor B.
 
 ## Status i ét blik
 
