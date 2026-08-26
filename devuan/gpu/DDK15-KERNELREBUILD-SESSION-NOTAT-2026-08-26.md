@@ -74,13 +74,64 @@
   + init=/root/myinit.sh + cma=128M); (4) `DI -b ramfs-baseline.img`; (5) boot +
   verificér (uname, ssh, shader_ext_test = "not supported"). Rollback: `DI -b`
   med `out/backup/ramfs_current.img` + `DI -p` med gammel parameter (eller UF).
+- [målt] **Baseline-kernel BOOTER IKKE på boks 1 (26. aug ~11:3x):** efter
+  `DI -p` (SD-root) + `DI -b` (baseline) fryser boksen ved blåt logo, LED lilla
+  (aldrig blå), intet netværk. Pakningen er verificeret fejlfri: kun kernel-bloben
+  afviger fra originalen; ramdisk+second+header (page_size/adresser) byte-identiske.
+  Image-header (text_offset 0x80000, flags 0) identisk med originalen.
+- [målt] **Æra-forskel:** lollipop_kernel gren `geekbox` HEAD = 2016-06-13
+  ("Fan: take effort immediately..."); boksens kernel #168 er bygget 27. jan 2016
+  → defconfig/træ kan afvige fra det faktisk flashede byg. Hypotese: byg baseline
+  fra et commit tæt på 27. jan 2016 (kræver fuld klon-historik).
+- [afventer] **Isolation (næste skridt):** (a) genopret kendt-god (original boot +
+  eMMC-parameter); (b) ny kernel + eMMC-root → booter den = SD-stien er problemet,
+  fryser den = kernen er skyldig → æra-match rebuild. Boksens lilla-LED/frys =
+  hænger i U-Boot/meget tidligt i kernen (HAANDBOG fælde 15; uboot-logo-on=0 er
+  afkræftet — DTB er originalen).
+- [målt] **Tre baseline-byg fryser alle identisk (26. aug ~11:4x–12:1x):** (1)
+  juni-træ + juni-defconfig + gcc-9; (2) jan-træ (80f6d15b9d2) + marts-defconfig
+  + gcc-9; (3) jan-træ + marts-defconfig + gcc-8.3. Pakning, DTB, ramdisk,
+  parameter og U-Boot-load-adresse (0x00280000, fast) er alle udelukket. PSCI- og
+  MMC-driverne matcher originalen. Original kernel #168 booter fint.
+- [forkastet] **Lilla LED = hænger FØR device_initcall:** DTB'en har gpio-leds-node
+  (blue default-on, red default-off) — blå LED tændes når gpio-leds prober.
+  Lilla (blue+red) under vores byg = kernen når aldrig device-init → hænget er i
+  tidlig init (CPU-bring-up, clk/pinctrl, DDR-freq, CMA). — OVERTAGET af
+  id-felt-fundet nedenfor: frysningen sker i U-Boot (sha-check), kernen når
+  aldrig i gang.
+- [afventer] **Cmdline-diagnostik (ingen genbygning):** (a) `maxcpus=1`
+  (parameter_emmc_diag_maxcpus1.txt) → booter = PSCI/smp-bring-up er problemet;
+  (b) uden `cma=128M` (parameter_emmc_diag_nocma.txt) → CMA/memblock; (c) derefter
+  DDR-freq/thermal/cpufreq fra-builds hvis nødvendigt.
+- [målt] **RODÅRSAGEN TIL ALLE LILLA-FRYSER (26. aug ~12:5x): manglende
+  SHA1-`id`-felt i bootimg.** Kontrol-test: original-kernen pakket med VORES
+  pakker (kun `id`-feltet nulstillet) fryser OGSÅ — eneste byte-forskel mod
+  originalen var offset 0x240–0x254. U-Boot-kilden (`SecureVerify.c`,
+  `SecureNSModeBootImageShaCheck`) verificerer `id` og afviser billedet
+  ("boot/recovery image sha mismatch!") når det er nul — kernen når aldrig i gang.
+  Det forklarer alle tre baseline-byg (gcc-9/gcc-8, jan-/juni-træ): de var
+  sandsynligvis fine hele tiden.
+- [målt] **Præcis hash-algoritme (verificeret byte-for-byte mod originalen):**
+  `id = SHA1(kernel ‖ u32le(kernel_size) ‖ ramdisk ‖ u32le(ramdisk_size) ‖
+  second ‖ u32le(second_size) ‖ u32le(tags_addr) ‖ u32le(page_size) ‖
+  unused[8] ‖ name[16] ‖ cmdline[512])` — giver `a40f20c6…` for originalen
+  (matcher). Kilde: `/tmp/lollipop_uboot/board/rockchip/common/SecureBoot/SecureVerify.c:155-181`.
+- [udført] **`package_bootimg.py` patchet med id-beregningen (26. aug ~12:5x):**
+  kontrol-om-pakning af original-kernen giver nu byte-identisk output med
+  originalen (kun +1472 nul-padding til sidst); baseline-kernen er pakket som
+  `out/baseline/ramfs-baseline-id.img` (id `5598c599…`). Alle tidligere
+  ramfs-*.img-varianter med id=0 er forældede.
+- [udført] **Test-kernel (POWERVR_ROGUE slået fra, modul-støtte på) bygges**
+  (26. aug ~12:5x, jan-træ + marts-defconfig + gcc-9, `MODE=test`) — klar til
+  insmod af 1.5-.ko'en når baseline booter.
 
 ## Status i ét blik
 
 - Boks 1 er i kendt god 1.4-tilstand (baseline bekræftet 26. aug).
-- Krydskompiler og kernel-kilde: under klargøring (step 2-3).
-- Byg: baseline-kernel → SD-boot → testkernel (CONFIG_PVR_ROGUE=y) → SD-boot →
-  eMMC-flash → 1.5-UM + blokade-fix → verificér.
+- Krydskompiler og kernel-kilde: klar (gcc-9 + lollipop_kernel jan-træ).
+- Bootimg-blokaden er LØST (SHA1-id fundet + pakker patchet).
+- Byg: baseline-kernel → flash → boot → testkernel (PVR fra) → insmod 1.5-.ko →
+  1.5-UM + blokade-fix → verificér.
 
 ## Nøglekommandoer / beviser
 
@@ -97,12 +148,17 @@ git clone --depth 1 -b geekbox https://github.com/geekboxzone/mmallow_kernel /tm
 # Toolchain (noble/universe):
 sudo apt install gcc-10-aarch64-linux-gnu binutils-aarch64-linux-gnu \
   u-boot-tools device-tree-compiler bison flex libssl-dev
+
+# Pak bootimg med korrekt Rockchip-SHA1-id (kernel/ramdisk/second fra originalen):
+python3 devuan/gpu/kernelbuild/package_bootimg.py <ny-Image> \
+  extracted/Image/ramfs.img <output-ramfs.img>
 ```
 
 ## Næste skridt
 
-1. Klon `mmallow_kernel` (gren `geekbox`) + verificér `drivers/gpu/rogue` =
-   1.5@3830101 (PVR_BUILD_ID).
-2. Installér krydskompiler + værktøjer.
-3. Hent boksens `.config` (`/proc/config.gz` hvis CONFIG_IKCONFIG, ellers fra
-   `lollipop_kernel`) og byg baseline-kernel.
+1. Flash `out/baseline/ramfs-baseline-id.img` (eMMC-parameter) → verificér boot
+   (uname + ssh + shader_ext_test = "not supported").
+2. Byg er klar til testkernel (`MODE=test`, PVR fra) → flash → `insmod`
+   `/tmp/ddk15_km/pvrsrvkm_leddaz.ko` → dmesg `Rogue_DDK_Android … 1.5@3830101`.
+3. Læg 1.5-UM ind + løs `__register_atfork` + 64-bit-pvrsrvctl → verificér
+   draw_buffers + Firefox about:support "OpenGL ES 3.1 build 1.5@3830101".

@@ -60,24 +60,30 @@
 
 ## Den reelle blokade og løsningen: kernel-rebuild med 1.5-KM
 
-- **Kilde:** `https://github.com/geekboxzone/mmallow_kernel`, gren `geekbox`
-  (RK3368, Android 6.0, kernel 3.10) — `drivers/gpu/rogue/` er DDK 1.5@3830101-KM-
-  kilden (611 PVR/rogue-stier verificeret via git/trees; vermagic
-  `3.10.0 SMP preempt mod_unload aarch64` matcher boksens kernel).
+- **Kilde (målt 26. aug):** 1.5-KM-kilden findes IKKE i de offentlige 3.10-repoer.
+  Både `mmallow_kernel` (3.10.92) og `lollipop_kernel` (3.10.79), gren `geekbox`,
+  har `drivers/gpu/rogue` = **1.4@3632228**. 1.5@3830101 findes kun som
+  **præbygget .ko** (806.864 B, md5-identisk i leddaz-dumpet og
+  `mmallow_vendor_rockchip_common` G6110_64), vermagic
+  `3.10.0 SMP preempt mod_unload aarch64`, uden `__versions` (CONFIG_MODVERSIONS
+  off) → kan loades på en genbygget kerne UDEN indbygget PVR. Kilde til 1.5
+  findes kun i ayufan rock64-kernen (4.4.83) — port til 3.10 er dagevis arbejde.
 - **§6-pointeren:** 3.10.79 → 3.10.108 er en stable-merge (intern ABI frosset ved
   politik) → dage, ikke år. Rockchip patchede kernens egne filer, så merge giver
   konflikter i `mm/` og `arch/arm64/` — kendt kode, ikke redesign. Bonus: Dirty COW
   + tre års stable-fixes.
 
-### To byggestrategier
+### Korrigeret hovedvej (målt 26. aug)
 
-- **A — hurtig hypotese-test:** nuværende 3.10.79 + boksens `.config`, kun 1.5-KM
-  tilføjet indbygget (`CONFIG_PVR_ROGUE=y`). Laveste risiko; bekræfter at 1.5-KM
-  fjerner wedgen.
-- **B — fuld løsning (anbefalet efter A):** merge til 3.10.108 med 1.5-KM samtidig —
-  ét byg, både DDK og sikkerhed.
-- Anbefaling: A først (testkernel på SD), B bagefter; vil brugeren kun have ét byg,
-  spring direkte til B.
+- Byg `lollipop_kernel` (3.10.79, boksens egen kilde) fra `geekbox_defconfig` med
+  `CONFIG_POWERVR_ROGUE` slået FRA (ikke indbygget) + modul-støtte på → boot →
+  `insmod` 1.5-.ko'en → 1.5-UM. Samme slutresultat (1.5-KM + 1.5-UM uden
+  ABI-wedge), meget mindre arbejde end at porte 4.4-kilde tilbage til 3.10.
+- **Fælde (løst):** Rockchip-U-Boot verificerer bootimg-`id`-feltet
+  (SHA1 over kernel+ramdisk+second+header, `SecureVerify.c`) — billeder uden
+  korrekt id fryser ved lilla LED. `devuan/gpu/kernelbuild/package_bootimg.py`
+  beregner id'et nu.
+- 3.10.108-merge (fase B) tages bagefter når 1.5-vejen er verificeret.
 
 ## Trinplan (build-forberedelse — afventer godkendelse)
 
@@ -87,20 +93,19 @@
    `geekboxzone/lollipop_kernel` gren `geekbox` eller `/proc/config.gz` hvis
    CONFIG_IKCONFIG) og verificér boot på SD — uden verificeret baseline er alt
    gætværk.
-2. **Klon 1.5-KM-kilden:** `git clone -b geekbox
-   https://github.com/geekboxzone/mmallow_kernel` og verificér versionen
-   (`strings drivers/gpu/rogue/... | rg "1.5@3830101"` / PVR_BUILD_ID).
-3. **Sammensæt bygget:** læg `drivers/gpu/rogue` ind, sæt `CONFIG_PVR_ROGUE=y`
-   (indbygget — modul er muligt, men kernen siger "Module unloading is not
-   supported", så indbygget er sikrest).
-4. **Byg:** `Image` + `rk3368-geekbox.dtb`; behold boksens boot-parametre
+2. **Byg:** baseline (jan-træ 80f6d15b9d2 + marts-defconfig + gcc-9) → derefter
+   testkernel med `CONFIG_POWERVR_ROGUE` fra + modul-støtte på
+   (`devuan/gpu/kernelbuild/build_kernel.sh test`).
+3. **Pak:** `package_bootimg.py` (beregner Rockchip-SHA1-id) med den originale
+   ramdisk + second (DTB); behold boksens boot-parametre
    (`cma=128M`, `root=/dev/mmcblk0p6`, `init=/root/myinit.sh`).
-5. **Test på SD først**; flash til eMMC først når SD-boot er verificeret. Restore:
+4. **Flash + test:** `upgrade_tool DI -b` → boot → `insmod` 1.5-.ko
+   (`pvrsrvkm_leddaz.ko`) → dmesg `1.5@3830101`. Restore:
    gammelt `update.img` + `/root/system.img.1.4.bak` + `/root/ddk14-backup`.
-6. **1.5-UM:** læg 32-bit-sættet fra dumpet i /system (md5 i handoveren), løs
+5. **1.5-UM:** læg 32-bit-sættet fra dumpet i /system (md5 i handoveren), løs
    blokade 1 (shim/patch) og 2 (64-bit-runtime). `/system`-imaget er 254 MB med
    48 MB fri — forstørr (`truncate` + `resize2fs`) hvis nødvendigt.
-7. **Verificér:** `shader_ext_test` accepterer `GL_EXT_draw_buffers` → `trivial_test`
+6. **Verificér:** `shader_ext_test` accepterer `GL_EXT_draw_buffers` → `trivial_test`
    → `egl_display_probe` → Firefox: `WEBGL_RESULT OK` + about:support
    "OpenGL ES 3.1 build 1.5@3830101".
 

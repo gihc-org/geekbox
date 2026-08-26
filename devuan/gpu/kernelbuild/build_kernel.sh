@@ -5,6 +5,9 @@
 # Brug:
 #   bash devuan/gpu/kernelbuild/build_kernel.sh baseline   # geekbox_defconfig uændret
 #   bash devuan/gpu/kernelbuild/build_kernel.sh test       # POWERVR_ROGUE slået fra (1.5-.ko-vej)
+#   SRC_COMMIT=<hash> bash .../build_kernel.sh baseline    # byg fra et bestemt commit
+#   CONFIG_SRC=<fil> bash .../build_kernel.sh baseline     # brug en anden defconfig
+#   CONFIG_DISABLE="A B C" bash .../build_kernel.sh baseline  # slå symboler fra
 #
 # Output: devuan/gpu/kernelbuild/out/<mode>/Image + ramfs-<mode>.img (+ config)
 #
@@ -17,23 +20,25 @@ set -euo pipefail
 
 MODE=${1:?brug: $0 baseline|test}
 PROJ=$(cd "$(dirname "$0")/../../.." && pwd)
-SRC=/tmp/lollipop_kernel
-BUILD=/tmp/kb_${MODE}
+SRC=${SRC:-/tmp/lollipop_kernel}
+SRC_COMMIT=${SRC_COMMIT:-HEAD}
+BUILD=${BUILD_DIR:-/tmp/kb_${MODE}}
 OUT="$PROJ/devuan/gpu/kernelbuild/out/$MODE"
-KBCC=/tmp/kbcc
+KBCC=${KBCC:-/tmp/kbcc}
 
 [ -x "$KBCC/aarch64-linux-gnu-gcc" ] || { echo "FEJL: mangler $KBCC/aarch64-linux-gnu-gcc"; exit 1; }
 
-echo "== opret frisk byggetræ fra $SRC =="
+echo "== opret frisk byggetræ fra $SRC @ $SRC_COMMIT =="
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
-git -C "$SRC" archive HEAD | tar -x -C "$BUILD"
+git -C "$SRC" archive "$SRC_COMMIT" | tar -x -C "$BUILD"
 
 echo "== workarounds (gcc-wrapper + dtc yylloc) =="
 rm -f "$BUILD/scripts/gcc-wrapper.py"
-# 3.10 har kun compiler-gcc{3,4,5}.h; gcc-9 leder efter compiler-gcc9.h (via
+# 3.10 har kun compiler-gcc{3,4,5}.h; nyere gcc leder efter compiler-gccX.h (via
 # gcc_header(__GNUC__)) — kopier 5-serien (attributterne er kompatible).
-cp "$BUILD/include/linux/compiler-gcc5.h" "$BUILD/include/linux/compiler-gcc9.h"
+GCC_MAJOR=$("$KBCC/aarch64-linux-gnu-gcc" -dumpversion | cut -d. -f1)
+cp "$BUILD/include/linux/compiler-gcc5.h" "$BUILD/include/linux/compiler-gcc${GCC_MAJOR}.h"
 # Moderne binutils: .section-flag-syntaksen er "ax" (hverken #alloc/#execinstr
 # eller %alloc/%execinstr accepteres af binutils 2.42). Håndter begge gamle former.
 sed -i 's/, #alloc, #execinstr/, "ax"/; s/, %alloc, %execinstr/, "ax"/' "$BUILD/arch/arm64/mm/proc.S"
@@ -53,7 +58,17 @@ fi
 echo "== config ($MODE) =="
 cd "$BUILD"
 export PATH="$KBCC:$PATH"
+if [ -n "${CONFIG_SRC:-}" ]; then
+    cp "$CONFIG_SRC" "$BUILD/arch/arm64/configs/geekbox_defconfig"
+fi
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- geekbox_defconfig
+if [ -n "${CONFIG_DISABLE:-}" ]; then
+    for c in $CONFIG_DISABLE; do
+        echo "   -- disable $c"
+        ./scripts/config --disable "$c"
+    done
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+fi
 if [ "$MODE" = test ]; then
     # 1.5-KM-vejen: ingen indbygget PVR-KM; 1.5-.ko'en loades som modul.
     ./scripts/config --disable POWERVR_ROGUE
