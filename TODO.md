@@ -78,8 +78,11 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
       stable-reglerne forbyder ABI-ændringer i en stable-serie → driverne bygger nærmest
       uændret. Dette er et weekendprojekt, i modsætning til Spor B.
   - [ ] **Kernel-rebuild er også DDK 1.5-vejen:** 1.5-KM (fra `geekboxzone/mmallow_kernel`,
-        gren `geekbox`, `drivers/gpu/rogue` = DDK 1.5@3830101) bygges ind i 3.10, så
-        1.5-userspace kan bruges uden ABI-wedge — fuld løsning + trinplan:
+        gren `geekbox`) — **KORRIGERET 26. aug:** `drivers/gpu/rogue` = 1.4@3632228
+        (ikke 1.5); 1.5@3830101 findes kun som præbygget .ko → byg 3.10-kernen UDEN
+        indbygget PVR og insmod 1.5-.ko'en. Bootimg-fælde løst (SHA1-`id` i
+        `package_bootimg.py`). Fuldt overblik + kommandoer:
+        `devuan/gpu/DDK15-KERNEL-REBUILD-HANDOVER-2026-08-26.md` + løsningen i
         `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md`
   - [ ] Hent vendor-kernekilden: `geekboxzone/lollipop_kernel` branch `geekbox`
         (mirror: `abhisit/rk3368-linux-3.10.79-lollipop-ubuntu`)

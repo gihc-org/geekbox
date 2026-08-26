@@ -524,6 +524,13 @@ kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
 - **`uboot-logo-on = 0` i DTB'en gør at boksen ikke booter.** Lysdioden bliver lilla og
   aldrig blå. Flaget styrer også bootloaderens egen skærmopsætning, i kode vi ikke har.
   Rollback: `devuan/rollback.sh`.
+- **Et selv-pakket bootimg uden korrekt `id`-felt fryser ved lilla LED** — kernen når
+  aldrig i gang. Rockchip-U-Boot verificerer `id` (offset 0x240, 20 bytes) med
+  SHA1 over kernel/ramdisk/second + størrelser + resten af headeren
+  (`SecureVerify.c`). Symptomet er identisk med andre lilla-frysere, men kernens
+  indhold kan være helt fint. Brug altid
+  `devuan/gpu/kernelbuild/package_bootimg.py` til at pakke bootimg'er — den
+  beregner id'et (verificeret mod originalen 26. aug 2026).
 - **`reboot` slukker boksen** i stedet for at genstarte. Brug strømcyklus.
 - **nodm holder op med at prøve** hvis sessionen dør flere gange hurtigt efter hinanden
   (`NODM_MIN_SESSION_TIME=60`). Genstart derfor ikke X to gange inden for et minut — så
