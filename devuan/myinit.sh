@@ -90,7 +90,9 @@ grep -q nameserver /etc/resolv.conf 2>/dev/null || \
 # via HTTP-Date-headeren (port 80 virker på denne router); kun hvis uret er langt
 # forkert (< 2023) og kun når netværket er oppe.
 if [ "$(date +%s)" -lt 1700000000 ]; then
-    python3 - >/root/clock-sync.log 2>&1 <<'EOF' || true
+    i=0
+    while [ "$i" -lt 5 ] && [ "$(date +%s)" -lt 1700000000 ]; do
+        python3 - >/root/clock-sync.log 2>&1 <<'EOF' && break
 import urllib.request, email.utils, subprocess
 try:
     h = urllib.request.urlopen("http://example.com", timeout=8).headers["Date"]
@@ -100,6 +102,9 @@ try:
 except Exception as e:
     print("ur-sync fejlede:", e)
 EOF
+        i=$((i+1))
+        sleep 10
+    done
 fi
 
 # dropbear virker på 3.10; OpenSSH 10 gør ikke (seccomp-sandbox kræver nyere kernel)

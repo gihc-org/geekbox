@@ -218,6 +218,22 @@
   (ES2+ES3) + WebGL OK + versionsstreng bekræftet.
 - [udført] **`devuan/gpu/eglplatform_x11/gl_version_probe.c` tilføjet** (repo) —
   genbrugbar verifikation uden at åbne about:support.
+- [målt] **EFTER GENSTART (26. aug ~15:3x):** ur-SYNC i myinit kørte men fejlede
+  ("Temporary failure in name resolution" — netværk ikke klar endnu) → myinit.sh
+  patchet med 5× retry (10 s mellemrum). Uret sat manuelt + HTTPS=200 bagefter.
+  GPU-stakken bringes op igen efter hver genstart: `insmod /root/pvrsrvkm_leddaz.ko`
+  + `gpu_up.sh` + bindapi-patchen (bind-mount forsvinder ved reboot).
+- [målt] **NY FÆLDE: overskrivninger i system.img via loop-mount overlever IKKE
+  genstart** (friske filer som linker/libGLESv2 overlevede, men overskrivningen af
+  lib/libc.so rullede tilbage til 512cbcd2). Årsag: loop/page-cache-aliasing på
+  vendor-kernen. **Robust fix: debugfs direkte i billedet (umount → `debugfs -w -f`
+  med `rm`+`write` → e2fsck → mount) — verificeret: libc = 99dcc69f efter reboot.
+  Reglen fremover: ved ÆNDRING af eksisterende filer i system.img, brug debugfs;
+  ved NYE filer kan loop-rw bruges, men verificér altid md5 efter frisk loop-reattach.**
+- [målt] **Efter genstart verificeret (26. aug ~15:4x):** shader_ext_test ES2+ES3
+  compile=OK, GL_VERSION "OpenGL ES 3.1 build 1.5@3830101", alle 1.5-nøglefiler
+  md5-korrekte i billedet (libIMGegl 077f5079, libsrv_um e175098a, libusc, egl-sæt,
+  linker64, pvrsrvctl 4e4aa6f6), inet-gruppen overlevede genstarten.
 - [foreslået] **Sandsynlig byg-forskel hvis kontrol booter:** marts-defconfig
   har `CONFIG_RTL8188EU=y` + `WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP=y`, men boksen
   bruger bcmdhd (wlan0, /system/etc/firmware) → rtl8188eu-probe ved boot er en
