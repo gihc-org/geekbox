@@ -24,6 +24,14 @@ extern "C" {
 #include <android/hardware/gralloc.h>
 #include <android/system/graphics.h>
 
+/* 26. aug 2026: hybris-gralloc-headerne har FORKERTE GRALLOC_USAGE-værdier
+ * (HW_FB=0x1000, SW_READ_OFTEN=0x3) vs. Android-standard (0x10 hhv. 0x80).
+ * 1.5-gralloc'en afviser dem (EINVAL) → tving de korrekte værdier. */
+#undef GRALLOC_USAGE_HW_FB
+#define GRALLOC_USAGE_HW_FB 0x10
+#undef GRALLOC_USAGE_SW_READ_OFTEN
+#define GRALLOC_USAGE_SW_READ_OFTEN 0x80
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 

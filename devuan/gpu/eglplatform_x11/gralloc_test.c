@@ -27,12 +27,16 @@ int main(void)
         GRALLOC_USAGE_SW_READ_OFTEN,
         GRALLOC_USAGE_HW_FB,
         GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_SW_READ_OFTEN,
+        0xCB,                                       /* x11ws' faktiske usage */
+        0xCB | GRALLOC_USAGE_HW_FB,                 /* + HW_FB */
+        0x40,                                       /* SW_READ_RARELY */
     };
-    static const char *un[] = { "HW_FB|SW_RO", "SW_RO", "HW_FB", "HW_COMPOSER|SW_RO" };
+    static const char *un[] = { "HW_FB|SW_RO", "SW_RO", "HW_FB", "HWC|SW_RO",
+                                "0xCB", "0xCB|HW_FB", "SW_RR" };
     static const char *fn[] = { "RGBA_8888", "RGB_565" };
 
     for (int f = 0; f < 2; f++) {
-        for (int u = 0; u < 4; u++) {
+    for (int u = 0; u < 7; u++) {
             buffer_handle_t h = NULL;
             int stride = 0;
             int rc = ad->alloc(ad, 320, 240, fmts[f], usages[u], &h, &stride);
@@ -42,7 +46,12 @@ int main(void)
             int rc2 = gm->lock(gm, h, GRALLOC_USAGE_SW_READ_OFTEN,
                                0, 0, 320, 240, &ptr);
             printf(" lock rc=%d ptr=%s\n", rc2, ptr ? "JA" : "NEJ");
-            if (rc2 == 0) gm->unlock(gm, h);
+            if (rc2 == 0) {
+                void *ptr2 = NULL;
+                int rc3 = gm->lock(gm, h, usages[u], 0, 0, 320, 240, &ptr2);
+                printf("   lock(full-usage %#x) rc=%d\n", usages[u], rc3);
+                gm->unlock(gm, h);
+            }
             ad->free(ad, h);
         }
     }

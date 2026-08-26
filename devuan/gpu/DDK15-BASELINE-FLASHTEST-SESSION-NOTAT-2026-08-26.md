@@ -351,6 +351,20 @@
   patch_soname.py, fragdepth_probe_shim.c, vertex_tex_test.c, compile_file_probe.c,
   gralloc_test.c, context_attrs_test.html; eglplatform_x11.cpp fik debug-print
   (fmt/usage ved lock-fejl) + genbygget på boksen.
+- [målt] **gralloc-lock-rodårsagen (26. aug ~17:4x):** (1) hybris-gralloc-headerne
+  har FORKERTE GRALLOC_USAGE-værdier (HW_FB=0x1000, SW_READ_OFTEN=0x3 vs. AOSP
+  0x10/0x80) → x11ws patchet med korrekte konstanter (repo + bygget på boksen).
+  (2) Alligevel fejler lock kun i Firefox' GPU-proces (selvt est inde i x11ws:
+  alloc OK, lock=-22 på frisk buffer; standalone med samme module + usage = OK).
+  (3) **RODÅRSAG: GPU-processen bruger bionic 6.0-libc, hvis clock_gettime kalder
+  syscall 403 (clock_gettime64) — som 3.10-kernens compat-lag IKKE har
+  (__NR_compat_syscalls=384; 403 udenfor → "syscall 403"-spam + EINVAL).**
+  gralloc-lock (bionic) fejler derfor EINVAL. Standalone-testen bruger glibc
+  (gammel syscall 263) → virker.
+- [udført] **Kernel-fix under byg (26. aug ~17:5x):** compat-tabellen udvides til
+  404 poster + syscall 403 → `sys_clock_gettime` (timespec64-layout matcher native
+  på arm64) i build_kernel.sh (sed + append). Byg kører; næste: pak + flash +
+  gentest spillet.
 
 ## Nøglekommandoer
 

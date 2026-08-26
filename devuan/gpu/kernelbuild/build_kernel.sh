@@ -46,6 +46,20 @@ sed -i 's/, #alloc, #execinstr/, "ax"/; s/, %alloc, %execinstr/, "ax"/' "$BUILD/
 # multiple definition. Fix: static __inline (pr. TU, ingen konflikt).
 sed -i 's/^extern __inline /static __inline /' \
     "$BUILD/drivers/net/wireless/rockchip_wlan/rtl8188eu/include/ieee80211.h"
+# 26. aug 2026: compat clock_gettime64 (403) — nødvendig for bionic 6.0-libc
+# (gralloc-lock fejler EINVAL uden den i Firefox' GPU-proces).
+# 1) udvid compat-tabellen fra 384 til 404 poster
+sed -i 's/#define __NR_compat_syscalls\t\t384/#define __NR_compat_syscalls\t\t404/' \
+    "$BUILD/arch/arm64/include/asm/unistd.h"
+# 2) tilføj poster 384..402 (ni) + 403 (clock_gettime64 -> sys_clock_gettime;
+#    timespec64-layoutet matcher native timespec på arm64) efter tabellen
+cat >> "$BUILD/arch/arm64/kernel/sys32.S" <<'EOF'
+
+	.rept 19
+	.quad sys_ni_syscall
+	.endr
+	.quad sys_clock_gettime
+EOF
 # Kun .c_shipped findes i friskt træ; bygget kopierer den (og evt. regenererer
 # fra .l hvis .l er nyere — derfor touches _shipped til nyere end .l).
 sed -i 's/^YYLTYPE yylloc;$/extern YYLTYPE yylloc;/' "$BUILD/scripts/dtc/dtc-lexer.lex.c_shipped"
