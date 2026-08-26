@@ -109,6 +109,34 @@
   (no-op) via preload-shim i spil-iframe'en** — hvis spillets blanke canvas
   skyldes loseContext/genopretnings-tilstanden, kan blokering af tabene få
   canvas'et til at vise. Skal testes på en frisk bootet boks.
+- [udført] **SPILLET VIRKER (23:0x-23:3x, brugerbekræftet):** med shim =
+  alpha:true + premultipliedAlpha:true + loseContext-no-op vises spilområdet,
+  spillet kører (lyd ved play, point, pause-menu virker). Fixet er gjort
+  PERSISTENT som Firefox-udvidelse "poki-webgl-fix@geekbox" (content-script
+  der injicerer shim'en i sidens verden via <script>-element; installeret via
+  `--install-extension` i profilen, extensions.json viser active=True).
+  Årsag til blank canvas: spillets kontekst-attributter alpha:false +
+  premultipliedAlpha:false vises IKKE af Firefox' software-compositor på
+  denne stak; med alpha:true vises de.
+- [målt] **Tilbageværende: scenen renderer ikke** — canvas'et er ensartet
+  cyan/sort (gitter-læsning 375/375 punkter ens; readPixels (0,255,255,0)
+  eller (0,0,0,0)), 0 GL-fejl, korrekt viewport/framebuffer, ioctls flyder
+  (~54/s på /dev/pvrsrvkm), rAF/lyd/point kører. HUD (point/pause) er DOM.
+  Spillets shaders er simple (mat4+texture2D), 0 compile-fejl, MRT virker
+  (testet: FBO komplet, begge attachments renderer). → scenen tegnes ikke
+  korrekt på 1.5-stakken (åbent spor).
+- [målt] **Firefox crasher hyppigt når spillet vises** (ufuldstændige
+  rapporter; tidligere dmesg "BUG: Bad page state in process Renderer") —
+  korrelerer med software-compositor'ens canvas-readback (alpha:true fik
+  canvas'et vist MEN readback-stien er ustabil på 1.5-driveren). GLES-proxy
+  med draw-tællere fangede INTET (draws går direkte til Android-libGLESv2,
+  ikke hybris-proxyen) — hook-version rullet tilbage til kendt-god.
+- [foreslået] **Næste skridt:** (a) find hvorfor scene-draws ikke giver
+  output (hook Android-libGLESv2's glDrawArrays via gdb/addresser i maps,
+  eller dekod PVRSRV-submit-ioctls under gameplay); (b) håndter readback-
+  ustabiliteten (prøv preserveDrawingBuffer:true i shim, eller alternativ
+  compositor-sti); (c) cyan-scenen kan være en driver/shader-kombination der
+  renderer forkert — sammenlign spillets vertex-shader-matematik.
 - [målt] **GPU-processen crashede igen med eglDestroySurface-NULL-mønsteret**
   under iframe-testene trods fix_egl_table (fixet kørte, men crash i en
   genstartet GPU-proces før første eglCreateContext). Boksen er ustabil efter

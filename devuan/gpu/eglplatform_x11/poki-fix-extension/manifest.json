@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "Poki WebGL-fix (GeekBox 1.5)",
+  "version": "1.0",
+  "description": "Tvinger alpha:true/premultipliedAlpha:true + blokerer WEBGL_lose_context for at få WebGL-canvasser til at vise på 1.5-stakken (GeekBox).",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "poki-webgl-fix@geekbox"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://poki.com/*", "https://*.poki.com/*", "https://*.gdn.poki.com/*"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "js": ["shim.js"]
+    }
+  ]
+}
