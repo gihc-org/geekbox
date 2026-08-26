@@ -260,37 +260,35 @@
 
 ## Status i ét blik
 
-- Baseline (diag-var. med DDR/thermal/cpuidle fra) er flashet; blå LED, men fryser.
-- Billederne ligger klar: `out/control/ramfs-control-new.img` (original kernel),
-  `out/test/ramfs-test-id.img` (PVR fra + moduler), rollback
-  `out/backup/ramfs_current.img` + `parameter_emmc_myinit_cma.txt`.
-- Udført: kontrol booter → test-kernel booter (PVR var skyld i fryseren) →
-  insmod-blokade løst (tracing-symboler) → test-trace-kernel bygget + pakket.
-- Næste: flash `out/test-trace/ramfs-test-trace-id.img` (+ standard parameter) →
-  boot → `insmod /tmp/pvrsrvkm_leddaz.ko` → dmesg `Rogue_DDK_Android rogueddk
-  1.5@3830101` → desktop-check (nodm + VT skal give LXDE) → 1.5-UM:
-  (a) __register_atfork-shim (udvid system_shim.so), (b) linker64+lib64 fra dumpet
-  til 64-bit pvrsrvctl → shader_ext_test draw_buffers → Firefox about:support.
-- AFTALT (26. aug ~15:0x): genopret system.img (ny fil + e2fsck + mv) →
-  geninstaller 1.5-UM (chmod 755!) → kør gpu_up.sh → shader_ext_test →
-  Firefox. pvrsrvctl-exit=0 opnået; shader_ext_test afventer ren boot efter
-  strømcyklus. WiFi-regressionen (bcmdhd) tages i samme kernel-byg som eventuelle
-  andre config-fix; noteres i TODO.md.
-- AFTALT (26. aug ~14:5x): **shader_ext_test = draw_buffers OK (ES2+ES3)** →
-  næste: Firefox about:support "OpenGL ES 3.1 build 1.5@3830101" +
-  WebGL-verifikation; derefter TODO/DOK-opdatering + commit.
-- AFTALT (26. aug ~15:3x): **DDK 1.5-vejen er fuldført og verificeret** (GL_VERSION
-  "OpenGL ES 3.1 build 1.5@3830101" + WebGL OK + draw_buffers OK). Restpunkter:
-  (a) næste kernel-byg: CONFIG_ANDROID_PARANOID_NETWORK fra + bcmdhd (wifi);
-  (b) 07-script: opret inet-gruppe (3003); (c) bindapi-patchen er bind-mount og
-  skal genkøres efter reboot; (d) chrony-undersøgelse (NTP afvises på vores byg —
-  HTTP-sync i myinit er arbejdsfixet); (e) cs_blur-WR-støj.
-- AFTALT (26. aug ~16:1x): **Spillet kræver GL_EXT_frag_depth, som 1.5's ES2-sti
-  mangler.** Muligheder til brugeren: (a) shader-omskrivnings-shim (hook
-  glShaderSource i GPU-processen; strip direktivet + gl_FragDepthEXT→gl_FragDepth —
-  virker kun hvis spillet kører WebGL2/ES3; dages arbejde), (b) Spor B (4.4-kernel
-  + DDK 1.8 med frag_depth — uger), (c) acceptér (spillet kræver nyere driver).
-  Bevis i `/tmp/ff_poki.log` på boksen; `frag_depth_test.c` i repoet.
+- **DDK 1.5-vejen er FULDFØRT og verificeret (26. aug):** test-trace2-kernel
+  (PVR fra, TRACING, VT, compat-403) flashet; 1.5-KM `.ko` (1.5@3830101) insmod'et;
+  1.5-UM (32-bit) + 64-bit pvrsrvctl + frisk 6.0-libc/linker installeret;
+  `pvrsrvctl-exit=0`; `shader_ext_test` draw_buffers OK (ES2+ES3); WebGL OK;
+  `GL_VERSION = "OpenGL ES 3.1 build 1.5@3830101"`.
+- **Netværk/ur:** inet-gruppe (3003) løser CONFIG_ANDROID_PARANOID_NETWORK;
+  HTTP-ur-sync i myinit (NTP-spor åbent — chrony fejler stadig).
+- **Subway Surfers:** shader-blokaderne (GL_EXT_frag_depth-probe + WR cs_blur
+  heltals-varying) er LØST via proxy-omskrivning (eglGetProcAddress-hooks);
+  spilsiden loader, kontekst oprettes, 0 compile-fejl, 0 kontekst-tab — MEN
+  præsentationen fejler: gralloc-lock EINVAL i Firefox' GPU-proces (selvt est på
+  frisk buffer fejler der; standalone OK) — dybere PVR-klient/driver-integration,
+  ULØST.
+- **Compat-403 kernel-fix verificeret:** 0 syscall-403-spam (bionic 6.0's
+  clock_gettime virker nu).
+- **Boks-tilstand:** 192.168.0.108 (IP skifter pr. boot); kernel test-trace2;
+  proxy'er + patchet x11ws i /opt/hybris (persisterer); 1.5-gralloc i /system;
+  originale hybris-libs kan genskabes fra /root/hybris_backup.
+
+## Næste skridt
+
+- **Brugerens valg står åbent:** (1) jagte GPU-processens gralloc-lock (åbent
+  reverse-engineering-spor — se handover), (2) Spor B (4.4-kernel + DDK 1.8, uger),
+  (3) acceptér 1.5 (alt WebGL undtagen Subway Surfers).
+- Uanset valg: næste kernel-byg bør slå `CONFIG_ANDROID_PARANOID_NETWORK` FRA +
+  tilføje bcmdhd (wifi mangler); 07-scriptet har allerede inet-gruppen.
+- NTP-undersøgelse (chrony: "No suitable source" selv efter 403-fix).
+- Efter hver reboot: bring-up = `insmod /root/pvrsrvkm_leddaz.ko` + `gpu_up.sh` +
+  bindapi-patchen (bind-mount); proxy'er/x11ws i /opt overlever.
 - AFTALT (26. aug ~17:2x): **Shader-omskrivningen er afprøvet og virker** (frag_depth
   + cs_blur løst; spilsiden loader, kontekst oprettes) — men spillet fejler stadig på
   GPU-/kompositorproces-niveau ("WebGL actor Initialize failed" / AbnormalShutdown),
