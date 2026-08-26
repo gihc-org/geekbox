@@ -28,6 +28,13 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   har bcmdhd indbygget). Fix: næste kernel-byg med bcmdhd slået på; firmware ligger
   i /system/etc/firmware (kræver velfungerende system.img). Se
   `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
+- [ ] **NTP i stedet for HTTP-ur-sync (26. aug 2026, brugerønsket):** myinit's
+  HTTP-Date-sync er arbejdsfixet; ønsket er at få chrony/NTP til at virke. Tidligere
+  fejl: "No suitable source for synchronisation" selv med makestep — MISTANKE:
+  samme syscall-403-problem (chrony er 32-bit armhf; brugte muligvis clock_gettime64
+  der fejlede). Den nye kernel (compat-403-fix, build 26. aug ~17:5x) kan have
+  fikset det — TEST chrony igen efter flash. Hvis det virker: fjern HTTP-fixet fra
+  myinit (eller behold som fallback).
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)

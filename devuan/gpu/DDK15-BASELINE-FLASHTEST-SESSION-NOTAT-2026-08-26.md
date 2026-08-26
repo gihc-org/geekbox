@@ -365,6 +365,14 @@
   404 poster + syscall 403 → `sys_clock_gettime` (timespec64-layout matcher native
   på arm64) i build_kernel.sh (sed + append). Byg kører; næste: pak + flash +
   gentest spillet.
+- [målt] **Compat-403-fixet VIRKER (26. aug ~18:0x):** ny kernel (3.10.0 #1,
+  17:52) flashet; **0 syscall-403-spam** (tidligere uendelig). Bionic 6.0's
+  clock_gettime virker nu. Men gralloc-lock fejler STADIG i Firefox' GPU-proces
+  (93× EINVAL; selvt est på frisk buffer i GPU-processen = lock=-22; standalone =
+  OK) → fejlen er en dybere PVR-klient/driver-integrationssag i præsentationsstien,
+  ikke 403. KONTEKST_TABT=0, COMPILE_FEJL=0 (shader-vejen er ren).
+- [målt] **Chrony fejler stadig efter 403-fix** (tomme sources, ur forbliver 2013)
+  → NTP-sporet er åbent; HTTP-sync i myinit forbliver arbejdsfixet. Ur sat manuelt.
 
 ## Nøglekommandoer
 
