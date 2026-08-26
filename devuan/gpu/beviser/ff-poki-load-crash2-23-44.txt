@@ -1,0 +1,49 @@
+AdapterDeviceID: PowerVR Rogue G6110
+AdapterDriverVersion: 1.5.0.0
+AdapterVendorID: Imagination Technologies
+AvailablePageFile: 1760296960
+AvailablePhysicalMemory: 1117814784
+AvailableSwapMemory: 2147479552
+BackgroundTaskMode: 0
+BuildID: 20260609153453
+ContentSandboxCapabilities: 21
+ContentSandboxCapable: 1
+ContentSandboxLevel: 0
+CrashTime: 1787780740
+DOMFissionEnabled: 0
+DOMIPCEnabled: 1
+DesktopEnvironment: openbox
+EMCheckCompatibility: true
+EventLoopNestingLevel: 1
+GpuSandboxLevel: 0
+GraphicsCriticalError: |[0][GFX1-]: No GPUs detected via PCI
+ (t=2.78957) |[1][GFX1-]: vaapitest: ERROR (t=3.60955) |[2][GFX1-]: vaapitest: VA-API test failed: failed to open renderDeviceFD.
+ (t=3.60955) 
+GraphicsNumActiveRenderers: 1
+GraphicsNumRenderers: 1
+HeadlessMode: 0
+InstallTime: 1358758364
+IsWayland: 0
+LastStartupWasCrash: 0
+Notes: Devuan GNU/Linux 6 (excalibur)FP(D10-L1100-W0000010-T01) WR? WR+ WebGL! EGL? EGL- GL Context? GL Context+ 
+ProductID: {ec8030f7-c20a-464f-9b0e-13a3a9e97384}
+ProductName: Firefox
+RDDProcessStatus: Running
+ReleaseChannel: esr
+SafeMode: 0
+SecondsSinceLastCrash: 124
+StartupCacheValid: 1
+StartupCrash: 0
+StartupTime: 1787780728
+SubmittedFrom: Client
+TelemetryEnvironment: {"build":{"applicationId":"{ec8030f7-c20a-464f-9b0e-13a3a9e97384}","applicationName":"Firefox","architecture":"arm","buildId":"20260609153453","version":"140.12.0","vendor":"Mozilla","displayVersion":"140.12.0esr","platformVersion":"140.12.0","xpcomAbi":"arm-eabi-gcc3","updaterAvailable":false},"partner":{"distributionId":null,"distributionVersion":null,"partnerId":null,"distributor":null,"distributorChannel":null,"partnerNames":[]},"system":{"memoryMB":1999,"virtualMaxMB":null,"cpu":{"extensions":["hasEDSP","hasARMv6","hasARMv7","hasNEON"]},"os":{"name":"Linux","version":"3.10.0","locale":"en-US-posix","distro":"Devuan","distroVersion":"6"},"hdd":{"profile":{"model":null,"revision":null,"type":null},"binary":{"model":null,"revision":null,"type":null},"system":{"model":null,"revision":null,"type":null}},"gfx":{"D2DEnabled":null,"DWriteEnabled":null,"ContentBackend":"Skia","Headless":false,"TargetFrameRate":60,"textScaleFactor":1,"adapters":[{"description":"PowerVR Rogue G6110","vendorID":"Imagination Technologies","deviceID":"PowerVR Rogue G6110","subsysID":null,"RAM":0,"driver":null,"driverVendor":null,"driverVersion":"1.5.0.0","driverDate":null,"GPUActive":true}],"monitors":[{"screenWidth":1920,"screenHeight":1080,"defaultCSSScaleFactor":1,"contentsScaleFactor":1}],"features":{"compositor":"none","hwCompositing":{"status":"disabled:FEATURE_FAILURE_COMP_PREF"},"gpuProcess":{"status":"unavailable:"},"webrender":{"status":"unavailable-no-hw-compositing"},"wrCompositor":{"status":"blocklisted:FEATURE_FAILURE_WEBRENDER_COMPOSITOR_DISABLED"},"openglCompositing":{"status":"unavailable:FEATURE_FAILURE_OPENGL_NEED_HWCOMP"},"omtp":{"status":"unused"}}},"appleModelId":null,"hasWinPackageId":null},"settings":{"blocklistEnabled":true,"e10sEnabled":true,"e10sMultiProcesses":1,"fissionEnabled":false,"locale":"en-US","intl":{},"update":{"channel":"esr","enabled":false,"autoDownload":false,"background":false},"userPrefs":{"browser.newtabpage.enabled":false,"browser.shell.checkDefaultBrowser":false,"browser.search.region":"DK","browser.startup.page":0,"browser.urlbar.autoFill":true,"browser.urlbar.autoFill.adaptiveHistory.enabled":false,"browser.urlbar.dnsResolveSingleWordsAfterSearch":0,"browser.urlbar.quicksuggest.dataCollection.enabled":false,"browser.urlbar.suggest.quicksuggest.nonsponsored":false,"browser.urlbar.suggest.quicksuggest.sponsored":false,"devtools.chrome.enabled":true,"devtools.debugger.remote-enabled":true,"dom.max_script_run_time":0,"extensions.autoDisableScopes":0,"extensions.enabledScopes":5,"extensions.update.enabled":false,"extensions.update.url":"http://%(server)s/extensions-dummy/updateURL","extensions.update.background.url":"http://%(server)s/extensions-dummy/updateBackgroundURL","layers.acceleration.disabled":true,"media.gmp-manager.lastCheck":1787774382,"media.gmp-manager.lastEmptyCheck":1787774382,"network.http.microsoft-entra-sso.enabled":false,"network.trr.strict_native_fallback":false,"signon.autofillForms":false,"signon.rememberSignons":false,"widget.content.gtk-high-contrast.enabled":true,"xpinstall.signatures.required":false},"sandbox":{"effectiveContentProcessLevel":0,"contentWin32kLockdownState":3},"addonCompatibilityCheckEnabled":true,"isDefaultBrowser":null},"profile":{}}
+Throttleable: 1
+TotalPageFile: 4243058688
+TotalPhysicalMemory: 2095579136
+URL: https://poki.com/en/g/subway-surfers
+UptimeTS: 12.199362
+Vendor: Mozilla
+Version: 140.12.0
+useragent_locale: en-US
+This report also contains technical information about the state of the application when it crashed.
+

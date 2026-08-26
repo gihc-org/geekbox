@@ -126,18 +126,22 @@ EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
 {
     static real_eglMakeCurrent_t real;
     static real_eglGetError_t err;
+    static long n;
     if (!real) {
         real = (real_eglMakeCurrent_t)dlsym(RTLD_NEXT, "eglMakeCurrent");
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
     }
     EGLBoolean rc = real(dpy, draw, read, ctx);
     EGLint e = err ? err() : EGL_SUCCESS;
-    FILE *f = plog();
-    if (f) {
-        fprintf(f, "eglMakeCurrent dpy=%p draw=%p read=%p ctx=%p rc=%d err=0x%x\n",
-                (void *)dpy, (void *)draw, (void *)read, (void *)ctx, (int)rc,
-                (unsigned)e);
-        fclose(f);
+    n++;
+    if (n <= 5 || n % 100 == 0) {
+        FILE *f = plog();
+        if (f) {
+            fprintf(f, "eglMakeCurrent #%ld dpy=%p draw=%p read=%p ctx=%p rc=%d err=0x%x\n",
+                    n, (void *)dpy, (void *)draw, (void *)read, (void *)ctx, (int)rc,
+                    (unsigned)e);
+            fclose(f);
+        }
     }
     return rc;
 }
@@ -146,17 +150,21 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 {
     static real_eglSwapBuffers_t real;
     static real_eglGetError_t err;
+    static long n;
     if (!real) {
         real = (real_eglSwapBuffers_t)dlsym(RTLD_NEXT, "eglSwapBuffers");
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
     }
     EGLBoolean rc = real(dpy, surface);
     EGLint e = err ? err() : EGL_SUCCESS;
-    FILE *f = plog();
-    if (f) {
-        fprintf(f, "eglSwapBuffers dpy=%p surf=%p rc=%d err=0x%x\n",
-                (void *)dpy, (void *)surface, (int)rc, (unsigned)e);
-        fclose(f);
+    n++;
+    if (n <= 5 || n % 100 == 0) {
+        FILE *f = plog();
+        if (f) {
+            fprintf(f, "eglSwapBuffers #%ld dpy=%p surf=%p rc=%d err=0x%x\n",
+                    n, (void *)dpy, (void *)surface, (int)rc, (unsigned)e);
+            fclose(f);
+        }
     }
     return rc;
 }
