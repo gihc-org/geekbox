@@ -105,6 +105,26 @@ EOF
         i=$((i+1))
         sleep 10
     done
+    # Hvis netværket/DNS stadig ikke er klar: fortsæt i baggrunden (op til ~3 min)
+    if [ "$(date +%s)" -lt 1700000000 ]; then
+        (
+            j=0
+            while [ "$j" -lt 12 ] && [ "$(date +%s)" -lt 1700000000 ]; do
+                python3 - >/root/clock-sync.log 2>&1 <<'EOF' && break
+import urllib.request, email.utils, subprocess
+try:
+    h = urllib.request.urlopen("http://example.com", timeout=8).headers["Date"]
+    t = int(email.utils.parsedate_to_datetime(h).timestamp())
+    subprocess.run(["date", "-s", f"@{t}"], check=True)
+    print("ur synkroniseret til", t)
+except Exception as e:
+    print("ur-sync fejlede:", e)
+EOF
+                j=$((j+1))
+                sleep 15
+            done
+        ) >/root/clock-sync-bg.log 2>&1 &
+    fi
 fi
 
 # dropbear virker på 3.10; OpenSSH 10 gør ikke (seccomp-sandbox kræver nyere kernel)

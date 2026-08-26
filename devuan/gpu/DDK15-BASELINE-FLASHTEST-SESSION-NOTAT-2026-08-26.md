@@ -291,6 +291,34 @@
   virker kun hvis spillet kører WebGL2/ES3; dages arbejde), (b) Spor B (4.4-kernel
   + DDK 1.8 med frag_depth — uger), (c) acceptér (spillet kræver nyere driver).
   Bevis i `/tmp/ff_poki.log` på boksen; `frag_depth_test.c` i repoet.
+- [målt] **#1 AFKLARET (26. aug ~16:3x): spillet er PixiJS og kører WebGL2/ES3 på
+  desktop** (`PREFER_ENV = isMobile ? WEBGL : WEBGL2` i dependencies.bundle.js;
+  ES3-kernens `gl_FragDepth` kompilerer OK) → shader-omskrivning er farbar.
+  Hook-mekanisme: Firefox dlsym'er EGL/GLES-funktionerne direkte → LD_PRELOAD
+  omgås → løsningen er PROXY-biblioteker i /opt/hybris (omdøb originalen +
+  SONAME-patch + tynd proxy der kun eksporterer hooks og linker originalen).
+- [udført] **Proxy-biblioteker bygget + installeret (26. aug ~16:4x):**
+  `egl_proxy.c` (eglCreateContext → log version) + `glesv2_proxy.c`
+  (glShaderSource → strip GL_EXT_frag_depth-direktiv + gl_FragDepthEXT→
+  gl_FragDepth) + `patch_soname.py`. Originaler i /root/hybris_backup/.
+  GL-check efter install: gl_version_probe = 1.5@3830101 OK (proxy bryder ikke
+  stakken).
+- [målt] **SPILTEST MED PROXY → GRØN SKÆRM + HÅRD LOCKUP (26. aug ~16:5x):**
+  boksen svarede ikke på ssh (connection timeout), skærmen helt grøn → strømcyklus.
+  Sandsynlig årsag: proxy'en frigjorde de omskrevne shader-strengene efter
+  glShaderSource, men driveren kan beholde pointerne til glCompileShader →
+  use-after-free → GPU-hæng. **FIX: frigør IKKE (læk bevidst) — patchet i
+  glesv2_proxy.c.** Efter genstart: beslut om proxy'erne beholdes (med fix) eller
+  originalerne genskabes fra /root/hybris_backup/, og gentag forsigtigt.
+- [udført] **Genopretning efter lockup (26. aug ~16:2x):** strømcyklus → boksen oppe;
+  originale hybris-libs genskabt fra /root/hybris_backup (gl_version_probe =
+  1.5@3830101 OK), GPU-stak bragt op (insmod + gpu_up → pvrsrvctl-exit=0),
+  bindapi-patchen genanvendt (4× TRUE), ur sat manuelt. myinit.sh opgraderet med
+  BAGGRUNDS-ur-sync (12×15 s efter de første 5×10 s) — boot-DNS-fejlen ramte alle
+  forsøg igen, så baggrunds-retry er nødvendig.
+- [afventer] **Beslutning: retest af den FIKSEDE proxy (kort, kontrolleret kørsel)
+  eller stop ved kendt-god 1.5.** Originalerne er sikret; fixet (ingen free) er i
+  glesv2_proxy.c. Risiko: endnu en lockup (koster strømcyklus).
 
 ## Nøglekommandoer
 
