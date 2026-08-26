@@ -855,6 +855,10 @@ i 5.1-libc, kun `__cxa_atexit`); (c) dumpets `pvrsrvctl` er 64-bit (ubrugbar på
 0x9194 som 1.4). DDK 1.8 er kun fundet til kernel 4.4. Restore til 1.4
 gennemført og verificeret. Fuld detalje: `devuan/gpu/DDK-PROEVEINSTALLATION-
 SESSION-NOTAT-2026-08-26.md`; plan/backup: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
+**Løsning dokumenteret (26. aug ~04:2x):** kernel-rebuild med 1.5-KM fra
+`geekboxzone/mmallow_kernel` (gren `geekbox`, `drivers/gpu/rogue`) indbygget i 3.10
+(helst i samme hug opgraderet til 3.10.108, jf. DRIVER-PORTERING.md §6) + løsning af
+de to blokader — se `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md`.
 
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af

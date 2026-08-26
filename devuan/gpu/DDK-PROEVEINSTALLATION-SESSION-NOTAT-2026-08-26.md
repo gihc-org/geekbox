@@ -38,6 +38,16 @@
   bind-mount-patches genoprettet (bindapi + driver-minor), GPU-stak startet
   (pvrsrvctl-exit=0), baseline bekræftet: shader_ext_test = "Extension not supported"
   (1.4-adfærd).
+- [udført] **Løsningsdokument oprettet (26. aug ~04:2x, [codex:gpt-5]):**
+  `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md` beskriver den fulde vej —
+  kernel-rebuild med 1.5-KM fra `geekboxzone/mmallow_kernel` (gren `geekbox`,
+  `drivers/gpu/rogue` = 1.5@3830101) + løsning af blokaderne (`__register_atfork`
+  via shim/patch; 64-bit `pvrsrvctl` via dumpets 64-bit-runtime). Refereret i
+  TODO.md + DOKUMENTATION.md §5.15e.
+- [foreslået] **Næste skridt (kræver brugerens go):** build-forberedelse — klargør
+  aarch64-krydskompileren, klon `mmallow_kernel` gren `geekbox`, verificér
+  `drivers/gpu/rogue` = 1.5@3830101, byg baseline-kernel (uændret) og derefter
+  testkernel med 1.5-KM indbygget (`CONFIG_PVR_ROGUE=y`); test på SD før flash.
 
 ## Status i ét blik
 
@@ -52,6 +62,10 @@
   hovedet tillader modul-load: insmod gav "Invalid module format" på 1.4-ko'en — tyder
   på CONFIG_MODVERSIONS/vermagic-mismatch eller moduler slået fra), (c) find spil uden
   MRT-shaders, (d) acceptér begrænsningen.
+- **Løsningen er dokumenteret (26. aug ~04:2x):** kernel-rebuild med 1.5-KM er den
+  samlede vej (både ABI-fix og blokade-løsninger) — se
+  `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md`; næste skridt er
+  build-forberedelse, som afventer brugerens godkendelse.
 
 ## Detaljeret forløb
 
