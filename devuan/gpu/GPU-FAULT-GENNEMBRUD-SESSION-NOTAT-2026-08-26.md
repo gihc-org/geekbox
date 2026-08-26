@@ -65,6 +65,21 @@
   parallell (stress-side) mekanisme; selve spillet blokeres af shader-EXT.
   Bevis: `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log` +
   `devuan/gpu/eglplatform_x11/shader_ext_test.c`.
+- [målt] **WebGL1-tvang hjælper IKKE (26. aug, 02:1x):** `webgl.enable-webgl2=false`
+  slår WebGL2 fra (målt: webgl_check viser WebGL2=INGEN, WebGL1=OK, draw_buffers
+  ext=NEJ), og driver-patch (fjern GL_EXT_draw_buffers fra GL_EXTENSIONS via
+  bind-mount, md5 acaad3bc) virker også (extcheck: draw_buffers væk) — MEN
+  Subway Surfers fejler stadig (12 shader-fejl, present #2, "WebGL context was
+  lost" fra poki-siden). Årsag: spillet (Unity WebGL1-renderer) bruger MRT via
+  `#extension GL_EXT_draw_buffers : require` i sine EGNE shaders — og driver-
+  kompileren afviser direktivet uanset om udvidelsen er i GL_EXTENSIONS.
+  Målt isoleret (`trivial_test.c`): triviel shader OK, tom shader OK, shader med
+  direktivet FEJL — kompileren har en hardkodet (lukket) liste over GLSL-
+  extensioner, og draw_buffers står ikke på den.
+- [konklusion] **MRT-blokaden er en driver-begrænsning, ikke en konfigurations-
+  fejl:** Subway Surfers (Unity) kræver MRT (multiple render targets) via
+  GL_EXT_draw_buffers, og 2016-æra PowerVR-blob'en kan ikke kompilere de
+  shaders. Ikke løsbart på userspace-siden (prefs/patch af udvidelsesstreng).
 
 ## Status i ét blik
 
@@ -121,20 +136,46 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
 
 ## Næste skridt (i rækkefølge)
 
-1. **Shader-EXT-blokaden er nu det PRIMÆRE spor for selve spillet:** find en
-   vej udenom `GL_EXT_draw_buffers`/`GL_EXT_frag_depth`-kravene — fx (a) tving
-   WebGL1 i Firefox (prefs/webgl.force-enabled-relaterede), (b) undersøg om
-   en nyere PVR-driver/DDK kompilerer dem (vendor-2016 vs nyere DDK),
-   (c) kontrollér om Unity har et lavere kvalitets-flag, eller (d) find et
-   andet spil der ikke bruger MRT-shaders.
+1. **MRT-blokaden er afklaret som driver-begrænsning:** Subway Surfers (Unity)
+   kræver `GL_EXT_draw_buffers`-shaders, og 2016-æra PowerVR-blob'ens
+   shader-kompiler afviser direktivet (uanset udvidelsesliste/patch). Veje
+   videre: (a) nyere DDK/driver (stort projekt), (b) find et andet spil der
+   ikke bruger MRT-shaders (WebGL1-spil uden Unity-modern-renderer),
+   (c) acceptér begrænsningen for moderne Unity-spil.
 2. **Buffer-fixet står:** stress-siden nåede #350–450 uden reset og
    PVR-faulten er væk (men et sent reset kom ved ~#450 i én kørsel — flaky
    mønsteret er reduceret, ikke helt væk).
-3. **Optimering (åbent spor):** eglMakeCurrent koster ~2× pr. present — veje
-   videre hvis FPS skal op: (a) patche vendor-eglMakeCurrent, (b) reducér
-   MakeCurrent-kald, (c) XShm. XSync og konverteringen er afkræftet.
+3. **Reverse-engineering af blob'en (vurderes, se nedenfor):** shader-
+   kompileren (USC) er en lukket firmware-del; at erstatte den kræver enten en
+   nyere DDK eller at reverse-engineere driveren helt (år-klassen).
 4. **Fang dmesg STRAKS efter evt. reset** (ring-roterer på få minutter) —
    tilføj `dmesg -c`-overvågning i start_game.sh.
+
+## Reverse-engineering af blob'en? Erstatte den med noget hjemmebygget?
+
+Ærlig vurdering (26. aug 2026):
+
+- **At "lappe" blob'en** (fx fjerne en extension fra strengen) virker kun hvor
+  driveren har en tekst-streng — det har vi gjort. **Shader-kompileren er ikke
+  sådan at lappe:** USC-kompileringen (GLSL → firmware-instruktioner) ligger i
+  en lukket del af `libGLESv2_POWERVR_ROGUE.so` + GPU-firmware, og dens
+  extension-liste er hardkodet i kompiler-logikken, ikke i en tekst-streng.
+- **At erstatte blob'en med en hjemmebygget driver** = at skrive en fuld
+  OpenGL ES 3.1-driver til PowerVR Rogue G6110 fra bunden: USC-instruktionssæt,
+  tekstur/RT-hardware, firmware-kontrakt (pvrsrvkm), gralloc/ION-integration.
+  Det er ikke en uge- eller månedsopgave — det er et flerårigt driverprojekt
+  (PowerVR Rogue har intet offentligt dokumenteret ISA, og vendors firmware er
+  lukket). Urealistisk som hjemmeprojekt.
+- **Realistiske alternativer:** (a) en nyere DDK fra en anden Android-enhed med
+  G6110/G62xx (skal matche kernen 3.10 + pvrsrvkm-ABI — svært men ikke
+  umuligt: vendor-2016 er DDK 1.4, nyere findes til RK3368-efterfølgere);
+  (b) Mesa's PowerVR-driver findes kun til nyere kerner (panfrost-lignende
+  til Rogue) og kræver mainline-KMS — vores 3.10-kernel kan ikke; (c) find et
+  spil der ikke kræver MRT (WebGL1-spil med enkel renderer).
+- **Næste realistiske skridt hvis spil er målet:** undersøg om der findes en
+  nyere PowerVR-DDK til RK3368 (fx fra Android 7/8-enheder med G6110) med
+  draw_buffers-understøttelse — og om den kan køre på 3.10-kernen. Det er et
+  afgrænset research-spor, ikke et build-projekt vi starter nu.
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)
 

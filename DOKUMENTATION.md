@@ -829,8 +829,16 @@ GL_EXTENSIONS (driver-inkonsistens); `GL_EXT_frag_depth` er slet ikke i
 GL_EXTENSIONS. Konsekvens: spillets render-shaders kompilerer ikke → ingen
 frames præsenteres → det kendte frys (present #2, load stiger). Dette er den
 EGENTLIGE spil-blokade; GPU-reset/buffer-fix var en separat mekanisme på
-stress-siden. Veje videre: tving WebGL1 (hvis spillet kan køre uden MRT),
-nyere DDK, andet spil. Bevis: `devuan/gpu/beviser/ff_game2-subway-2026-08-26.log`.
+stress-siden. **WebGL1-tvang afkræftet (02:1x):** `webgl.enable-webgl2=false`
+slår WebGL2 fra og driver-patch (fjern GL_EXT_draw_buffers fra GL_EXTENSIONS,
+bind-mount, md5 acaad3bc) virker — men spillet fejler stadig, fordi Unitys
+EGNE shaders kræver MRT via direktivet, og kompileren afviser det uanset
+udvidelseslisten (målt isoleret med `trivial_test.c`: triviel shader OK, shader
+med direktivet FEJL). **Konklusion: MRT-blokaden er en 2016-æra driver-
+begrænsning, ikke en konfigurationsfejl.** Veje videre: nyere DDK (research-
+spor), spil uden MRT-shaders, eller accept. Bevis:
+`devuan/gpu/beviser/ff_game2-subway-2026-08-26.log` +
+`devuan/gpu/beviser/ff_game5-webgl1-tvang.log`.
 
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
