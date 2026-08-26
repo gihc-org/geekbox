@@ -323,6 +323,20 @@ def main():
             })
             print("CTXLOSS-DATA:", json.dumps(r)[:800])
             if len(sys.argv) > 5 and sys.argv[5] == "dump" and game_ctx:
+                # find spil-konteksten igen (iframe'en kan være kommet efter reload)
+                if game_ctx:
+                    tree2 = call("browsingContext.getTree", {})
+                    ctxs2 = []
+                    def walk2(items):
+                        for it in items or []:
+                            ctxs2.append(it)
+                            walk2(it.get("children"))
+                    walk2(tree2.get("result", {}).get("contexts", []))
+                    for c in ctxs2:
+                        if "gdn.poki.com" in c.get("url", ""):
+                            game_ctx = c.get("context")
+                            print("spil-kontekst-genfundet:", game_ctx)
+                            break
                 expr = (
                     "var cvs=document.querySelectorAll('canvas');"
                     "var out=[];"

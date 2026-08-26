@@ -67,7 +67,7 @@ CC6B_DEC=70280
 CC7_OFF=0x112c4
 CC7_DEC=70340
 
-ssh -i "$KEY" -o ConnectTimeout=8 "$BOX" "
+ssh -i "$KEY" -o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$BOX" "
 set -e
 mkdir -p /root/egl_patch
 if [ ! -f /root/libEGL_android.orig ]; then
