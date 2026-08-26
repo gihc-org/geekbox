@@ -39,7 +39,12 @@ echo "== bruger + grupper + nøgler =="
 chroot "$ROOTFS" /usr/sbin/useradd -m -s /bin/bash kristian || true
 # video: /dev/fb0 er root:video, og uden gruppen kan sessionens fb_overscan.py ikke
 # åbne framebufferen — den fejler tavst i autostart (fundet 18. aug 2026)
-chroot "$ROOTFS" /usr/sbin/usermod -aG sudo,input,audio,video kristian
+# inet (gid 3003): nødvendig pga. vendor-kernens CONFIG_ANDROID_PARANOID_NETWORK —
+# kun root og gruppe-3003-medlemmer kan oprette sockets (målt 26. aug 2026:
+# Firefox som kristian fik EACCES på socket() uden den). Fixes også i kernel-
+# config (næste byg), men gruppen skal med uanset.
+chroot "$ROOTFS" /usr/sbin/groupadd -g 3003 inet || true
+chroot "$ROOTFS" /usr/sbin/usermod -aG sudo,input,audio,video,inet kristian
 echo 'kristian:geekbox' | chroot "$ROOTFS" /usr/sbin/chpasswd   # midlertidig — SKIFT!
 for u in root kristian; do
     home=$([ "$u" = root ] && echo /root || echo /home/kristian)

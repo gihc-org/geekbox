@@ -169,6 +169,55 @@
   Løsning A (atfork-shim + 5.1-libc) i stedet for 6.0-libc-bytte.
 - [udført] **Test-kit lagt i /root (overlever strømcyklus):** pvrsrvkm_leddaz.ko
   (8338734f), shader_ext_test, trivial_test, kilder. /system umountet rent.
+- [målt] **Rodårsag til "libc.so is not a valid ELF object": boksens libc-6.0.so
+  (512cbcd2) var KORRUPT** — arv fra nulstillings-episoden. Frisk download fra
+  dumpet (system/lib/libc.so) har md5 `99dcc69f262a4e55440b10293d5c7bc8` (samme
+  størrelse 542.192 B). Med den friske libc loader 1.5-kæden korrekt.
+- [målt] **DET STORE GENNEMBRUD (26. aug ~14:5x): shader_ext_test =**
+  ```
+  ES2: compile=OK info=Success.
+  ES3: compile=OK info=Success.
+  ```
+  **GL_EXT_draw_buffers accepteres nu af 1.5-kompileren i både ES2 og ES3.**
+  Kæden: test-trace-kernel (PVR fra, TRACING+VT) → insmod pvrsrvkm_leddaz.ko
+  (1.5@3830101) → gpu_up.sh (pvrsrvctl-exit=0, 64-bit) → 1.5-UM (32-bit) +
+  frisk 6.0-libc + 6.0-linker. Eneste restfejl: "Library 'libPVRDebugger.so not
+  found" (valgfri debugger-lib, ikke-fatal).
+- [målt] **6.0-libc ægte md5 (reference): `99dcc69f262a4e55440b10293d5c7bc8`** —
+  gemt på boksen som /root/libc-6.0-frisk-99dcc69f.so; installeret i
+  /system/lib/libc.so.
+- [målt] **Uret stod på 2013 (ingen RTC) → HTTPS/TLS fejlede ("certificate is not
+  yet valid") → Firefox så "ingen internet".** chrony fik ingen kilder ("No suitable
+  source for synchronisation", selv med makestep — sandsynligvis kernel-config
+  relateret på vores byg; undersøges senere). Fix: myinit.sh synker nu uret via
+  HTTP-Date (port 80 virker) når uret er < 2023. HTTPS = 200 bagefter.
+- [målt] **Firefox (bruger kristian) kunne IKKE oprette sockets: EACCES på
+  `socket(AF_INET, SOCK_DGRAM)`** — root kunne. Rodårsag:
+  `CONFIG_ANDROID_PARANOID_NETWORK=y` (marts-defconfig; af_inet.c:
+  `current_has_network()` = `in_egroup_p(AID_INET) || capable(CAP_NET_RAW)`).
+  Fix på boksen: `groupadd -g 3003 inet; usermod -aG inet kristian` → DNS +
+  Firefox virker (titel "Example Domain — Mozilla Firefox"). **Proper fix: næste
+  kernel-byg skal have CONFIG_ANDROID_PARANOID_NETWORK FRA** (+ bcmdhd for wifi).
+  07-scriptet skal også oprette inet-gruppen.
+- [udført] **bindapi-patchen anvendt (26. aug ~15:1x):** `patch_android_bindapi.sh`
+  mod .119 → alle 4 eglBindAPI-kald (inkl. ES3) returnerer TRUE err=0x3000.
+  Bind-mount (varer til genstart; køres igen efter reboot).
+- [målt] **WEBGL VIRKER I FIREFOX (26. aug ~15:2x):** webgl_test_dump.html →
+  `WEBGL_RESULT OK PowerVR Rogue G6200, or similar WebGL 2.0` (WebGL 2.0-kontekst,
+  shader kompileret, 3 frames tegnet). cs_blur-WR-shaderfejl er baggrundsstøj
+  (blokerer ikke WebGL).
+- [målt] **SLUTVERIFIKATION (26. aug ~15:2x):** ny `gl_version_probe.c` viser
+  direkte fra 1.5-stakken:
+  ```
+  GL_VERSION:  OpenGL ES 3.1 build 1.5@3830101
+  GL_RENDERER: PowerVR Rogue G6110
+  GL_VENDOR:   Imagination Technologies
+  ```
+  = præcis det about:support skal vise. DDK 1.5-vejen er dermed FULDFØRT:
+  test-trace-kernel + 1.5-KM (.ko) + 1.5-UM + pvrsrvctl-exit=0 + draw_buffers OK
+  (ES2+ES3) + WebGL OK + versionsstreng bekræftet.
+- [udført] **`devuan/gpu/eglplatform_x11/gl_version_probe.c` tilføjet** (repo) —
+  genbrugbar verifikation uden at åbne about:support.
 - [foreslået] **Sandsynlig byg-forskel hvis kontrol booter:** marts-defconfig
   har `CONFIG_RTL8188EU=y` + `WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP=y`, men boksen
   bruger bcmdhd (wlan0, /system/etc/firmware) → rtl8188eu-probe ved boot er en
@@ -192,6 +241,15 @@
   Firefox. pvrsrvctl-exit=0 opnået; shader_ext_test afventer ren boot efter
   strømcyklus. WiFi-regressionen (bcmdhd) tages i samme kernel-byg som eventuelle
   andre config-fix; noteres i TODO.md.
+- AFTALT (26. aug ~14:5x): **shader_ext_test = draw_buffers OK (ES2+ES3)** →
+  næste: Firefox about:support "OpenGL ES 3.1 build 1.5@3830101" +
+  WebGL-verifikation; derefter TODO/DOK-opdatering + commit.
+- AFTALT (26. aug ~15:3x): **DDK 1.5-vejen er fuldført og verificeret** (GL_VERSION
+  "OpenGL ES 3.1 build 1.5@3830101" + WebGL OK + draw_buffers OK). Restpunkter:
+  (a) næste kernel-byg: CONFIG_ANDROID_PARANOID_NETWORK fra + bcmdhd (wifi);
+  (b) 07-script: opret inet-gruppe (3003); (c) bindapi-patchen er bind-mount og
+  skal genkøres efter reboot; (d) chrony-undersøgelse (NTP afvises på vores byg —
+  HTTP-sync i myinit er arbejdsfixet); (e) cs_blur-WR-støj.
 
 ## Nøglekommandoer
 

@@ -83,6 +83,25 @@ fi
 grep -q nameserver /etc/resolv.conf 2>/dev/null || \
     echo "nameserver $(ip route | awk '/default/ {print $3; exit}')" > /etc/resolv.conf
 
+# Uret: boksen har ingen RTC og chrony/NTP kan fejle på vendor-kernen (målt 26. aug
+# 2026: "No suitable source for synchronisation" selv med makestep på vores
+# genbyggede kernel — undersøges). Uden korrekt tid afvises HTTPS/TLS-certifikater
+# ("certificate is not yet valid"), så Firefox viser "ingen internet". Synk derfor
+# via HTTP-Date-headeren (port 80 virker på denne router); kun hvis uret er langt
+# forkert (< 2023) og kun når netværket er oppe.
+if [ "$(date +%s)" -lt 1700000000 ]; then
+    python3 - >/root/clock-sync.log 2>&1 <<'EOF' || true
+import urllib.request, email.utils, subprocess
+try:
+    h = urllib.request.urlopen("http://example.com", timeout=8).headers["Date"]
+    t = int(email.utils.parsedate_to_datetime(h).timestamp())
+    subprocess.run(["date", "-s", f"@{t}"], check=True)
+    print("ur synkroniseret til", t)
+except Exception as e:
+    print("ur-sync fejlede:", e)
+EOF
+fi
+
 # dropbear virker på 3.10; OpenSSH 10 gør ikke (seccomp-sandbox kræver nyere kernel)
 # -s: kun nøgle-login, ingen kodeord
 dropbear -s -R -p 22

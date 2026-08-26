@@ -295,6 +295,16 @@ i pædagogisk form: HAANDBOG.md fælde 17.
 
 ### 5.15 GPU-vejene: hvad kan PowerVR'en bruges til (aug 2026)
 
+**OPDATERING (26. aug 2026): DDK 1.5@3830101 KØRER — GL_EXT_draw_buffers virker.
+** Kernel-rebuild-vejen (DDK15-KERNEL-REBUILD-LØSNING) er gennemført: genbygget
+3.10-kernel (PVR fra + TRACING + VT) + 1.5-KM `.ko` + 1.5-UM (32-bit) + 64-bit
+pvrsrvctl + frisk 6.0-libc. Verificeret: `shader_ext_test` draw_buffers OK (ES2+ES3),
+Firefox WebGL OK, GL_VERSION = "OpenGL ES 3.1 build 1.5@3830101". To nye
+kernel-config-fælder fundet: `CONFIG_ANDROID_PARANOID_NETWORK` blokerer ikke-root-
+sockets (fix: inet-gruppe 3003; slå fra i næste byg) og bcmdhd mangler (wifi);
+chrony/NTP afvises på vores byg → HTTP-ur-sync i myinit.sh. Detaljer:
+`devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md` + TODO.md.
+
 Status: `pvrsrvkm` er loadet og fuldt initialiseret (kernel-tråde kører: `pvr_timer`,
 `pvr_sync_check_` m.fl.), men resten af stakken mangler. Tre veje ind:
 
