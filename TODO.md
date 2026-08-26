@@ -91,18 +91,33 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     WebGL); (e) spil-blokaden: **BESLUTTET (26. aug): gralloc-lock-sporet
     forfølges** (præsentation i GPU-processen); Spor B/accept fravalgt. Detaljer:
     `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
-- [ ] **Subway Surfers: konteksttab ved gameplay-start (26. aug aften, åbent
-  spor):** gralloc-lock-EINVAL er LØST (rodårsag = /dev/sw_sync 0600 root:root
-  → kristian fik EACCES i lock'ens sync-fence-sti; `chmod 666` fixer —
-  **skal gøres persistent i myinit/udev**) + x11ws lock-usage 0x80→0x3.
-  Præsentation virker nu (skærmen viser indhold; pix0-loggen er stale, brug
-  fbdump). 2 GPU-crash-klasser fixet (proxy-shader-overread; hybris-_eglXXX-
-  NULL-tabel → fix_egl_table). RESTERENDE: spillet mister sin WebGL-kontekst
-  ved gameplay-start (sort canvas, "browser understøtter ikke WebGL").
-  SDK'ens loseContext-probe virker (lokal test), så næste skridt er at fange
-  Firefox' faktiske LoseContext-årsag eller teste kontekst-genopretning i
-  1.5-stakken. Detaljer:
-  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md`.
+- [ ] **Subway Surfers: 3D-scenen renderer cyan (27. aug, åbent spor):**
+  spillet loader STABILT og er spilbart (lyd/HUD/menuer) med konfigurationen i
+  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` — men scene-objekterne
+  (drengen/banen) tegnes ikke; kun ensartet cyan (eller sort). Målt:
+  canvas 836x470 læser ensartet cyan, clear er pink, kun 18-verts-draws,
+  rigtige teksturer uploades, 0 GL/JS-fejl. Næste: find hvorfor scene-draws
+  ikke giver output (log 18-verts-draw'ets shader/uniformer; tjek
+  kapabilitets-check; sammenlign vertex-shader-matematik; overvej Spor B hvis
+  1.5-scene-rendering er uovervindelig). Detaljer:
+  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` +
+  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md`.
+- [x] **Gralloc-lock-EINVAL LØST (26. aug):** /dev/sw_sync 0600 root:root →
+  EACCES i lock'ens sync-fence-sti; chmod 666 (myinit-retry). x11ws usage
+  0x80→0x3. Poki-load-crash LØST: glesv2-proxyen brød WebGL1/ES1 → behold
+  original libGLESv2.
+- [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
+  `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+-  **God start i en ny session (cyan-scene, 27. aug 2026):** *"Læs
+  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` og
+  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` og fortsæt
+  derfra. Subway Surfers loader stabilt og er spilbart (lyd/HUD) med
+  konfigurationen i handoveren — men 3D-scenen renderer cyan (kun himlen;
+  objekter usynlige). Målinger: canvas læser ensartet cyan, clear er pink,
+  kun 18-verts-draws, rigtige teksturer uploades, 0 GL/JS-fejl. Find hvorfor
+  scene-objekterne ikke tegnes på 1.5-stakken: log 18-verts-draw'ets
+  shader/uniformer, tjek kapabilitets-check, sammenlign vertex-shader-
+  matematik. Fælder og kommandoer i handoveren."*
 - [ ] **Sorte Firefox-chrome (26. aug aften, bagefter konteksttabet):** med
   præsentationen virkende er det nu synligt at Firefox' toppanel (adressefelt,
   bogmærke-ikon, fanelinje) renderer SORT mens sideindholdet vises korrekt
