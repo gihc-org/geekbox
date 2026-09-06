@@ -108,6 +108,33 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+- **God start i en ny session (cyan-scene + clone3-kernel, 6. sep 2026):**
+  *"Læs `OVERBLIK.md` (overblik over alle elementer), derefter
+  `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` (seneste session med
+  målinger + beslutninger) og `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md`
+  (fuld virkende konfiguration + fælder). Boks 1: IP findes med
+  `bash devuan/find_box.sh` (senest 192.168.0.142); kernel kører NU med
+  clone3-fix (`3.10.0 #1 SMP PREEMPT Sun Sep 6 22:12:06`); bring-up = insmod
+  `pvrsrvkm_leddaz.ko` + `sh gpu_up.sh` + bindapi-lap (sed IP → bash) + tjek
+  `/dev/sw_sync` 0666. STATUS: scene-draws sker HELE TIDEN (500–13.000 verts
+  pr. kald via glDrawElementsInstanced), men efter-draw-readback viser FBO'et
+  ensartet himmel-cyan → store meshes skriver 0 pixels; poki-frit
+  replay-probe (scene_replay_probe.c + /root/p7.vs|fs) beviser at spillets
+  prog7-shaders + rasterisering VIRKER på 1.5. → fejlen ligger i draw-tilstand/
+  data, ikke shader-pipeline. NÆSTE: (1) proxy `715716d0` er installeret og
+  logger glDrawBuffers + GL_DRAW_BUFFER0..3 + postdraw — få én vellykket
+  load+play og træk `/tmp/cyan_draw_probe.log`; afgør om scenen renderer til
+  et andet attachment eller geometrien er uden for frustum. (2) Hvis
+  drawBuffers ikke forklarer det: snapshot vertex-buffere via glBufferData/
+  glBufferSubData-hook (glGetBufferSubData findes IKKE via eglGetProcAddress)
+  og regn clip-space med de loggede matricer. FÆLDER: ingen BiDi-reload under
+  load (poki bot=1 → fryser ved 0%); kølepause 5+ min + evt. ren profil ved
+  load-stall; readPixels/toDataURL uden for frame er ubrugelig
+  (preserveDrawingBuffer=false); proxy v3 med glReadPixels-hook korrelerede
+  med load-stall (rul tilbage til v2-funktionalitet); Firefox crasher stadig
+  sporadisk — tag målinger hurtigt. Kernel-billede:
+  `devuan/gpu/kernelbuild/out/clone3fix/ramfs-clone3fix.img` (flashet;
+  rollback: out/test-trace2/…-id.img)."*
 -  **God start i en ny session (cyan-scene, 27. aug 2026):** *"Læs
   `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` og
   `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` og fortsæt

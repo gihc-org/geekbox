@@ -940,6 +940,36 @@ alpha:true. Symptom: spilområdet forsvinder/tomt trods at canvas'et renderer
 Til test: indlæs udvidelsen via `about:debugging → Load Temporary Add-on`
 (vælg manifest.json). Midlertidige udvidelser forsvinder ved genstart.
 
+### Fælde 37: 3.10-kernen dræber processer ved ukendte compat-syscalls (fx clone3/435)
+Firefox' `glean.upload`-tråd kaldte `clone3` (asm-generic nr. 435); 3.10-kernens
+`do_ni_syscall` dræbte processen (SIGILL + minidump-forsøg) i stedet for at
+returnere ENOSYS → hele Firefox crashede 1½–3 min efter start (målt 2× 6. sep).
+Kun `dmesg`: `do_ni_syscall: … syscall 435` + registerdump af `glean.upload`.
+Fix: kernel-compat-tabel udvidet til 450 poster; 404..449 →
+`sys_ni_syscall` (ENOSYS) så glibc/Rust falder tilbage på `clone`.
+`build_kernel.sh` har patchen; billede `out/clone3fix/ramfs-clone3fix.img`.
+
+### Fælde 38: readPixels/toDataURL uden for frame er ubrugelig (preserveDrawingBuffer=false)
+WebGL-canvas med `preserveDrawingBuffer:false` ryddes efter present → ekstern
+readPixels giver variabelt ensartet sort/cyan og toDataURL altid sort. Mål i
+stedet GL-side: efter-draw-readback i egl_proxy.c (postdraw-linjer i
+`/tmp/cyan_draw_probe.log`) eller poki-frit replay-probe
+(`scene_replay_probe.c`).
+
+### Fælde 39: BiDi-session → poki `bot=1` → spillet fryser ved 0% ved reload
+En WebDriver/BiDi-session får poki til at sætte `bot=1` i spil-iframe-URL'en;
+reloader man siden under load, fryser Subway Surfers ved "Loading 0%" / blå
+firkant uden netværksaktivitet. Load spillet NATURLIGT først; brug BiDi kun til
+engangs-evaluering (scene/canvasdump) uden reload. Gentagne hurtige
+Firefox-genstarter giver samme stall (server/rate) — kølepause 5+ min og evt.
+ren profil (slet cache2/cookies/sessionstore).
+
+### Fælde 40: `glGetBufferSubData` findes ikke via eglGetProcAddress på 1.5
+Returnerer NULL (målt i replay-probe). Vertex-data må i stedet snappes ved
+upload (`glBufferData`/`glBufferSubData`-hook). Proxy v3 med `glReadPixels`-hook
+korrelerede desuden med load-stall → behold v2-funktionaliteten
+(fbo/tex/draw-hooks; drawBuffers-logning md5 `715716d0` er nuværende).
+
 **Du ser:** WebRender's `cs_blur`-vertex-shader fejler med kun "Compile failed."
 (mens attributter + vec4[2]-retur virker).
 

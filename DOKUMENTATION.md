@@ -964,12 +964,20 @@ kontekstoprettelse → alle poki-sider (SDK'ets webgl-probe) crashede Firefox
 `libGLESv2.so.2.0.0` (md5 `ca71fb2c…` = `/root/hybris_backup`); EGL-proxyen
 har selv shader-hooks via `eglGetProcAddress` og er tilstrækkelig.
 
-**Resten:** spillets scene tegner kun små 18-verts-elementer og canvas'et
-læser cyan; clear-farven er pink. Spillets 3D-renderer sender ikke scene-draws
-til canvas'et på 1.5-stakken (åbent spor — næste skridt: afgør om spillet
-bevidst deaktiverer scenen via en kapabilitets-check, eller om draw-kaldene
-fejler; værktøj: BiDi-preload med draw-/clear-tællere + pixel-prober i
-`devuan/gpu/eglplatform_x11/bidi_ctxloss.py`).
+**Resten (OPDATERET 6. sep 2026):** det tidligere "kun 18-verts-draws" var et
+målehul — JS-wrapperen fangede ikke `glDrawElementsInstanced`, som spillet
+bruger til ALT 3D. GL-instrumentering (egl_proxy.c-draw-hooks) viser at
+scene-draws sker hele tiden (500–13.000 verts pr. kald) mod canvas-FBO'en
+(836×470, scissor fra, korrekte ES3-shaders/matricer) — men efter-draw-readback
+viser FBO'et ensartet himmel-cyan efter hvert stort verdens-draw: meshene
+skriver 0 pixels. Et poki-FRIT replay-probe (`scene_replay_probe.c` med de
+fangede prog7-shaders) beviser at shaderne + rasteriseringen VIRKER på 1.5 →
+fejlen ligger i draw-tilstand/data (drawBuffers/attachment, frustum,
+depth/cull-samspil). Næste skridt: fang `glDrawBuffers`-tilstand
+(GL_DRAW_BUFFER0..3) + evt. vertex-buffer-snapshots på en vellykket load.
+Detaljer: `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `OVERBLIK.md`.
+Kernel 6. sep: compat-tabel 450 poster (404..449 → sys_ni_syscall; 435/clone3
+→ ENOSYS) — Firefox' glean/clone3-crash væk.
 
 ## 6. Slutarkitekturen
 
