@@ -48,17 +48,27 @@ sed -i 's/^extern __inline /static __inline /' \
     "$BUILD/drivers/net/wireless/rockchip_wlan/rtl8188eu/include/ieee80211.h"
 # 26. aug 2026: compat clock_gettime64 (403) — nødvendig for bionic 6.0-libc
 # (gralloc-lock fejler EINVAL uden den i Firefox' GPU-proces).
-# 1) udvid compat-tabellen fra 384 til 404 poster
-sed -i 's/#define __NR_compat_syscalls\t\t384/#define __NR_compat_syscalls\t\t404/' \
+# 6. sep 2026: compat-tabellen udvides i stedet til 450 poster; alle nye
+# syscalls (404..449) -> sys_ni_syscall (ren ENOSYS). Baggrund: Firefox'
+# glean.upload-tråd kalder clone3 (asm-generic nr. 435); 3.10's do_ni_syscall
+# dræber processen (SIGILL) i stedet for ENOSYS -> glibc/Rust kan ikke falde
+# tilbage på clone -> hele Firefox crasher ~1½-3 min efter start (målt 2×
+# 6. sep 2026, cyan-sporet). Med ni-poster får kalderen ENOSYS som normalt.
+# 1) udvid compat-tabellen fra 384 til 450 poster
+sed -i 's/#define __NR_compat_syscalls\t\t384/#define __NR_compat_syscalls\t\t450/' \
     "$BUILD/arch/arm64/include/asm/unistd.h"
 # 2) tilføj poster 384..402 (ni) + 403 (clock_gettime64 -> sys_clock_gettime;
-#    timespec64-layoutet matcher native timespec på arm64) efter tabellen
+#    timespec64-layoutet matcher native timespec på arm64) + 404..449 (ni)
 cat >> "$BUILD/arch/arm64/kernel/sys32.S" <<'EOF'
 
 	.rept 19
 	.quad sys_ni_syscall
 	.endr
 	.quad sys_clock_gettime
+
+	.rept 46
+	.quad sys_ni_syscall
+	.endr
 EOF
 # Kun .c_shipped findes i friskt træ; bygget kopierer den (og evt. regenererer
 # fra .l hvis .l er nyere — derfor touches _shipped til nyere end .l).

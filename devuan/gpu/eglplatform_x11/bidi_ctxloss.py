@@ -166,6 +166,34 @@ def main():
     if mode == "inject":
         expr = (
             "window.__ctxLoss=[];"
+            "function __cap(g,cv,t){try{"
+            "if(!g||g.__capdone)return;"
+            "try{dump('CAPATTRS '+t+' canvas='+cv.width+'x'+cv.height+' attrs='+"
+            "JSON.stringify(g.getContextAttributes?g.getContextAttributes():{})+'\\n');}catch(x){}"
+            "g.__capdone=1;g.__capLog={};"
+            "try{var se=g.getSupportedExtensions?g.getSupportedExtensions():[];"
+            "dump('CAPEXT '+t+' n='+se.length+' '+se.join(',')+'\\n');}catch(x){}"
+            "try{var ge=g.getExtension.bind(g);"
+            "g.getExtension=function(n){var res;"
+            "try{res=ge(n);}catch(e){throw e;}"
+            "try{dump('CAPGETEXT '+n+' -> '+(res?'OK':'NULL')+'\\n');}catch(x){}"
+            "return res;};}catch(x){}"
+            "try{var gp=g.getParameter.bind(g);"
+            "g.getParameter=function(k){"
+            "var v=gp(k);"
+            "try{var keys=[g.MAX_TEXTURE_SIZE,g.MAX_CUBE_MAP_TEXTURE_SIZE,"
+            "g.MAX_RENDERBUFFER_SIZE,g.MAX_VIEWPORT_DIMS,g.ALIASED_LINE_WIDTH_RANGE,"
+            "g.MAX_VERTEX_ATTRIBS,g.MAX_VERTEX_UNIFORM_VECTORS,g.MAX_VARYING_VECTORS,"
+            "g.MAX_COMBINED_TEXTURE_IMAGE_UNITS,g.MAX_VERTEX_TEXTURE_IMAGE_UNITS,"
+            "g.MAX_FRAGMENT_UNIFORM_VECTORS,g.MAX_TEXTURE_IMAGE_UNITS,"
+            "g.MAX_DRAW_BUFFERS,g.MAX_COLOR_ATTACHMENTS,g.MAX_SAMPLES,"
+            "g.RED_BITS,g.GREEN_BITS,g.BLUE_BITS,g.ALPHA_BITS,g.DEPTH_BITS,g.STENCIL_BITS];"
+            "for(var i=0;i<keys.length;i++){if(k===keys[i]&&!g.__capLog[k]){"
+            "g.__capLog[k]=1;"
+            "var vv=(v&&v.length&&v.length>1)?Array.prototype.slice.call(v).join(','):v;"
+            "dump('CAPPARAM '+t+' '+k+' = '+vv+'\\n');break;}}}catch(x){}"
+            "return v;};}catch(x){}"
+            "}catch(e){}}"
             "function __hook(cv){try{"
             "cv.addEventListener('webglcontextlost',function(e){"
             "var o={msg:e.statusMessage||'',t:Date.now(),url:location.href};"
@@ -229,6 +257,7 @@ def main():
             "args[1]=a;}"
             "var r=__gc.apply(this,args);__hook(this);"
             "try{dump('GETCONTEXT canvas='+this.width+'x'+this.height+' type='+arguments[0]+' result='+(r?'OK':'NULL')+'\\n');}catch(x){}"
+            "try{__cap(r,this,arguments[0]);}catch(e){}"
             "try{if(r&&r.getExtension){"
             "var __ge=r.getExtension.bind(r);"
             "r.getExtension=function(n){"
@@ -277,12 +306,15 @@ def main():
             "OffscreenCanvas.prototype.getContext=function(){"
             "var r=__ogc.apply(this,arguments);__hook(this);"
             "try{dump('GETCONTEXT offscreen type='+arguments[0]+' result='+(r?'OK':'NULL')+'\\n');}catch(x){}"
+            "try{__cap(r,this,arguments[0]);}catch(e){}"
             "try{var le=r&&r.getExtension&&r.getExtension('WEBGL_lose_context');"
             "if(le&&!le.__hooked){le.__hooked=1;var o=le.loseContext;"
             "le.loseContext=function(){"
             "try{dump('LOSECONTEXT-KALD offscreen stak='+new Error().stack+'\\n');}catch(x){}"
             "return o.apply(this,arguments);};}}catch(e){}"
             "return r;};}"
+            "try{dump('CAPNAV hw='+(navigator.hardwareConcurrency)+' dm='+"
+            "(navigator.deviceMemory||'?')+' touch='+(navigator.maxTouchPoints||0)+'\\n');}catch(x){}"
             "window.addEventListener('error',function(e){"
             "try{dump('PAGE-ERROR: '+e.message+' ved '+e.filename+':'+e.lineno+'\\n');}catch(x){}});"
             "window.addEventListener('unhandledrejection',function(e){"
@@ -310,12 +342,11 @@ def main():
             "try{gl.readPixels(Math.floor(cv.width/2),Math.floor(cv.height/2),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);"
             "var key=px[0]+','+px[1]+','+px[2]+','+px[3];"
             "if(key!==__lastpx){__lastpx=key;"
-            "var dl='';try{dl=',dataURL-len='+(cv.toDataURL&&cv.toDataURL().length);}catch(e){dl=',dataURL-fejl';}"
-            "dump('CANVAS-PIXEL canvas='+cv.width+'x'+cv.height+' midte='+key+' lost='+gl.isContextLost()+dl+'\\n');"
+            "dump('CANVAS-PIXEL canvas='+cv.width+'x'+cv.height+' midte='+key+' lost='+gl.isContextLost()+'\\n');"
             "}}catch(e){dump('CANVAS-PIXEL fejl: '+e+'\\n');}"
             "}}"
             "}catch(e){}}"
-            ",500);"
+            ",10000);"
             "}catch(e){}}"
         )
         r = call("script.addPreloadScript", {"functionDeclaration": pre})
@@ -462,6 +493,63 @@ def main():
         })
         res = r.get("result", {}).get("result", {}).get("value")
         print("GLSTATE:", res if res else json.dumps(r)[:500])
+    elif mode == "scene" and game_ctx:
+        expr = (
+            "var cvs=document.querySelectorAll('canvas');"
+            "var out=[];"
+            "for(var i=0;i<cvs.length;i++){var cv=cvs[i];"
+            "if(cv.width<100)continue;"
+            "var gl=cv.getContext&&(cv.getContext('webgl2')||cv.getContext('webgl'));"
+            "if(!gl)continue;"
+            "var px=[];var pts=[];"
+            "for(var gy=0;gy<15;gy++)for(var gx=0;gx<25;gx++)"
+            "pts.push([Math.floor((gx+0.5)*cv.width/25),Math.floor((gy+0.5)*cv.height/15)]);"
+            "var uni={};var seen={};"
+            "for(var j=0;j<pts.length;j++){var p=new Uint8Array(4);"
+            "try{gl.readPixels(pts[j][0],pts[j][1],1,1,gl.RGBA,gl.UNSIGNED_BYTE,p);"
+            "var k=p[0]+','+p[1]+','+p[2]+','+p[3];uni[k]=(uni[k]||0)+1;"
+            "if(p[0]!==0||p[1]!==255||p[2]!==255)px.push([pts[j][0],pts[j][1],p[0],p[1],p[2],p[3]]);}catch(e){}}"
+            "try{var ca=gl.getContextAttributes?gl.getContextAttributes():null;"
+            "out.push({w:cv.width,h:cv.height,attrs:ca,"
+            "fbo:gl.getParameter(gl.FRAMEBUFFER_BINDING),"
+            "readFbo:gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),"
+            "viewport:gl.getParameter(gl.VIEWPORT),"
+            "scissor:gl.getParameter(gl.SCISSOR_BOX),"
+            "err:gl.getError(),"
+            "farver:uni,afvigendePunkter:px.length,afvigelser:px.slice(0,8),"
+            "data:cv.toDataURL('image/png')});}catch(e){out.push({fejl:String(e)});}}"
+            "JSON.stringify(out)"
+        )
+        r = call("script.evaluate", {
+            "expression": expr, "target": {"context": game_ctx},
+            "awaitPromise": False, "returnByValue": True,
+        })
+        res = r.get("result", {}).get("result", {}).get("value")
+        if res:
+            import base64
+            arr = json.loads(res)
+            for c in arr:
+                if "data" in c:
+                    b64 = c["data"].split(",", 1)[1]
+                    open("/tmp/game_canvas_%dx%d.png" % (c["w"], c["h"]), "wb").write(
+                        base64.b64decode(b64))
+                    print("GEMT canvas %dx%d farver=%s afvig=%d attrs=%s vp=%s err=%s" % (
+                        c["w"], c["h"], c.get("farver"), c.get("afvigendePunkter"),
+                        c.get("attrs"), c.get("viewport"), c.get("err")))
+                    try:
+                        mid += 1
+                        ws.send({"id": mid, "method": "session.end", "params": {}})
+                    except Exception:
+                        pass
+                else:
+                    print("CANVAS-FEJL:", c)
+        else:
+            print("INTET SVAR:", json.dumps(r)[:500])
+    try:
+        mid += 1
+        ws.send({"id": mid, "method": "session.end", "params": {}})
+    except Exception:
+        pass
     ws.s.close()
 
 
