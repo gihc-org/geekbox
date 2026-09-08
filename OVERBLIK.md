@@ -131,9 +131,9 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 
 ## Åbne spor / næste skridt
 
-- **Cyan-scene (aktivt):** fang `glDrawBuffers`/buffer-data på en vellykket
-  load+play → afgør attachment/frustum. Husk: kølepause ved load-stall,
-  ingen BiDi-reload under load.
+- **Cyan-scene (SPILBAR, 8. sep aften):** rest = lav fps (CYAN_LIGHT-byg til
+  sammenligning), blå glitches, selvstart af alpha-shim + depth-clear,
+  driver-rodårsag (clearDepthf). Opskrift i session-notat checkpoint 21:40-22:00.
 - NTP/chrony (myinit-synk virker som plaster).
 - Næste kernel-byg (planlagt): `CONFIG_ANDROID_PARANOID_NETWORK` fra +
   bcmdhd (WiFi) — samme byggevej som dagens.

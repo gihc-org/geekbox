@@ -3,6 +3,21 @@
 > Agent/model: [codex:deepseek-v4-flash].
 > Fortsætter `CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `CYAN-SCENE-HANDOVER-2026-08-27.md`.
 
+## Stop for i aften (8. sep ~22:1x, bruger: "mens vi er på toppen")
+
+- [udført] Spillet er spilbart (vnext12 `dcc0a68f`) — bruger-bekræftet:
+  dreng/tog/bygninger i korrekt perspektiv, ingen brune flader.
+- [udført] Dokumentation opdateret (notat checkpoints 20:30-22:00, OVERBLIK
+  status + åbne spor, TODO: cyan LØST + ny "God start"-prompt).
+- [udført] Commits: `14434ef` + `42ed269`, begge `[codex:deepseek-v4-flash]`
+  (model bekræftet af bruger).
+- [udført] Evidens gemt på boks: `cyan_draw_probe_vnext{9_shim2b,10,11_play,
+  12_play}_20260908.log`; fb-billeder `/tmp/fb_play{1,2}.raw`+PNG på laptop.
+- [afventer] Næste session (prompt i TODO): CYAN_LIGHT-fps-sammenligning,
+  blå glitches, selvstart af shim+depth-clear, driver-rodårsag (clearDepthf).
+- [afventer] Firefox kører stadig på boksen (spil i vnext12-konfiguration);
+  luk pænt (SIGTERM) og ryd profil før næste kørsel.
+
 ## Fortsættelse — ny session 8. sep aften (efter commit dbbe440)
 
 > Agent/model: [codex:model-ukendt] (bekræftes ved commit — ikke arvet fra
