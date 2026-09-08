@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
@@ -40,6 +41,9 @@ typedef EGLint (*real_eglGetError_t)(void);
 
 static void cyan_swap_sample(void);
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count);
+static void cyan_predraw_capture(GLsizei count);
+static void snapshot_vertex_buffers(GLuint prog, unsigned long seq,
+                                    GLsizei count);
 
 /* 26. aug 2026: hybris' _eglXXX-funktionstabel i libEGL_r.so er stort set
  * TOM (kun et par slots udfyldt) på denne boks → eglDestroySurface/-
@@ -429,6 +433,12 @@ GLenum hook_glGetError(void)
 #ifndef GL_DRAW_BUFFER3
 #define GL_DRAW_BUFFER3 0x8828
 #endif
+#ifndef GL_MAP_READ_BIT
+#define GL_MAP_READ_BIT 0x0001
+#endif
+#ifndef GL_VERTEX_ATTRIB_ARRAY_DIVISOR
+#define GL_VERTEX_ATTRIB_ARRAY_DIVISOR 0x88FE
+#endif
 
 static int dlog_fd(void)
 {
@@ -505,8 +515,14 @@ static void (*rgl_glTexImage2D)(GLenum, GLint, GLint, GLsizei, GLsizei,
 static void (*rgl_glTexStorage2D)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
 static void (*rgl_glReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum,
                                 GLenum, void *);
+static void (*rgl_glGetFloatv)(GLenum, GLfloat *);
 static void (*rgl_glGetBufferSubData)(GLenum, GLintptr, GLsizeiptr, void *);
 static void (*rgl_glBindBuffer)(GLenum, GLuint);
+static void (*rgl_glGetBufferParameteriv)(GLenum, GLenum, GLint *);
+static void *(*rgl_glMapBufferRange)(GLenum, GLintptr, GLsizeiptr,
+                                     GLbitfield);
+static GLboolean (*rgl_glUnmapBuffer)(GLenum);
+static void (*rgl_glVertexAttribDivisor)(GLuint, GLuint);
 static void (*rgl_glDrawBuffers)(GLsizei, const GLenum *);
 
 static void rgl_resolve_all(void)
@@ -577,10 +593,21 @@ static void rgl_resolve_all(void)
     rgl_glReadPixels = (void (*)(GLint, GLint, GLsizei, GLsizei, GLenum,
                                  GLenum, void *))
         real_eglGetProcAddress_fn("glReadPixels");
+    rgl_glGetFloatv = (void (*)(GLenum, GLfloat *))
+        real_eglGetProcAddress_fn("glGetFloatv");
     rgl_glGetBufferSubData = (void (*)(GLenum, GLintptr, GLsizeiptr, void *))
         real_eglGetProcAddress_fn("glGetBufferSubData");
     rgl_glBindBuffer = (void (*)(GLenum, GLuint))
         real_eglGetProcAddress_fn("glBindBuffer");
+    rgl_glGetBufferParameteriv = (void (*)(GLenum, GLenum, GLint *))
+        real_eglGetProcAddress_fn("glGetBufferParameteriv");
+    rgl_glMapBufferRange = (void *(*)(GLenum, GLintptr, GLsizeiptr,
+                                      GLbitfield))
+        real_eglGetProcAddress_fn("glMapBufferRange");
+    rgl_glUnmapBuffer = (GLboolean (*)(GLenum))
+        real_eglGetProcAddress_fn("glUnmapBuffer");
+    rgl_glVertexAttribDivisor = (void (*)(GLuint, GLuint))
+        real_eglGetProcAddress_fn("glVertexAttribDivisor");
     rgl_glDrawBuffers = (void (*)(GLsizei, const GLenum *))
         real_eglGetProcAddress_fn("glDrawBuffers");
 }
@@ -859,7 +886,7 @@ static void dump_attribs(GLuint prog)
         if (!en)
             continue;
         any = 1;
-        GLint sz = 0, str = 0, tp = 0, nrm = 0, buf = 0;
+        GLint sz = 0, str = 0, tp = 0, nrm = 0, buf = 0, divs = 0;
         void *ptr = NULL;
         rgl_glGetVertexAttribiv((GLuint)i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &sz);
         rgl_glGetVertexAttribiv((GLuint)i, GL_VERTEX_ATTRIB_ARRAY_STRIDE,
@@ -871,12 +898,15 @@ static void dump_attribs(GLuint prog)
                                 GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &buf);
         rgl_glGetVertexAttribPointerv((GLuint)i,
                                       GL_VERTEX_ATTRIB_ARRAY_POINTER, &ptr);
+        rgl_glGetVertexAttribiv((GLuint)i, GL_VERTEX_ATTRIB_ARRAY_DIVISOR,
+                                &divs);
         GLfloat cur[4] = {0, 0, 0, 0};
         rgl_glGetVertexAttribfv((GLuint)i, GL_CURRENT_VERTEX_ATTRIB, cur);
         dlog_msg("    attrib-array[%d] en size=%d type=0x%x(%s) stride=%d "
-                 "norm=%d buf=%d ptr=%p cur=[%.4g,%.4g,%.4g,%.4g]",
+                 "norm=%d buf=%d ptr=%p divisor=%d "
+                 "cur=[%.4g,%.4g,%.4g,%.4g]",
                  (int)i, (int)sz, (unsigned)tp, gls_type_name((GLenum)tp),
-                 (int)str, (int)nrm, (int)buf, ptr,
+                 (int)str, (int)nrm, (int)buf, ptr, (int)divs,
                  cur[0], cur[1], cur[2], cur[3]);
     }
     if (!any)
@@ -937,24 +967,32 @@ static void dump_state_extra(void)
     rgl_glGetIntegerv(GL_DRAW_BUFFER3, &db[3]);
     dlog_msg("  drawBuffers=[0x%x,0x%x,0x%x,0x%x]", (unsigned)db[0],
              (unsigned)db[1], (unsigned)db[2], (unsigned)db[3]);
+    GLfloat dcv = -1.0f;
+    if (rgl_glGetFloatv)
+        rgl_glGetFloatv(GL_DEPTH_CLEAR_VALUE, &dcv);
+    dlog_msg("  depthClear=%g", (double)dcv);
 }
 
-/* Læs de første floats fra hver aktiveret float-attrib-buffer (vertex-data)
- * så vi offline kan regne clip-space med de loggede matricer. */
-static void dump_vertex_samples(void)
+/* Snapshot af vertex-/index-buffere via glMapBufferRange (glGetBufferSubData
+ * er NULL på 1.5-stakken; map-range virker — målt 8. sep 2026). Skriv til
+ * /tmp/vb_p<prog>_q<seq>.a<attrib>.bin + /tmp/eb_p<prog>_q<seq>.bin så vi
+ * offline kan regne clip-space med de loggede uniform-matricer. */
+static void snapshot_vertex_buffers(GLuint prog, unsigned long seq,
+                                    GLsizei count)
 {
-    static int samples = 0;
-    if (samples >= 50)
+    static int snaps = 0;
+    if (snaps >= 32)
         return;
-    if (!rgl_glGetBufferSubData || !rgl_glBindBuffer || !rgl_glGetIntegerv ||
-        !rgl_glGetVertexAttribiv || !rgl_glGetVertexAttribPointerv)
+    if (!rgl_glMapBufferRange || !rgl_glUnmapBuffer || !rgl_glBindBuffer ||
+        !rgl_glGetIntegerv || !rgl_glGetVertexAttribiv ||
+        !rgl_glGetVertexAttribPointerv || !rgl_glGetBufferParameteriv)
         return;
+    snaps++;
     GLint maxa = 0, ab = 0;
     rgl_glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxa);
     rgl_glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &ab);
     if (maxa > 16)
         maxa = 16;
-    samples++;
     for (GLint i = 0; i < maxa; i++) {
         GLint en = 0, sz = 0, str = 0, tp = 0, buf = 0;
         void *ptr = NULL;
@@ -972,39 +1010,74 @@ static void dump_vertex_samples(void)
                                       GL_VERTEX_ATTRIB_ARRAY_POINTER, &ptr);
         if (!buf || tp != GL_FLOAT || sz < 1 || sz > 4)
             continue;
-        GLsizeiptr bstride = str > 0 ? (GLsizeiptr)str :
-                                      (GLsizeiptr)sz * (GLsizeiptr)sizeof(GLfloat);
+        GLsizeiptr esize = (GLsizeiptr)sz * (GLsizeiptr)sizeof(GLfloat);
+        GLsizeiptr bstride = str > 0 ? (GLsizeiptr)str : esize;
         if (bstride <= 0)
             continue;
-        unsigned char tmp[256];
+        GLintptr off = (GLintptr)(uintptr_t)ptr;
+        GLint bsize = 0;
         rgl_glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buf);
-        rgl_glGetBufferSubData(GL_ARRAY_BUFFER, 0, bstride * 8, tmp);
+        rgl_glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bsize);
+        if (off < 0 || off >= bsize) {
+            rgl_glBindBuffer(GL_ARRAY_BUFFER, (GLuint)ab);
+            continue;
+        }
+        /* Læs hele det draw'ede vertex-område (men højst 1 MB pr. attrib). */
+        GLsizeiptr want = bstride * (GLsizeiptr)count;
+        GLsizeiptr len = want;
+        if (len > (GLsizeiptr)bsize - off)
+            len = (GLsizeiptr)bsize - off;
+        if (len > 1048576)
+            len = 1048576;
+        void *m = rgl_glMapBufferRange(GL_ARRAY_BUFFER, off, len,
+                                       GL_MAP_READ_BIT);
+        if (!m) {
+            rgl_glBindBuffer(GL_ARRAY_BUFFER, (GLuint)ab);
+            continue;
+        }
+        char path[160];
+        snprintf(path, sizeof path, "/tmp/vb_p%u_q%lu_a%d.bin",
+                 (unsigned)prog, seq, (int)i);
+        FILE *f = fopen(path, "wb");
+        if (f) {
+            fwrite(m, 1, (size_t)len, f);
+            fclose(f);
+        }
+        rgl_glUnmapBuffer(GL_ARRAY_BUFFER);
+        dlog_msg("VBUF-SNAP p=%u q=%lu a=%d buf=%d size=%d type=0x%x "
+                 "stride=%d off=%lld count=%d bytes=%lld file=%s",
+                 (unsigned)prog, seq, (int)i, (int)buf, (int)sz,
+                 (unsigned)tp, (int)str, (long long)off, (int)count,
+                 (long long)len, path);
         rgl_glBindBuffer(GL_ARRAY_BUFFER, (GLuint)ab);
-        char line[1024];
-        int o = snprintf(line, sizeof line,
-                         "    vbuf[%d] buf=%d size=%d stride=%d ptr=%p "
-                         "første:",
-                         (int)i, (int)buf, (int)sz, (int)str, ptr);
-        for (int k = 0; k < 8; k++) {
-            const GLfloat *f = (const GLfloat *)(tmp + (size_t)k * bstride);
-            if (o >= 0 && o < (int)sizeof line) {
-                if (sz == 1)
-                    o += snprintf(line + o, sizeof line - (size_t)o, "%.4g",
-                                  (double)f[0]);
-                else if (sz == 2)
-                    o += snprintf(line + o, sizeof line - (size_t)o,
-                                  "%.4g,%.4g", (double)f[0], (double)f[1]);
-                else if (sz == 3)
-                    o += snprintf(line + o, sizeof line - (size_t)o,
-                                  "%.4g,%.4g,%.4g", (double)f[0],
-                                  (double)f[1], (double)f[2]);
-                else
-                    o += snprintf(line + o, sizeof line - (size_t)o,
-                                  "%.4g,%.4g,%.4g,%.4g", (double)f[0],
-                                  (double)f[1], (double)f[2], (double)f[3]);
+    }
+    /* Index-buffer: spillet bruger UNSIGNED_SHORT + offset 0. */
+    GLint ebo = 0, esize = 0;
+    rgl_glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
+    if (ebo) {
+        rgl_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint)ebo);
+        rgl_glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE,
+                                   &esize);
+        GLsizeiptr want = (GLsizeiptr)count * 2;
+        GLsizeiptr len = want < esize ? want : (GLsizeiptr)esize;
+        if (len > 0) {
+            void *m = rgl_glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0, len,
+                                           GL_MAP_READ_BIT);
+            if (m) {
+                char path[160];
+                snprintf(path, sizeof path, "/tmp/eb_p%u_q%lu.bin",
+                         (unsigned)prog, seq);
+                FILE *f = fopen(path, "wb");
+                if (f) {
+                    fwrite(m, 1, (size_t)len, f);
+                    fclose(f);
+                }
+                rgl_glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+                dlog_msg("EBUF-SNAP p=%u q=%lu ebo=%d count=%d bytes=%lld "
+                         "file=%s", (unsigned)prog, seq, (int)ebo,
+                         (int)count, (long long)len, path);
             }
         }
-        dlog_line(line);
     }
 }
 
@@ -1067,7 +1140,7 @@ static void dump_draw(const char *fn, GLenum mode, GLsizei count,
         }
         dump_state_extra();
         if (count >= 512)
-            dump_vertex_samples();
+            snapshot_vertex_buffers((GLuint)prog, seq, count);
     } else {
         skipped++;
         if (skipped % 100 == 0) {
@@ -1115,6 +1188,7 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
 {
     rgl_resolve_all();
     dump_draw("glDrawElements", mode, count, type, -1, indices);
+    cyan_predraw_capture(count);
     rgl_glDrawElements(mode, count, type, indices);
     cyan_postdraw_sample("drawElements", 0, count);
 }
@@ -1123,6 +1197,7 @@ static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
     rgl_resolve_all();
     dump_draw("glDrawArrays", mode, count, 0, -1, NULL);
+    cyan_predraw_capture(count);
     rgl_glDrawArrays(mode, first, count);
     cyan_postdraw_sample("drawArrays", 0, count);
 }
@@ -1134,6 +1209,7 @@ static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
     rgl_resolve_all();
     dump_draw("glDrawElementsInstanced", mode, count, type, primcount,
               indices);
+    cyan_predraw_capture(count);
     if (rgl_glDrawElementsInstanced)
         rgl_glDrawElementsInstanced(mode, count, type, indices, primcount);
     else
@@ -1150,6 +1226,7 @@ static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
 {
     rgl_resolve_all();
     dump_draw("glDrawArraysInstanced", mode, count, 0, primcount, NULL);
+    cyan_predraw_capture(count);
     if (rgl_glDrawArraysInstanced)
         rgl_glDrawArraysInstanced(mode, first, count, primcount);
     else
@@ -1203,6 +1280,26 @@ static void hook_glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
         dlog_msg("clearColor r=%.4f g=%.4f b=%.4f a=%.4f (kald=%lu)",
                  (double)r, (double)g, (double)b, (double)a, n);
     rgl_glClearColor(r, g, b, a);
+}
+
+static void hook_glClearDepthf(GLfloat d)
+{
+    static unsigned long n = 0;
+    rgl_resolve_all();
+    n++;
+    if (n <= 60 || n % 200 == 0)
+        dlog_msg("clearDepthf d=%g (kald=%lu)", (double)d, n);
+    {
+        static void (*real)(GLfloat);
+        if (!real)
+            real = (void (*)(GLfloat))real_eglGetProcAddress_fn(
+                "glClearDepthf");
+        if (!real)
+            real = (void (*)(GLfloat))real_eglGetProcAddress_fn(
+                "glClearDepth");
+        if (real)
+            real(d);
+    }
 }
 
 static void hook_glClear(GLbitfield mask)
@@ -1313,6 +1410,22 @@ static void hook_glDrawBuffers(GLsizei n, const GLenum *bufs)
         rgl_glDrawBuffers(n, bufs);
 }
 
+static void hook_glVertexAttribDivisor(GLuint index, GLuint divisor)
+{
+    static unsigned long c = 0;
+    rgl_resolve_all();
+    c++;
+    if (c <= 120 || c % 100 == 0) {
+        GLint prog = 0;
+        rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+        dlog_msg("vertexAttribDivisor index=%u divisor=%u prog=%d "
+                 "(kald=%lu)", (unsigned)index, (unsigned)divisor,
+                 (int)prog, c);
+    }
+    if (rgl_glVertexAttribDivisor)
+        rgl_glVertexAttribDivisor(index, divisor);
+}
+
 /* ---- swap-readback (cyan-scene): prøvetag det aktuelle read-framebuffer
  *      lige FØR present. preserveDrawingBuffer=false gør ekstern readPixels
  *      ubrugelig (bufferet ryddes efter present — målt: ensartet sort/cyan);
@@ -1374,6 +1487,48 @@ static void cyan_swap_sample(void)
         snprintf(line + o, sizeof line - (size_t)o, " | unikke-kvantiserede=%d",
                  nuniq);
     dlog_line(line);
+    free(buf);
+}
+
+/* ---- før-draw-prøve (cyan-scene): prøvetag read-framebufferen LIGE FØR et
+ *      stort verdens-draw, så efter-draw-prøven kan vise OM draws skriver
+ *      pixels (pre/post-diff). ---- */
+static unsigned char pre_grid[3][13][4];
+static int have_pre_grid = 0;
+
+static void cyan_predraw_capture(GLsizei count)
+{
+    static unsigned long big = 0;
+    if (count < 512)
+        return;
+    big++;
+    if (big > 80 && big % 250 != 0)
+        return;
+    if (!rgl_glReadPixels || !rgl_glGetIntegerv)
+        return;
+    GLint rfbo = 0, vp[4] = {0, 0, 0, 0};
+    rgl_glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &rfbo);
+    rgl_glGetIntegerv(GL_VIEWPORT, vp);
+    int w = vp[2], h = vp[3];
+    if (w < 64 || h < 64 || w > 4096 || h > 4096)
+        return;
+    unsigned char *buf = malloc((size_t)w * h * 4);
+    if (!buf)
+        return;
+    memset(buf, 0, (size_t)w * h * 4);
+    rgl_glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    have_pre_grid = 1;
+    for (int j = 0; j < 3; j++) {
+        int row = (int)((double)h * (0.25 + 0.25 * j));
+        for (int i = 0; i < 13; i++) {
+            int col = (i * (w - 1)) / 12;
+            const unsigned char *q = buf + ((size_t)row * w + col) * 4;
+            pre_grid[j][i][0] = q[0];
+            pre_grid[j][i][1] = q[1];
+            pre_grid[j][i][2] = q[2];
+            pre_grid[j][i][3] = q[3];
+        }
+    }
     free(buf);
 }
 
@@ -1439,6 +1594,53 @@ static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count)
     }
     if (o >= 0 && o < (int)sizeof line)
         snprintf(line + o, sizeof line - (size_t)o, " | unikke=%d", nuniq);
+    int diff = -1;
+    if (have_pre_grid) {
+        diff = 0;
+        for (int j = 0; j < 3; j++) {
+            int row = (int)((double)h * (0.25 + 0.25 * j));
+            for (int i = 0; i < 13; i++) {
+                int col = (i * (w - 1)) / 12;
+                const unsigned char *q = buf + ((size_t)row * w + col) * 4;
+                if (q[0] != pre_grid[j][i][0] ||
+                    q[1] != pre_grid[j][i][1] ||
+                    q[2] != pre_grid[j][i][2])
+                    diff++;
+            }
+        }
+        have_pre_grid = 0;
+    }
+    o += snprintf(line + o, sizeof line - (size_t)o, " | pre-post-diff=%d",
+                  diff);
+    {
+        unsigned long ns = 0;
+        int x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (int j = 0; j < h; j++) {
+            const unsigned char *row = buf + (size_t)j * w * 4;
+            for (int i = 0; i < w; i++) {
+                const unsigned char *q = row + (size_t)i * 4;
+                int dr = q[0] - 130;
+                int dg = q[1] - 255;
+                int db = q[2] - 238;
+                if (dr < 0) dr = -dr;
+                if (dg < 0) dg = -dg;
+                if (db < 0) db = -db;
+                if (dr > 40 || dg > 30 || db > 40) {
+                    ns++;
+                    if (i < x0) x0 = i;
+                    if (i > x1) x1 = i;
+                    if (j < y0) y0 = j;
+                    if (j > y1) y1 = j;
+                }
+            }
+        }
+        if (ns)
+            o += snprintf(line + o, sizeof line - (size_t)o,
+                          " | nonsky=%lu bbox=x[%d..%d],y[%d..%d]",
+                          ns, x0, x1, y0, y1);
+        else
+            o += snprintf(line + o, sizeof line - (size_t)o, " | nonsky=0");
+    }
     dlog_line(line);
     free(buf);
 }
@@ -1477,6 +1679,10 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
         return (__eglMustCastToProperFunctionPointerType)hook_glViewport;
     if (name && !strcmp(name, "glClearColor"))
         return (__eglMustCastToProperFunctionPointerType)hook_glClearColor;
+    if (name && !strcmp(name, "glClearDepthf"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glClearDepthf;
+    if (name && !strcmp(name, "glClearDepth"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glClearDepthf;
     if (name && !strcmp(name, "glClear"))
         return (__eglMustCastToProperFunctionPointerType)hook_glClear;
     if (name && !strcmp(name, "glBindFramebuffer"))
@@ -1491,5 +1697,9 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
         return (__eglMustCastToProperFunctionPointerType)hook_glTexStorage2D;
     if (name && !strcmp(name, "glDrawBuffers"))
         return (__eglMustCastToProperFunctionPointerType)hook_glDrawBuffers;
+    if (name && !strcmp(name, "glVertexAttribDivisor"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glVertexAttribDivisor;
+    if (name && !strcmp(name, "glVertexAttribDivisorANGLE"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glVertexAttribDivisor;
     return ((real_eglGetProcAddress_ret_t)real_eglGetProcAddress_fn)(name);
 }

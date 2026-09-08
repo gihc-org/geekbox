@@ -2,22 +2,28 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
-> `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` (i dag),
+> `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (seneste),
 > `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` (opgavebaggrund) og
 > `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` (beslutningslog).
 
-## Status i ét blik (6. sep 2026 aften)
+## Status i ét blik (8. sep 2026 aften)
 
 - Boks 1 kører Devuan armhf på eMMC med **genbygget 3.10.79-kernel**
   (`3.10.0 #1 SMP PREEMPT Sun Sep 6 22:12:06`), GPU = PowerVR DDK
   **1.5@3830101** (GLES 3.1), WebGL i Firefox virker.
-- Subway Surfers loader og er spilbart (lyd/HUD/point), men **3D-scenen viser
-  ikke objekter** (ensartet himmel/cyan på skærmen). Det er det åbne spor.
-- Dagens fund: scene-draws sker hele tiden (store meshes), men skriver ingen
-  pixels; spillets shaders + rasterisering **virker** i poki-frit replay-probe
-  → fejlen ligger i draw-tilstand/data (drawBuffers/frustum/dybde), ikke i
-  shader-pipelinen. Næste skridt: fange `glDrawBuffers`-tilstand + buffer-data
-  på en vellykket load (proxy `715716d0` installeret på boksen).
+- Boks 1 genstartet 8. sep aften → IP **192.168.0.171**; bring-up efter
+  strøm: ur-sync, `insmod` + `gpu_up.sh`, bindapi-lap, `/dev/sw_sync` 0666.
+- Cyan-scene-sporet (8. sep): drawBuffers **ude** (`[COLOR_ATTACHMENT0]`),
+  instanced-stien og `glMapBufferRange` virker offline; VBO/EBO-snapshots +
+  matricer viser store prog7-draws **100 % i frustum**; offline-replay af
+  rigtige data rasteriserer (q38 7.218 px, q37 72.945 px). Live: alle
+  attrib-divisor=0, clearDepthf=1, men verdens-draws skriver stadig ingen
+  fragmenter (nonsky statisk; FS har ingen discard). **live-vs-offline-
+  modsigelsen er det åbne spor** → næste: shadow-draw-probe i live-proxyen.
+- Præsentationssymptom (2× målt 8. sep): ved "Press to play"-start forsvinder
+  spilområdet fra siden — kør næste gang med poki-fix-udvidelsen/alpha-shim.
+- Proxy på boksen: **vnext4 `631f9a40`** (grid + nonsky-tælling +
+  clearDepthf-log + VBO/EBU-snapshots; stabil). Backups i `/root/egl_proxy_*.so.bak`.
 
 ## De mange elementer — hvad er hvad
 
@@ -65,7 +71,11 @@
 | `398e71dd…` | v2: + draw/fbo/tex/uniform-instrumentering | **Stabil**; bruges til almindelige kørsler |
 | `9a8127a4…` | + efter-draw-readback (postdraw) | Viste at store draws skriver 0 pixels |
 | `90006e6b…` | + vertex-buffer-læsning | `glGetBufferSubData` findes IKKE på stakken (NULL) |
-| `715716d0…` | + `glDrawBuffers`-log + `GL_DRAW_BUFFER0..3` | **NUVÆRENDE på boksen**; drawBuffers-sporet |
+| `715716d0…` | + `glDrawBuffers`-log + `GL_DRAW_BUFFER0..3` | drawBuffers-sporet (8. sep: attachment-forklaringen ude) |
+| `63fe4c6c…` | + VBO/EBO-snapshot via `glMapBufferRange` + pre/post-grid-diff | Stabil (kørsel 4) |
+| `e4e4ca74…` | vnext2: + fuld-frame pre/post-diff | **Crashede 2/2 ved første store draw — brug ikke** |
+| `746522ec…` | vnext3: vnext minus fuld-frame | Stabil (kørsel 7) |
+| `631f9a40…` | vnext4: + nonsky-tælling + `clearDepthf`-log + divisor-log | **NUVÆRENDE på boksen**; stabil (kørsler 8-9) |
 
 ## Nøglekommandoer (boksen efter strømcyklus)
 
@@ -80,12 +90,14 @@ sed "s/BOX=root@192.168.0.188/BOX=root@<ip>/" \
   devuan/gpu/eglplatform_x11/patch_android_bindapi.sh > /tmp/pb.sh && bash /tmp/pb.sh
 # Firefox + måling:
 nohup /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &
-# proxy-genbyg på boksen (efter ændring af egl_proxy.c → scp til /root/egl_proxy_cyan.c):
-gcc -shared -fPIC -Wl,-soname,libEGL.so.1 -o /tmp/libEGL_cyan.so /root/egl_proxy_cyan.c \
-  -L/opt/hybris -Wl,--no-as-needed -l:libEGL_r.so -ldl && cp /tmp/libEGL_cyan.so /opt/hybris/libEGL.so.1.0.0
-# poki-frit shader-test:
+# proxy-genbyg på boksen (efter ændring af egl_proxy.c → scp til /root/egl_proxy_vnext4.c):
+gcc -shared -fPIC -Wl,-soname,libEGL.so.1 -o /tmp/libEGL_vnext4.so /root/egl_proxy_vnext4.c \
+  -L/opt/hybris -Wl,--no-as-needed -l:libEGL_r.so -ldl && cp /tmp/libEGL_vnext4.so /opt/hybris/libEGL.so.1.0.0
+# poki-frit instanced/map-test + replay af fangede buffers:
 LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DISPLAY=:0 \
-  /root/scene_replay_probe /root/p7.vs /root/p7.fs
+  /root/scene_instanced_probe /root/p7.vs /root/p7.fs
+LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DISPLAY=:0 \
+  /root/scene_real_replay /root/p7.vs /root/p7.fs <pos.a1> <nrm.a0> <uv.a2> <idx> <mats> <count>
 ```
 
 ## Dokumentindex (README/session/handover)
@@ -101,6 +113,7 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 | `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` | Beslutnings-/målelog: præsentation virker, spillet spilbart, cyan-scene åben |
 | `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` | **Opgaverammen:** cyan-scene + fuld virkende konfiguration + fælder |
 | `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` | **Seneste session:** kernel clone3-fix, GL-målinger, replay-probe, load-stall-fælder |
+| `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` | **Seneste session (8. sep):** divisor ude, live-vs-offline, præsentationssymptom, nye probes/fælder |
 | `devuan/gpu/eglplatform_x11/*.c/.py/.sh` | Kode: proxy, probes, scripts (se §De mange elementer) |
 
 ## Åbne spor / næste skridt

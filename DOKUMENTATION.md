@@ -979,6 +979,20 @@ Detaljer: `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `OVERBLIK.md`.
 Kernel 6. sep: compat-tabel 450 poster (404..449 → sys_ni_syscall; 435/clone3
 → ENOSYS) — Firefox' glean/clone3-crash væk.
 
+**OPDATERET 8. sep 2026 (live-vs-offline-modsigelse):** drawBuffers er ude
+(`[COLOR_ATTACHMENT0]` på fbo=3), instanced-stien virker offline
+(`scene_instanced_probe.c`), og VBO/EBO-snapshots + loggede matricer viser at
+store prog7-draws ligger 100 % i frustum. Offline-replay af RIGTIGE data +
+spillets shaders (`scene_real_replay.c`) rasteriserer (q38: 7.218 px, q37:
+72.945 px), også med spillets depth/cull-tilstand. Live er alle attrib-divisorer
+0 (efterladt divisor=1 giver 0 px offline — bevist mekanisme, men ikke live-
+årsagen), clearDepthf=1, og postdraw viser stadig ingen fragmenter fra
+verdens-draws (nonsky-indhold statisk; prog7-FS har ingen discard, så selv
+sort/0-alpha-output ville have talt). Præsentationssymptom: ved "Press to
+play"-start forsvinder spilområdet fra siden (alpha-shim/udvidelse ikke
+indlæst). Næste: shadow-draw-probe i live-proxyen + kørsel med alpha-shim.
+Detaljer: `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` + `OVERBLIK.md`.
+
 ## 6. Slutarkitekturen
 
 ```

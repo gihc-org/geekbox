@@ -108,6 +108,41 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+- **God start i en ny session (cyan-scene: divisor ude, live-vs-offline, 8. sep 2026):**
+  *"Læs `OVERBLIK.md`, `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md`
+  (dagens målinger + beslutninger) og `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md`
+  (virkende konfiguration + fælder). Boks 1 er GENSTARTET: IP 192.168.0.171
+  (`bash devuan/find_box.sh`), kernel 3.10.0 clone3-fix kører; bring-up =
+  `date -s @<laptop-epoch>` (uret står i 2013 efter reboot), insmod
+  `/root/pvrsrvkm_leddaz.ko` + `sh /root/gpu_up.sh`, bindapi-lap
+  (sed IP → `bash patch_android_bindapi.sh`), tjek `/dev/sw_sync` 0666.
+  STATUS (alt målt 8. sep): drawBuffers=[COLOR_ATTACHMENT0] på fbo=3;
+  glDrawElementsInstanced-stien virker offline; VBO/EBO-snapshots +
+  matricer viser at store prog7-draws (q37/q38/q39…) ligger 100% i frustum;
+  offline-replay af RIGTIGE data + spillets shaders rasteriserer (q38 7.218 px,
+  q37 72.945 px); divisor=0 på alle live-attribs (efterladt divisor=1 giver
+  0 px offline — men er IKKE live-årsagen); clearDepthf=1; live postdraw
+  viser dog stadig ingen fragmenter fra verdens-draws (nonsky-indhold statisk
+  43.556 px, grid uændret). live-vs-offline-modsigelsen er uløst. NÆSTE:
+  (1) shadow-draw i proxyen — efter det rigtige instanced-draw køres et ekstra
+  glDrawElements/glDrawArrays med samme tilstand og aflæses; svarer på om
+  live-kontekstens draw-kald selv er brudt. (2) Præsentations-symptom: ved
+  'Press to play'-start forsvinder spilområdet fra siden (2× målt) — kør med
+  poki-fix-udvidelsen/alpha-shim indlæst. FÆLDER: load-stall ved 0% og 74%
+  efter gentagne genstarter → RYD PROFILEN (cache2, startupCache, storage,
+  cookies, sessionstore) før hver ny load; SIGKILL af Firefox giver beskidt
+  profil → næste load fejler tidligt; proxy vnext2 (e4e4ca74, fuld-frame
+  pre/post-diff) crashede 2/2 ved første store draw — brug vnext4
+  (631f9a40, grid + nonsky-tælling + clearDepthf-log, stabil); hakkende lyd
+  efter SIGKILL = hængt pulseaudio-strøm (`kill -9 <pulsepid>`);
+  ssh-hang ved launch lige efter lang sleep — kør launch-kommandoen igen;
+  /tmp på boksen ryddes ved reboot (byg probes om fra repo); ingen BiDi-reload
+  under load (poki bot=1). Kode: `eglplatform_x11/egl_proxy.c` (vnext4-log),
+  `scene_instanced_probe.c` (instanced + map-test), `scene_real_replay.c`
+  (replay af fangede buffers; env REAL_DIVISOR til kollaps-test). Evidens på
+  laptop: `/tmp/cyan_snap_20260908.tar`, `/tmp/cyan_draw_probe_20260908.log`.
+  Proxy-backups på boksen: `/root/egl_proxy_*.so.bak`. Kernel-billede:
+  `devuan/gpu/kernelbuild/out/clone3fix/ramfs-clone3fix.img`."*
 - **God start i en ny session (cyan-scene + clone3-kernel, 6. sep 2026):**
   *"Læs `OVERBLIK.md` (overblik over alle elementer), derefter
   `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` (seneste session med
