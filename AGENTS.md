@@ -34,6 +34,15 @@ Du er en elektronik/computer ekspert
   i en deepseek-v4-flash-session). Ved tvivl: spørg brugeren. Ret aldrig ældre
   commits' tags uden brugerens godkendelse (omskriver historik). Notér desuden
   agent/model øverst i session-notatet.
+- **Tegnsæt i dokumentation (.md):** brug kun tegn der findes i DejaVu Sans /
+  DejaVu Sans Mono (pandoc/xelatex bygger PDF'erne med dem). Ingen emojier eller
+  symbol-ikoner (fx U+2705/U+274C/U+1F389/U+1F464/U+1F916); danske tegn (æøå),
+  almindelig tegnsætning, pilen `→`, § og tal er OK. Tjek før commit med
+  `bash devuan/check_no_emoji.sh` (hele repoet); pre-commit-hooken
+  `devuan/hooks/pre-commit` (installeret i .git/hooks) kører samme regel på
+  staged .md-filer — ret hits før commit.
+  Installation af hooken (én gang pr. klon):
+  `ln -sfn ../../devuan/hooks/pre-commit .git/hooks/pre-commit`.
 
 ## Checkpoint- og tråd-disciplin
 
