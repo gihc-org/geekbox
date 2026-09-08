@@ -20,6 +20,12 @@
   ved play-start) gentaget 4×; canvas bliver i DOM (836x470) men compositoren
   taber laget → poki-baggrund ses; alpha-shim-test endnu inkonklusiv. Detaljer:
   `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (checkpoints 20:30-21:15).
+- **OPDATERET 8. sep ~22:00 (cyan-scene): SPILLET ER SPILBART 🎉** — vnext12
+  (md5 `dcc0a68f`) = alpha-shim (BiDi-preload, attrs alpha:true bekræftet) +
+  depthmask-lap + depth-clear ÉN gang pr. frame med EKSPLICIT clearDepthf(1)
+  (CYAN_DEPTHCLEAR=1). Dreng/tog/bygninger i korrekt perspektiv; brune flader
+  væk. Tilbage: blå glitches + lav fps (instrumentering). Opskrift og beviser:
+  `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (checkpoint 21:40-22:00).
 - Cyan-scene-sporet (8. sep): drawBuffers **ude** (`[COLOR_ATTACHMENT0]`),
   instanced-stien og `glMapBufferRange` virker offline; VBO/EBO-snapshots +
   matricer viser store prog7-draws **100 % i frustum**; offline-replay af

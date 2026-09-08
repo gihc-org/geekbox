@@ -39,6 +39,8 @@ typedef EGLBoolean (*real_eglMakeCurrent_t)(EGLDisplay, EGLSurface, EGLSurface,
 typedef EGLBoolean (*real_eglSwapBuffers_t)(EGLDisplay, EGLSurface);
 typedef EGLint (*real_eglGetError_t)(void);
 
+static int g_force_clear_pending = 1;
+
 static void cyan_swap_sample(void);
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count);
 static void cyan_predraw_capture(GLsizei count);
@@ -163,6 +165,7 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     static real_eglSwapBuffers_t real;
     static real_eglGetError_t err;
     static long n;
+    g_force_clear_pending = 1;
     if (!real) {
         real = (real_eglSwapBuffers_t)dlsym(RTLD_NEXT, "eglSwapBuffers");
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
@@ -448,6 +451,15 @@ GLenum hook_glGetError(void)
 #ifndef GL_VERTEX_ARRAY_BINDING
 #define GL_VERTEX_ARRAY_BINDING 0x85B5
 #endif
+#ifndef GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE
+#define GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE 0x8CD0
+#endif
+#ifndef GL_COLOR_ATTACHMENT0
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#endif
+#ifndef GL_DEPTH_ATTACHMENT
+#define GL_DEPTH_ATTACHMENT 0x8D00
+#endif
 
 static int dlog_fd(void)
 {
@@ -536,6 +548,9 @@ static void (*rgl_glDrawBuffers)(GLsizei, const GLenum *);
 static void (*rgl_glEnable)(GLenum);
 static void (*rgl_glDisable)(GLenum);
 static void (*rgl_glDepthMask)(GLboolean);
+static void (*rgl_glClearDepthf)(GLfloat);
+static void (*rgl_glGetFramebufferAttachmentParameteriv)(GLenum, GLenum,
+                                                         GLenum, GLint *);
 
 static void rgl_resolve_all(void)
 {
@@ -628,6 +643,11 @@ static void rgl_resolve_all(void)
         real_eglGetProcAddress_fn("glDisable");
     rgl_glDepthMask = (void (*)(GLboolean))
         real_eglGetProcAddress_fn("glDepthMask");
+    rgl_glClearDepthf = (void (*)(GLfloat))
+        real_eglGetProcAddress_fn("glClearDepthf");
+    rgl_glGetFramebufferAttachmentParameteriv =
+        (void (*)(GLenum, GLenum, GLenum, GLint *))
+        real_eglGetProcAddress_fn("glGetFramebufferAttachmentParameteriv");
 }
 
 /* depthmask-lap (vnext7): hvis en draw kører med DEPTH_TEST fra men
@@ -667,19 +687,39 @@ static void maybe_force_depth_clear(GLsizei count)
         return;
     if (!getenv("CYAN_DEPTHCLEAR"))
         return;
+    if (!g_force_clear_pending)
+        return;
     if (!rgl_glClear || !rgl_glIsEnabled || !rgl_glGetIntegerv)
         return;
     if (!rgl_glIsEnabled(GL_DEPTH_TEST))
         return;
-    GLint fbo = 0, vp[4] = {0, 0, 0, 0};
+    GLint fbo = 0, vp[4] = {0, 0, 0, 0}, dfunc = -1;
     rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
     rgl_glGetIntegerv(GL_VIEWPORT, vp);
+    rgl_glGetIntegerv(GL_DEPTH_FUNC, &dfunc);
+    if (rgl_glClearDepthf)
+        rgl_glClearDepthf(1.0f);
+    g_force_clear_pending = 0;
+    GLfloat cdv = -1.0f;
+    if (rgl_glGetFloatv)
+        rgl_glGetFloatv(GL_DEPTH_CLEAR_VALUE, &cdv);
     rgl_glClear(GL_DEPTH_BUFFER_BIT);
+    GLint at_col = -1, at_dep = -1;
+    if (rgl_glGetFramebufferAttachmentParameteriv) {
+        rgl_glGetFramebufferAttachmentParameteriv(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &at_col);
+        rgl_glGetFramebufferAttachmentParameteriv(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &at_dep);
+    }
     static unsigned long n = 0;
     n++;
     if (n <= 40 || n % 250 == 0)
-        dlog_msg("force-depth-clear fbo=%d %dx%d count=%d (kald=%lu)",
-                 (int)fbo, vp[2], vp[3], (int)count, n);
+        dlog_msg("force-depth-clear fbo=%d %dx%d count=%d att-col=0x%x "
+                 "att-depth=0x%x depthfunc=0x%x clearval=%g (kald=%lu)",
+                 (int)fbo, vp[2], vp[3], (int)count, (unsigned)at_col,
+                 (unsigned)at_dep, (unsigned)dfunc, (double)cdv, n);
 }
 
 static const char *gls_mode_name(GLenum m)
@@ -1170,10 +1210,10 @@ static void dump_draw(const char *fn, GLenum mode, GLsizei count,
     static unsigned long skipped = 0;
     seq++;
     if (seq == 1)
-        dlog_msg("== proxy-build: vnext9 + depthmask-lap + tvungen "
-                 "depth-clear (env CYAN_DEPTHCLEAR=1) + SHADOW-probe med "
-                 "var-depthoff/var-culloff til big<=40 + hver 250. store "
-                 "draw (env CYAN_SHADOW_PROBE) ==");
+        dlog_msg("== proxy-build: vnext12 + depthmask-lap + tvungen "
+                 "depth-clear EKSKLUSIVT én gang pr. frame (efter swap/"
+                 "clear) med EKSPLICIT clearDepthf(1) + fbo-att/depthfunc/"
+                 "clearval-log (env CYAN_DEPTHCLEAR=1) ==");
     GLint prog = 0;
     rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
     int want = (seq <= 150);
@@ -1447,6 +1487,8 @@ static void hook_glClear(GLbitfield mask)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
+    if (mask & GL_DEPTH_BUFFER_BIT)
+        g_force_clear_pending = 1;
     if (n <= 30 || n % 200 == 0) {
         GLint fbo = -1, vp[4] = {0, 0, 0, 0};
         if (rgl_glGetIntegerv) {

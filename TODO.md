@@ -91,17 +91,18 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     WebGL); (e) spil-blokaden: **BESLUTTET (26. aug): gralloc-lock-sporet
     forfølges** (præsentation i GPU-processen); Spor B/accept fravalgt. Detaljer:
     `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md`.
-- [ ] **Subway Surfers: 3D-scenen renderer cyan (27. aug, åbent spor):**
-  spillet loader STABILT og er spilbart (lyd/HUD/menuer) med konfigurationen i
-  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` — men scene-objekterne
-  (drengen/banen) tegnes ikke; kun ensartet cyan (eller sort). Målt:
-  canvas 836x470 læser ensartet cyan, clear er pink, kun 18-verts-draws,
-  rigtige teksturer uploades, 0 GL/JS-fejl. Næste: find hvorfor scene-draws
-  ikke giver output (log 18-verts-draw'ets shader/uniformer; tjek
-  kapabilitets-check; sammenlign vertex-shader-matematik; overvej Spor B hvis
-  1.5-scene-rendering er uovervindelig). Detaljer:
-  `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` +
-  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md`.
+- [x] **Subway Surfers: 3D-scenen renderer cyan — LØST 8. sep 2026 (vnext12):**
+  spillet er SPILBART (dreng, tog, bygninger; input virker). Rodårsag:
+  (1) driverens depth-clear-værdi er ikke 1 selv efter glClearDepthf(1) fra
+  spillet (1.5-quirk) → verdens-draws fejler LEQUAL mod ≈0-depth → proxy
+  rydder depth ÉN gang pr. frame med EKSPLICIT rgl_glClearDepthf(1) før clear
+  (env CYAN_DEPTHCLEAR=1); (2) UI-draws med depthtest=0+depthmask=1 skriver
+  depth (depthmask-lap); (3) præsentationssymptom (spilområde forsvinder ved
+  play) løst med alpha-shim/preload (alpha:true+premultipliedAlpha:true).
+  Rest: blå glitches + lav fps (instrumentering/software-layers). Opskrift:
+  `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (21:40-22:00).
+  Historik + målinger: `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md`,
+  `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` (virkende konfiguration).
 - [x] **Gralloc-lock-EINVAL LØST (26. aug):** /dev/sw_sync 0600 root:root →
   EACCES i lock'ens sync-fence-sti; chmod 666 (myinit-retry). x11ws usage
   0x80→0x3. Poki-load-crash LØST: glesv2-proxyen brød WebGL1/ES1 → behold

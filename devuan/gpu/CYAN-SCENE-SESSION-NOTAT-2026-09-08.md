@@ -129,6 +129,47 @@
   rigtige gameplay-draws; (c) compositor-lag: præsentationen taber canvas ved
   play-start (software-layers/webrender-varianter).
 
+## Checkpoint 21:15-21:25 — SHIM-KØRSEL: præsentationssymptom VÆK (5. kørsel)
+
+- **vnext9 + BiDi-preload-shim (alpha/loseContext), CYAN_DEPTHCLEAR=1:**
+  spilområdet forsvandt IKKE ved play-start (bruger-bekræftet) — første gang
+  uden præsentationssymptom siden kørsel 4/9. Shim-hypotesen styrket
+  (loseContext blokeret + getContext hooked bekræftet i cyan_game.log).
+- **Gameplay-visuelt:** overvejende cyan med korte glimt af vogn/"tryk pil op"-
+  UI; fb-analyse viser ~24 % himmel-cyan + hvidt (sky/HUD) + mørke elementer
+  (bane/bygninger delvist); skærmen næsten statisk mellem input (74 px/3 s).
+  Dreng endnu ikke set; verdens-draws skriver stadig kun delvist (postdraw
+  ns=43.556 ved periodiske samples; big nåede 76.000).
+- **domcheck blokeret:** Firefox BiDi frigiver ikke sessionen ved klient-død/
+  pæn session.end uden genstart ("Maximum number of active sessions") →
+  attrs (alpha:true?) endnu ikke formelt bekræftet; næste kørsel kan udvide
+  preload til at dumpe getContextAttributes direkte til cyan_game.log.
+- Beviser: `/root/cyan_draw_probe_vnext9_shim2_20260908.log` (boks), fb-raw
+  `/tmp/fb_play{1,2}.raw` + PNG på laptop (21:21).
+- Commit `14434ef` (5 filer, [codex:deepseek-v4-flash]) — inkl. alle
+  vnext5-9-ændringer + dokumentation.
+
+## Checkpoint 21:40-22:00 — SPILLET ER SPILBART (vnext11/12) 🎉
+
+- **vnext11 (617ca884): force-clear med EKSPLICIT rgl_glClearDepthf(1) før
+  glClear** → verden renderer konstant allerede i attract (huse + skinner;
+  clearval=1 bekræftet i log). Driverens interne clear-værdi var åbenbart
+  IKKE 1 trods spillets glClearDepthf(1)-kald (glGetFloatv=0-quirk) → tidligere
+  force-clear ryddede til ≈0 og LEQUAL fejlede.
+- **vnext12 (dcc0a68f): depth-clear kun ÉN gang pr. frame** (efter swap/
+  depth-clear; før første store draw) i stedet for før hvert draw → normal
+  LEQUAL-occlusion mellem verdens-stykker. **BRUGER: spillet er spilbart —
+  drengen, togene, bygninger i rigtigt perspektiv; brune flader væk.**
+  Tilbage: lejlighedsvise blå glitches (forsvinder hurtigt) + lav fps
+  (måling/instrumentering + software-layers mistænkt).
+- Virkende opskrift: alpha-shim (BiDi-preload; attrs alpha:true+
+  premultipliedAlpha:true bekræftet) + depthmask-lap (UI skriver ikke depth)
+  + depth-clear 1×/frame m. eksplicit clearDepthf(1) (CYAN_DEPTHCLEAR=1).
+  Proxy på boksen: vnext12 `dcc0a68f`; backups `/root/egl_proxy_*.so.bak`.
+- Næste: (a) CYAN_LIGHT-byg uden readbacks/dumps → fps-sammenligning;
+  (b) blå-glitch-karakterisering; (c) rodårsag i driveren (hvorfor ignorerer
+  1.5 clearDepthf fra spillet) evt. senere.
+
 ## Status i ét blik
 
 - **SLUTSTATUS 8. sep aften:** boks genstartet → IP 192.168.0.171 (bring-up

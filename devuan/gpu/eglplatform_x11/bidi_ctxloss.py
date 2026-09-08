@@ -4,6 +4,7 @@ læs statusMessage (Firefox 140 har ikke længere CDP — kun BiDi)."""
 import base64
 import json
 import os
+import signal
 import socket
 import struct
 import sys
@@ -119,6 +120,13 @@ def main():
     if ws is None:
         print("KUNNE IKKE FORBINDE TIL /session")
         sys.exit(1)
+    stop = [False]
+
+    def _sig(signum, frame):
+        stop[0] = True
+
+    signal.signal(signal.SIGTERM, _sig)
+    signal.signal(signal.SIGINT, _sig)
     mid = 0
 
     def call(method, params=None, timeout=20):
@@ -262,7 +270,7 @@ def main():
             "if(a.premultipliedAlpha===false){a.premultipliedAlpha=true;try{dump('ALPHA-SHIM: premultipliedAlpha tvunget true\\n');}catch(x){}}"
             "args[1]=a;}"
             "var r=__gc.apply(this,args);__hook(this);"
-            "try{dump('GETCONTEXT canvas='+this.width+'x'+this.height+' type='+arguments[0]+' result='+(r?'OK':'NULL')+'\\n');}catch(x){}"
+            "try{dump('GETCONTEXT canvas='+this.width+'x'+this.height+' type='+arguments[0]+' result='+(r?'OK':'NULL')+' attrs='+JSON.stringify(r&&r.getContextAttributes?r.getContextAttributes():{})+'\\n');}catch(x){}"
             "try{__cap(r,this,arguments[0]);}catch(e){}"
             "try{if(r&&r.getExtension){"
             "var __ge=r.getExtension.bind(r);"
@@ -364,7 +372,10 @@ def main():
                      {"context": ctx, "url": target}, timeout=30)
             print("NAVIGERET:", json.dumps(r)[:200])
             if len(sys.argv) > 4:
-                time.sleep(int(sys.argv[4]))
+                deadline = time.time() + int(sys.argv[4])
+                while time.time() < deadline and not stop[0]:
+                    time.sleep(2)
+                print("VENT-FÆRDIG (stop=%s)" % stop[0])
         if len(sys.argv) > 2 and sys.argv[2] == "reload":
             r = call("browsingContext.reload", {"context": ctx})
             print("GENINDLASTET:", json.dumps(r)[:200])
