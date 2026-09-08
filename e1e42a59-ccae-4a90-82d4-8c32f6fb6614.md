@@ -6,13 +6,13 @@
 
 ---
 
-### 👤 Du
+### Du
 
 Jeg har en geekbox tv boks med de specs som er vist på billedet. Den har Android installeret. Jeg har installeret Linux på en enhed magen til, men kan ikke huske hvordan. Jeg købte dem for flere år siden, og deres hjemmeside findes ikke mere, kan du hjælpe
 
 ---
 
-### 🤖 Claude
+### Claude
 
 *[Brugte værktøj: web_search]*
 
@@ -40,13 +40,13 @@ Vil du have mig til at grave specifikt efter de originale firmware-zip-filer (Cr
 
 ---
 
-### 👤 Du
+### Du
 
 Jeg har fundet nogle images/ROMS her https://wiki.radxa.com/Rock/prebuilt_images og her https://geekbox.boards.net/thread/6/geekbox-downloads-firmware-tools-schematics. Findes der noget nyere, eller vil det være muligt at opgradere fra de gamle versioner
 
 ---
 
-### 🤖 Claude
+### Claude
 
 Lad mig kigge på begge sider for at se hvad der faktisk er tilgængeligt.
 
@@ -86,13 +86,13 @@ Hvis dit primære mål er Linux (ikke en nyere Android), er det faktisk en bedre
 
 ---
 
-### 👤 Du
+### Du
 
 Mit mål er at skrotte Android, og få en så ny Linux som mulig installeret på enheden
 
 ---
 
-### 🤖 Claude
+### Claude
 
 **Det er en realistisk plan, men med et vigtigt forbehold:** "så ny som mulig" på en RK3368 fra 2015 betyder noget andet end på moderne hardware. Lad mig give dig det reelle billede, så du kan vælge med åbne øjne.
 
@@ -140,13 +140,13 @@ Vil du have mig til at gå i gang med at undersøge, hvad der præcis ligger i f
 
 ---
 
-### 👤 Du
+### Du
 
 Hvor var linket til Lubuntu
 
 ---
 
-### 🤖 Claude
+### Claude
 
 Godt spørgsmål — lad mig være præcis, for jeg har faktisk ikke et direkte downloadlink til en Lubuntu-image, jeg har kun *omtaler* af, at den findes.
 
@@ -188,14 +188,14 @@ Det interessante er: der kom en **opdateret version** i januar 2016, ikke kun de
 
 ---
 
-### 👤 Du
+### Du
 
 Når jeg køre "./upgrade_tool uf /home/kristian/Downloads/Geekbox_Lubuntu_V160309/update.img" får jeg denne fejl:
 Segmentation fault         (core dumped) ./upgrade_tool uf /home/kristian/Downloads/Geekbox_Lubuntu_V160309/update.img
 
 ---
 
-### 🤖 Claude
+### Claude
 
 Det er en klassisk kompatibilitetsfejl med den gamle `upgrade_tool`-binær — den her opstår typisk fordi det er et gammelt 32-bit x86-binary fra 2015/2016, og den kører ikke rent på moderne 64-bit Linux-distroer uden de rigtige compat-biblioteker. Lad mig undersøge specifikt.
 
@@ -245,13 +245,13 @@ Vil du have mig til at finde den nøjagtige installationsvejledning til `vichara
 
 ---
 
-### 👤 Du
+### Du
 
 Ja tak jeg vil gerne have guiden til vicharak-in/Linux_Upgrade_Tool
 
 ---
 
-### 🤖 Claude
+### Claude
 
 *[Brugte værktøj: web_fetch]*
 
@@ -312,13 +312,13 @@ Værktøjet her er testet og dokumenteret mod **RK3399 og RK3568** (Vicharaks eg
 
 ---
 
-### 👤 Du
+### Du
 
 sudo ./upgrade_tool uf /home/kristian/Downloads/Geekbox_Lubuntu_V160309/update.img Loading firmware... Support Type:330A       FW Ver:5.1.00   FW Time:2016-03-09 19:10:26 Loader ver:2.40 Loader Time:2015-11-12 16:57:57 Start to upgrade firmware... Test Device Start Test Device Success Check Chip Start Check Chip Fail Note:Communication issues,Certainly please check usb,Completely please check device
 
 ---
 
-### 🤖 Claude
+### Claude
 
 Fremragende — det her er reelt fremskridt! Den nye binær virker (ingen segfault), og vi fik værdifuld information ud af det.
 
