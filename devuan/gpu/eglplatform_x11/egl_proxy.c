@@ -42,6 +42,9 @@ typedef EGLint (*real_eglGetError_t)(void);
 static void cyan_swap_sample(void);
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count);
 static void cyan_predraw_capture(GLsizei count);
+static void cyan_shadow_probe(const char *fn, GLenum mode, GLsizei count,
+                              GLenum type, const void *indices, GLint first,
+                              GLsizei primcount);
 static void snapshot_vertex_buffers(GLuint prog, unsigned long seq,
                                     GLsizei count);
 
@@ -439,6 +442,12 @@ GLenum hook_glGetError(void)
 #ifndef GL_VERTEX_ATTRIB_ARRAY_DIVISOR
 #define GL_VERTEX_ATTRIB_ARRAY_DIVISOR 0x88FE
 #endif
+#ifndef GL_RASTERIZER_DISCARD
+#define GL_RASTERIZER_DISCARD 0x8C89
+#endif
+#ifndef GL_VERTEX_ARRAY_BINDING
+#define GL_VERTEX_ARRAY_BINDING 0x85B5
+#endif
 
 static int dlog_fd(void)
 {
@@ -524,6 +533,9 @@ static void *(*rgl_glMapBufferRange)(GLenum, GLintptr, GLsizeiptr,
 static GLboolean (*rgl_glUnmapBuffer)(GLenum);
 static void (*rgl_glVertexAttribDivisor)(GLuint, GLuint);
 static void (*rgl_glDrawBuffers)(GLsizei, const GLenum *);
+static void (*rgl_glEnable)(GLenum);
+static void (*rgl_glDisable)(GLenum);
+static void (*rgl_glDepthMask)(GLboolean);
 
 static void rgl_resolve_all(void)
 {
@@ -610,6 +622,64 @@ static void rgl_resolve_all(void)
         real_eglGetProcAddress_fn("glVertexAttribDivisor");
     rgl_glDrawBuffers = (void (*)(GLsizei, const GLenum *))
         real_eglGetProcAddress_fn("glDrawBuffers");
+    rgl_glEnable = (void (*)(GLenum))
+        real_eglGetProcAddress_fn("glEnable");
+    rgl_glDisable = (void (*)(GLenum))
+        real_eglGetProcAddress_fn("glDisable");
+    rgl_glDepthMask = (void (*)(GLboolean))
+        real_eglGetProcAddress_fn("glDepthMask");
+}
+
+/* depthmask-lap (vnext7): hvis en draw kører med DEPTH_TEST fra men
+ * DEPTH_WRITEMASK=1 (2D/UI-draws i Subway Surfers), tvinges masken fra under
+ * draw'et og gendannes bagefter. På 1.5-stakken skriver driveren ellers
+ * depth alligevel → depth-bufferen fyldes med UI-dybdens ≈0 → efterfølgende
+ * verdens-draws (LEQUAL) fejler. Målt 8. sep 2026 aften (vnext6 var-depthoff:
+ * verden rasterserer live med depth fra). */
+static void dm_lap_begin(int *active)
+{
+    *active = 0;
+    if (!rgl_glDepthMask || !rgl_glIsEnabled || !rgl_glGetIntegerv)
+        return;
+    if (rgl_glIsEnabled(GL_DEPTH_TEST))
+        return;
+    GLint dm = 0;
+    rgl_glGetIntegerv(GL_DEPTH_WRITEMASK, &dm);
+    if (dm) {
+        rgl_glDepthMask(GL_FALSE);
+        *active = 1;
+    }
+}
+
+static void dm_lap_end(int active)
+{
+    if (active && rgl_glDepthMask)
+        rgl_glDepthMask(GL_TRUE);
+}
+
+/* vnext8-diagnose: hvis CYAN_DEPTHCLEAR=1, ryd depth-bufferen lige før store
+ * depth-on-draws — tester om live-porten er at fbo=3's depth aldrig ryddes
+ * (clear i spillet rammer måske fbo=0; UI skriver depth ≈0 med depthtest=0
+ * + depthmask=1 på 1.5). */
+static void maybe_force_depth_clear(GLsizei count)
+{
+    if (count < 512)
+        return;
+    if (!getenv("CYAN_DEPTHCLEAR"))
+        return;
+    if (!rgl_glClear || !rgl_glIsEnabled || !rgl_glGetIntegerv)
+        return;
+    if (!rgl_glIsEnabled(GL_DEPTH_TEST))
+        return;
+    GLint fbo = 0, vp[4] = {0, 0, 0, 0};
+    rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+    rgl_glGetIntegerv(GL_VIEWPORT, vp);
+    rgl_glClear(GL_DEPTH_BUFFER_BIT);
+    static unsigned long n = 0;
+    n++;
+    if (n <= 40 || n % 250 == 0)
+        dlog_msg("force-depth-clear fbo=%d %dx%d count=%d (kald=%lu)",
+                 (int)fbo, vp[2], vp[3], (int)count, n);
 }
 
 static const char *gls_mode_name(GLenum m)
@@ -939,6 +1009,10 @@ static void dump_state_extra(void)
     GLint dmask = 0;
     rgl_glGetIntegerv(GL_COLOR_WRITEMASK, cmask);
     rgl_glGetIntegerv(GL_DEPTH_WRITEMASK, &dmask);
+    GLint vao = 0, arrbuf = 0, ebuf = 0;
+    rgl_glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+    rgl_glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &arrbuf);
+    rgl_glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebuf);
     dlog_msg("  state: cull=%d cullmode=0x%x(%s) front=0x%x depthtest=%d "
              "depthfunc=0x%x scissor=%d blend=%d src=0x%x dst=0x%x "
              "srca=0x%x dsta=0x%x "
@@ -953,6 +1027,11 @@ static void dump_state_extra(void)
              rgl_glIsEnabled ? rgl_glIsEnabled(GL_BLEND) : -1,
              (unsigned)bsrc, (unsigned)bdst, (unsigned)bsrca, (unsigned)bdsta,
              cmask[0], cmask[1], cmask[2], cmask[3], dmask, (int)rfbo);
+    dlog_msg("  extra-state: rasterDiscard=%d stencilTest=%d vao=%d "
+             "arrbuf=%d ebuf=%d",
+             rgl_glIsEnabled ? rgl_glIsEnabled(GL_RASTERIZER_DISCARD) : -1,
+             rgl_glIsEnabled ? rgl_glIsEnabled(GL_STENCIL_TEST) : -1,
+             (int)vao, (int)arrbuf, (int)ebuf);
     GLint at = 0;
     rgl_glGetIntegerv(GL_ACTIVE_TEXTURE, &at);
     GLint tb2d = 0, tbc = 0;
@@ -1090,6 +1169,11 @@ static void dump_draw(const char *fn, GLenum mode, GLsizei count,
     static int big = 0;
     static unsigned long skipped = 0;
     seq++;
+    if (seq == 1)
+        dlog_msg("== proxy-build: vnext9 + depthmask-lap + tvungen "
+                 "depth-clear (env CYAN_DEPTHCLEAR=1) + SHADOW-probe med "
+                 "var-depthoff/var-culloff til big<=40 + hver 250. store "
+                 "draw (env CYAN_SHADOW_PROBE) ==");
     GLint prog = 0;
     rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
     int want = (seq <= 150);
@@ -1189,8 +1273,21 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
     rgl_resolve_all();
     dump_draw("glDrawElements", mode, count, type, -1, indices);
     cyan_predraw_capture(count);
+    maybe_force_depth_clear(count);
+    int dm_lap = 0;
+    dm_lap_begin(&dm_lap);
     rgl_glDrawElements(mode, count, type, indices);
+    dm_lap_end(dm_lap);
+    if (dm_lap) {
+        static unsigned long n = 0;
+        n++;
+        if (n <= 120 || n % 300 == 0)
+            dlog_msg("depthmask-lap glDrawElements count=%d (kald=%lu)",
+                     (int)count, n);
+    }
     cyan_postdraw_sample("drawElements", 0, count);
+    if (getenv("CYAN_SHADOW_PROBE"))
+        cyan_shadow_probe("drawElements", mode, count, type, indices, 0, -1);
 }
 
 static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
@@ -1198,8 +1295,21 @@ static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
     rgl_resolve_all();
     dump_draw("glDrawArrays", mode, count, 0, -1, NULL);
     cyan_predraw_capture(count);
+    maybe_force_depth_clear(count);
+    int dm_lap = 0;
+    dm_lap_begin(&dm_lap);
     rgl_glDrawArrays(mode, first, count);
+    dm_lap_end(dm_lap);
+    if (dm_lap) {
+        static unsigned long n = 0;
+        n++;
+        if (n <= 120 || n % 300 == 0)
+            dlog_msg("depthmask-lap glDrawArrays count=%d (kald=%lu)",
+                     (int)count, n);
+    }
     cyan_postdraw_sample("drawArrays", 0, count);
+    if (getenv("CYAN_SHADOW_PROBE"))
+        cyan_shadow_probe("drawArrays", mode, count, 0, NULL, first, -1);
 }
 
 static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
@@ -1210,15 +1320,30 @@ static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
     dump_draw("glDrawElementsInstanced", mode, count, type, primcount,
               indices);
     cyan_predraw_capture(count);
+    maybe_force_depth_clear(count);
+    int dm_lap = 0;
+    dm_lap_begin(&dm_lap);
     if (rgl_glDrawElementsInstanced)
         rgl_glDrawElementsInstanced(mode, count, type, indices, primcount);
     else
         rgl_glDrawElements(mode, count, type, indices);
+    dm_lap_end(dm_lap);
+    if (dm_lap) {
+        static unsigned long n = 0;
+        n++;
+        if (n <= 120 || n % 300 == 0)
+            dlog_msg("depthmask-lap glDrawElementsInstanced count=%d "
+                     "primcount=%d (kald=%lu)",
+                     (int)count, (int)primcount, n);
+    }
     {
         GLint prog = 0;
         rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
         cyan_postdraw_sample("drawElementsInstanced", (GLuint)prog, count);
     }
+    if (getenv("CYAN_SHADOW_PROBE"))
+        cyan_shadow_probe("drawElementsInstanced", mode, count, type, indices,
+                          0, primcount);
 }
 
 static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
@@ -1227,15 +1352,30 @@ static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
     rgl_resolve_all();
     dump_draw("glDrawArraysInstanced", mode, count, 0, primcount, NULL);
     cyan_predraw_capture(count);
+    maybe_force_depth_clear(count);
+    int dm_lap = 0;
+    dm_lap_begin(&dm_lap);
     if (rgl_glDrawArraysInstanced)
         rgl_glDrawArraysInstanced(mode, first, count, primcount);
     else
         rgl_glDrawArrays(mode, first, count);
+    dm_lap_end(dm_lap);
+    if (dm_lap) {
+        static unsigned long n = 0;
+        n++;
+        if (n <= 120 || n % 300 == 0)
+            dlog_msg("depthmask-lap glDrawArraysInstanced count=%d "
+                     "primcount=%d (kald=%lu)",
+                     (int)count, (int)primcount, n);
+    }
     {
         GLint prog = 0;
         rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
         cyan_postdraw_sample("drawArraysInstanced", (GLuint)prog, count);
     }
+    if (getenv("CYAN_SHADOW_PROBE"))
+        cyan_shadow_probe("drawArraysInstanced", mode, count, 0, NULL, first,
+                          primcount);
 }
 
 static void hook_glUseProgram(GLuint prog)
@@ -1307,8 +1447,15 @@ static void hook_glClear(GLbitfield mask)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 30 || n % 200 == 0)
-        dlog_msg("clear mask=0x%x (kald=%lu)", (unsigned)mask, n);
+    if (n <= 30 || n % 200 == 0) {
+        GLint fbo = -1, vp[4] = {0, 0, 0, 0};
+        if (rgl_glGetIntegerv) {
+            rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+            rgl_glGetIntegerv(GL_VIEWPORT, vp);
+        }
+        dlog_msg("clear mask=0x%x fbo=%d viewport=[%d,%d %dx%d] (kald=%lu)",
+                 (unsigned)mask, (int)fbo, vp[0], vp[1], vp[2], vp[3], n);
+    }
     rgl_glClear(mask);
 }
 
@@ -1532,6 +1679,298 @@ static void cyan_predraw_capture(GLsizei count)
     free(buf);
 }
 
+/* ---- SHADOW-DRAW-PROBE (8. sep 2026 aften, vnext6): lige efter det rigtige
+ *      store draw køres ET EKSTRA draw med samme tilstand — ikke-instanced
+ *      (glDrawElements/glDrawArrays) — og read-framebufferen aflæses. Svarer
+ *      på om live-kontekstens draw-kald selv er brudt (offline-replay
+ *      rasteriserer samme data+shaders). Skriver skyggedrawet IKKE pixels,
+ *      køres varianter med DEPTH_TEST fra (og CULL_FACE fra hvis depth ikke
+ *      er porten). Hvis skyggedrawet skriver pixels, gentages også det
+ *      rigtige instanced-kald for at se om instancing-stien live er
+ *      forskellig. Basen stash'es af postdraw-prøven. ---- */
+static unsigned char *shadow_base_buf = NULL;
+static int shadow_base_w = 0;
+static int shadow_base_h = 0;
+static int shadow_base_ready = 0;
+
+static int shadow_cadence(unsigned long big)
+{
+    return big <= 40 || (big > 80 && big % 250 == 0);
+}
+
+static void count_nonsky(const unsigned char *buf, int w, int h,
+                         unsigned long *ns, int *x0, int *y0, int *x1,
+                         int *y1)
+{
+    *ns = 0;
+    *x0 = w;
+    *y0 = h;
+    *x1 = -1;
+    *y1 = -1;
+    for (int j = 0; j < h; j++) {
+        const unsigned char *row = buf + (size_t)j * w * 4;
+        for (int i = 0; i < w; i++) {
+            const unsigned char *q = row + (size_t)i * 4;
+            int dr = q[0] - 130, dg = q[1] - 255, db = q[2] - 238;
+            if (dr < 0) dr = -dr;
+            if (dg < 0) dg = -dg;
+            if (db < 0) db = -db;
+            if (dr > 40 || dg > 30 || db > 40) {
+                (*ns)++;
+                if (i < *x0) *x0 = i;
+                if (i > *x1) *x1 = i;
+                if (j < *y0) *y0 = j;
+                if (j > *y1) *y1 = j;
+            }
+        }
+    }
+}
+
+static unsigned long buf_diff_count(const unsigned char *a,
+                                    const unsigned char *b, int w, int h,
+                                    int *x0, int *y0, int *x1, int *y1,
+                                    unsigned char first[4])
+{
+    unsigned long n = 0;
+    *x0 = w;
+    *y0 = h;
+    *x1 = -1;
+    *y1 = -1;
+    first[0] = first[1] = first[2] = first[3] = 0;
+    size_t stride = (size_t)w * 4;
+    for (int j = 0; j < h && n < 2000000; j++) {
+        const unsigned char *ra = a + (size_t)j * stride;
+        const unsigned char *rb = b + (size_t)j * stride;
+        for (int i = 0; i < w && n < 2000000; i++) {
+            const unsigned char *qa = ra + (size_t)i * 4;
+            const unsigned char *qb = rb + (size_t)i * 4;
+            if (qa[0] != qb[0] || qa[1] != qb[1] || qa[2] != qb[2] ||
+                qa[3] != qb[3]) {
+                if (!n) {
+                    first[0] = qb[0];
+                    first[1] = qb[1];
+                    first[2] = qb[2];
+                    first[3] = qb[3];
+                }
+                n++;
+                if (i < *x0) *x0 = i;
+                if (i > *x1) *x1 = i;
+                if (j < *y0) *y0 = j;
+                if (j > *y1) *y1 = j;
+            }
+        }
+    }
+    return n;
+}
+
+static int shadow_read_fb(unsigned char **out, int *w, int *h)
+{
+    if (!rgl_glReadPixels || !rgl_glGetIntegerv)
+        return 0;
+    GLint vp[4] = {0, 0, 0, 0};
+    rgl_glGetIntegerv(GL_VIEWPORT, vp);
+    *w = vp[2];
+    *h = vp[3];
+    if (*w < 64 || *h < 64 || *w > 4096 || *h > 4096)
+        return 0;
+    unsigned char *buf = malloc((size_t)*w * *h * 4);
+    if (!buf)
+        return 0;
+    memset(buf, 0, (size_t)*w * *h * 4);
+    rgl_glReadPixels(0, 0, *w, *h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    *out = buf;
+    return 1;
+}
+
+static GLenum (*shadow_raw_err_fn)(void);
+
+static GLenum shadow_raw_err(void)
+{
+    if (!shadow_raw_err_fn)
+        shadow_raw_err_fn =
+            (GLenum (*)(void))real_eglGetProcAddress_fn("glGetError");
+    return shadow_raw_err_fn ? shadow_raw_err_fn() : 0;
+}
+
+/* Kører ét variant-skyggedraw med depth/cull midlertidigt slået fra og
+ * sammenligner med basen (A = indhold efter det rigtige draw). Gendanner
+ * tilstanden bagefter. */
+static void shadow_run_variant(const char *label, int depth_off, int cull_off,
+                               const char *fn, GLenum mode, GLsizei count,
+                               GLenum type, const void *indices, GLint first,
+                               char *line, size_t linesz, int *o,
+                               unsigned long *vchanged)
+{
+    unsigned long changed = 0;
+    if (!rgl_glEnable || !rgl_glDisable || !rgl_glIsEnabled) {
+        if (o && *o >= 0 && *o < (int)linesz)
+            *o += snprintf(line + *o, linesz - (size_t)*o,
+                           " | var-%s utilgaengelig", label);
+        if (vchanged)
+            *vchanged = changed;
+        return;
+    }
+    int depth_was = rgl_glIsEnabled(GL_DEPTH_TEST);
+    int cull_was = rgl_glIsEnabled(GL_CULL_FACE);
+    if (depth_off && depth_was)
+        rgl_glDisable(GL_DEPTH_TEST);
+    if (cull_off && cull_was)
+        rgl_glDisable(GL_CULL_FACE);
+    int lap = 0;
+    dm_lap_begin(&lap);
+    if (strstr(fn, "Arrays"))
+        rgl_glDrawArrays(mode, first, count);
+    else
+        rgl_glDrawElements(mode, count, type, indices);
+    dm_lap_end(lap);
+    GLenum err = shadow_raw_err();
+    if (depth_off && depth_was)
+        rgl_glEnable(GL_DEPTH_TEST);
+    if (cull_off && cull_was)
+        rgl_glEnable(GL_CULL_FACE);
+    unsigned char *V = NULL;
+    int w = 0, h = 0;
+    if (!shadow_read_fb(&V, &w, &h) || w != shadow_base_w ||
+        h != shadow_base_h) {
+        if (o && *o >= 0 && *o < (int)linesz)
+            *o += snprintf(line + *o, linesz - (size_t)*o,
+                           " | var-%s aflaesning fejlede", label);
+        free(V);
+        if (vchanged)
+            *vchanged = 0;
+        return;
+    }
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    unsigned char firstcol[4] = {0, 0, 0, 0};
+    changed = buf_diff_count(shadow_base_buf, V, w, h, &x0, &y0, &x1, &y1,
+                             firstcol);
+    unsigned long ns = 0;
+    int nx0 = 0, ny0 = 0, nx1 = 0, ny1 = 0;
+    count_nonsky(V, w, h, &ns, &nx0, &ny0, &nx1, &ny1);
+    if (o && *o >= 0 && *o < (int)linesz)
+        *o += snprintf(line + *o, linesz - (size_t)*o,
+                       " | var-%s changed=%lu bbox=x[%d..%d],y[%d..%d] "
+                       "nonsky=%lu forste=%d,%d,%d,%d err=0x%x",
+                       label, changed, x0, x1, y0, y1, ns, firstcol[0],
+                       firstcol[1], firstcol[2], firstcol[3], (unsigned)err);
+    free(V);
+    if (vchanged)
+        *vchanged = changed;
+}
+
+static void cyan_shadow_probe(const char *fn, GLenum mode, GLsizei count,
+                              GLenum type, const void *indices, GLint first,
+                              GLsizei primcount)
+{
+    static unsigned long big = 0;
+    static unsigned long nprobe = 0;
+    if (count < 512)
+        return;
+    big++;
+    if (!shadow_cadence(big))
+        return;
+    if (nprobe >= 400)
+        return;
+    if (!shadow_base_ready || !shadow_base_buf)
+        return;
+    if (!rgl_glDrawElements || !rgl_glDrawArrays || !rgl_glReadPixels)
+        return;
+    nprobe++;
+    GLint prog = 0;
+    rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+    GLenum e0 = shadow_raw_err();
+    int instanced = strstr(fn, "Instanced") != NULL;
+    /* 1) skyggedraw: samme tilstand, men IKKE-instanced. */
+    {
+        int lap = 0;
+        dm_lap_begin(&lap);
+        if (strstr(fn, "Arrays"))
+            rgl_glDrawArrays(mode, first, count);
+        else
+            rgl_glDrawElements(mode, count, type, indices);
+        dm_lap_end(lap);
+    }
+    GLenum e1 = shadow_raw_err();
+    unsigned char *B = NULL;
+    int w = 0, h = 0;
+    if (!shadow_read_fb(&B, &w, &h)) {
+        dlog_msg("SHADOW #%lu fn=%s prog=%u count=%d primcount=%d big=%lu "
+                 "aflaesning fejlede",
+                 nprobe, fn, (unsigned)prog, (int)count, (int)primcount, big);
+        return;
+    }
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    unsigned char firstcol[4] = {0, 0, 0, 0};
+    unsigned long nsA = 0, nsB = 0;
+    int ax0 = 0, ay0 = 0, ax1 = 0, ay1 = 0;
+    int bx0 = 0, by0 = 0, bx1 = 0, by1 = 0;
+    count_nonsky(shadow_base_buf, shadow_base_w, shadow_base_h, &nsA,
+                 &ax0, &ay0, &ax1, &ay1);
+    count_nonsky(B, w, h, &nsB, &bx0, &by0, &bx1, &by1);
+    unsigned long changed =
+        buf_diff_count(shadow_base_buf, B, w, h, &x0, &y0, &x1, &y1, firstcol);
+    char line[2048];
+    int o = snprintf(line, sizeof line,
+                     "SHADOW #%lu fn=%s prog=%u count=%d primcount=%d mode="
+                     "0x%x %dx%d big=%lu | base nonsky=%lu bbox=x[%d..%d],"
+                     "y[%d..%d] -> noninst-shadow nonsky=%lu bbox=x[%d..%d],"
+                     "y[%d..%d] changed=%lu bbox=x[%d..%d],y[%d..%d] "
+                     "forste=%d,%d,%d,%d err0=0x%x err1=0x%x",
+                     nprobe, fn, (unsigned)prog, (int)count, (int)primcount,
+                     (unsigned)mode, w, h, big, nsA, ax0, ax1, ay0, ay1, nsB,
+                     bx0, bx1, by0, by1, changed, x0, x1, y0, y1, firstcol[0],
+                     firstcol[1], firstcol[2], firstcol[3], (unsigned)e0,
+                     (unsigned)e1);
+    if (instanced && changed == 0) {
+        unsigned long vd = 0;
+        shadow_run_variant("depthoff", 1, 0, fn, mode, count, type, indices,
+                           first, line, sizeof line, &o, &vd);
+        if (vd == 0)
+            shadow_run_variant("culloff", 0, 1, fn, mode, count, type,
+                               indices, first, line, sizeof line, &o, NULL);
+    }
+    if (instanced && changed > 0 && w == shadow_base_w && h == shadow_base_h) {
+        /* 2) gentag det RIGTIGE instanced-kald og sammenlign med basen. */
+        {
+            int lap = 0;
+            dm_lap_begin(&lap);
+            if (strstr(fn, "Arrays")) {
+                if (rgl_glDrawArraysInstanced)
+                    rgl_glDrawArraysInstanced(mode, first, count, primcount);
+            } else if (rgl_glDrawElementsInstanced) {
+                rgl_glDrawElementsInstanced(mode, count, type, indices,
+                                            primcount);
+            }
+            dm_lap_end(lap);
+        }
+        GLenum e2 = shadow_raw_err();
+        unsigned char *C = NULL;
+        int w2 = 0, h2 = 0;
+        if (shadow_read_fb(&C, &w2, &h2) && w2 == shadow_base_w &&
+            h2 == shadow_base_h) {
+            unsigned long nsC = 0;
+            int cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0;
+            count_nonsky(C, w2, h2, &nsC, &cx0, &cy0, &cx1, &cy1);
+            int rx0 = 0, ry0 = 0, rx1 = 0, ry1 = 0;
+            unsigned char rcol[4] = {0, 0, 0, 0};
+            unsigned long rechanged =
+                buf_diff_count(shadow_base_buf, C, w2, h2, &rx0, &ry0, &rx1,
+                               &ry1, rcol);
+            if (o >= 0 && o < (int)sizeof line)
+                o += snprintf(line + o, sizeof line - (size_t)o,
+                              " | inst-shadow nonsky=%lu bbox=x[%d..%d],"
+                              "y[%d..%d] changed-vs-base=%lu bbox=x[%d..%d],"
+                              "y[%d..%d] forste=%d,%d,%d,%d err2=0x%x",
+                              nsC, cx0, cx1, cy0, cy1, rechanged, rx0, rx1,
+                              ry0, ry1, rcol[0], rcol[1], rcol[2], rcol[3],
+                              (unsigned)e2);
+        }
+        free(C);
+    }
+    dlog_line(line);
+    free(B);
+}
+
 /* ---- efter-draw-prøve (cyan-scene): lige efter et stort verdens-draw læses
  *      read-framebufferen — skrev meshet pixels eller ej? ---- */
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count)
@@ -1540,6 +1979,7 @@ static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count)
     if (count < 512)
         return;
     big++;
+    shadow_base_ready = 0;
     if (big > 80 && big % 250 != 0)
         return;
     if (!rgl_glReadPixels || !rgl_glGetIntegerv)
@@ -1642,6 +2082,18 @@ static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count)
             o += snprintf(line + o, sizeof line - (size_t)o, " | nonsky=0");
     }
     dlog_line(line);
+    if (shadow_cadence(big)) {
+        unsigned char *cp = malloc((size_t)w * h * 4);
+        if (cp) {
+            memcpy(cp, buf, (size_t)w * h * 4);
+            if (shadow_base_buf)
+                free(shadow_base_buf);
+            shadow_base_buf = cp;
+            shadow_base_w = w;
+            shadow_base_h = h;
+            shadow_base_ready = 1;
+        }
+    }
     free(buf);
 }
 

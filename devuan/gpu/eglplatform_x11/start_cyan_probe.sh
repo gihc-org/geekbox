@@ -31,6 +31,8 @@ runuser -u kristian -- env -i \
   XDG_RUNTIME_DIR=/run/user/1000 XDG_CONFIG_HOME=/home/kristian/.config \
   XDG_DATA_HOME=/home/kristian/.local/share XDG_CURRENT_DESKTOP=LXDE \
   XDG_SESSION_TYPE=x11 \
+  CYAN_DEPTHCLEAR="${CYAN_DEPTHCLEAR:-}" \
+  CYAN_SHADOW_PROBE="${CYAN_SHADOW_PROBE:-}" \
   LD_PRELOAD="$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
   LD_LIBRARY_PATH=/opt/hybris:"$WEBGL" \
   EGL_PLATFORM=x11 MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 \

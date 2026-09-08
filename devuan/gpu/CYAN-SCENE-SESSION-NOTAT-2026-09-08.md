@@ -3,6 +3,132 @@
 > Agent/model: [codex:deepseek-v4-flash].
 > Fortsætter `CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `CYAN-SCENE-HANDOVER-2026-08-27.md`.
 
+## Fortsættelse — ny session 8. sep aften (efter commit dbbe440)
+
+> Agent/model: [codex:model-ukendt] (bekræftes ved commit — ikke arvet fra
+> tidligere sessioner).
+> Boks 1 verificeret OPPE (20:22): IP 192.168.0.171, kernel 3.10.0, Xorg fra
+> 17:28, pvrsrvkm indlæst + logd/servicemanager kører, bindapi bind-mount
+> intakt (md5 467debb…), `/dev/sw_sync` 0666, ur korrekt → bring-up fra 17:28
+> er ikke rørt.
+
+## Status i ét blik (20:2x)
+
+- **Nyt vnext5 (md5 `6c1626e3…`) bygget + installeret 20:26** med
+  SHADOW-draw-probe: efter et stort draw (big ≤ 40, derefter hver 250.) køres
+  samme draw IKKE-instanced og read-framebufferen aflæses mod basen fra
+  postdraw-prøven (base A = efter det rigtige draw). Skriver skyggedrawet
+  pixels (changed>0), gentages også det rigtige instanced-kald (C vs A).
+  Ekstra state-log: rasterDiscard, stencil, VAO, ARRAY/ELEMENT-buffer.
+  Backup: `/root/egl_proxy_631f9a40.so.bak`.
+- Evidens-gennemgang af tidligere log: **alle store draws er verdens-draws**
+  (prog 7/10/22/4, primcount=1, rfbo=3, 836x470) — q37/q38 = big-kald 16/17.
+  Shadow-probe på de første 40 store draws rammer derfor verdens-draws.
+- **Næste:** ren profil → Firefox-kørsel med vnext5 → aflæs SHADOW-linjerne;
+  derefter præsentations-test med alpha-shim (kørsel 2).
+
+## Checkpoint 20:30-20:45 — vnext5-kørsel (kørsel 10, ren profil, loadede)
+
+- **SVAR på shadow-spørgsmålet:** verdens-draws (prog7/10/22, big 1-40 +
+  periodisk til big 5000, 60 SHADOW-målinger) skriver **0 ændrede pixels,
+  også når samme draw køres umiddelbart igen IKKE-instanced i live-
+  konteksten** (changed=0, err0/err1=0x0) → live-kontekstens draw-kald er
+  brudt UAFHÆNGIGT af instancing (primcount=1, divisor=0).
+- **Probe-metode valideret live:** prog4 (loading/attract-UI, count=2040,
+  big 13+28) — base nonsky=61055 → skyggedraw changed=8.977 px (nonsky
+  61.475) og instanced-gentagelse skrev også (changed-vs-base=8.977, nonsky
+  61.613) → ekstra-draw+aflæsning virker.
+- **Ny state-forskel (kandidat):** UI-18-verts/prog4-draws kører FØR
+  verdens-draws med depthtest=0, depthmask=1, blend=1; verdens-draws har
+  depthtest=1 LEQUAL, depthmask=1, blend=0, cull=BACK; clear
+  mask=0x4100/0x4500 + clearDepthf=1 hver frame. Hvis 1.5 alligevel skriver
+  depth ved depthtest=0+depthmask=1 (eller UI tegnes efter clear med depth≈0),
+  fejler verdens-draws LEQUAL mod depth-bufferen. rasterDiscard=0,
+  stencilTest=0, vao=3, drawBuffers=[0x8ce0,0,0,0] — alt afskrevet.
+- [udført] Evidens gemt: boks `/root/cyan_draw_probe_vnext5_20260908.log` →
+  laptop `/tmp/cyan_draw_probe_vnext5_20260908.log`. Firefox lukket pænt
+  (SIGTERM, ingen SIGKILL).
+- [aftalt] **Næste (vnext6):** variant-shadow-draw med depth test FRA
+  (derefter cull FRA hvis uændret) på verdens-draws → afgør om depth-buffer
+  (eller face-culling) er porten live. Derefter præsentations-test (kørsel
+  med alpha-shim).
+
+## Checkpoint 20:36-20:45 — vnext6-kørsel (kørsel 11): DEPTH-TEST ER PORTEN
+
+- **vnext6 (md5 `51ed38ec…`) installeret 20:34**; kørsel 11 loadede; 40+
+  SHADOW-linjer med var-depthoff/var-culloff.
+- **Mekanisme bekræftet live:** med DEPTH_TEST FRA rasterserer verdens-draws
+  live: prog7 in-frustum (fx 1515 v = 75.344 px, 2961 v = 203.364 px, 6273 v
+  = 298-341.856 px), prog10 (564 v = 19-107 k px, bånd), prog22 (4848 v =
+  10.262 px). Med depth/cull FRA var prog7 stadig 0 på de to første prog7-
+  draws (q9/q10-analoge = clip-space UDENFOR frustum pr. tidligere analyse —
+  korrekt 0). GL-fejl hele vejen: 0.
+- **Forklaring:** UI/2D-draws (prog4, depthtest=0) kører FØR verdens-draws
+  og har depthmask=1; clear sker med clearDepthf=1 + mask 0x4100. Hvis 1.5-
+  driveren skriver depth selv med depthtest=0+depthmask=1, fylder UI depth
+  med ≈0 → verdens-draws (LEQUAL) fejler næsten alle (kun 1-2 px passerer,
+  målt #33/#34). Offline-replay klarede sig fordi depth blev ryddet før draw.
+- [udført] Lydfælde gentaget efter Firefox-lukning: hængt ALSA-strøm
+  (owner 1699 død, delay −12,3 M frames) → `kill -9` pulseaudio (20:35),
+  status "closed", ny pulseaudio autospawnet.
+- [aftalt] **Næste (vnext7):** proxy-lap sætter glDepthMask(GL_FALSE) under
+  alle draws med depthtest=0 + depthmask=1 (gendannes bagefter) → verden skal
+  kunne tegne med normal LEQUAL mod den ryddede depth. Log: depthmask-lap +
+  fortsat postdraw/SHADOW. Venter: hvis pre-post-diff>0 på verdens-draws →
+  fix + derefter præsentations-test med alpha-shim.
+
+## Checkpoint 20:45-20:55 — vnext7/vnext8 + gameplay (bruger i loop)
+
+- vnext7 (1ada6701) crashede ~40 s inde (channel error, ingen kernel-fejl,
+  minidump-generation fejlede) — kendt skrøbelighed; depthmask-lap var aktiv
+  (kald 1-73 på UI-draws) men big1-4 viste stadig 0 px → lap alene utilstræk-
+  kelig (clear rammer fbo=3 korrekt, men depth alligevel ikke fri).
+- **vnext8 (20763b13): tvungen depth-clear (CYAN_DEPTHCLEAR=1) før hvert
+  stort depth-on-draw virker DELVIST:** loading/attract-verdens-draws skriver
+  live via RIGTIGE draw-kald (nonsky 43.556 → 92.888 → 199.847 → 334.169 →
+  371.763; prog7 big16 +69k px). Kørsel stabil (big 30.500+, ingen crash).
+- **Bruger (20:5x): klikkede "Press to play" → HUD/pause/point synlige, men
+  verden stadig overvejende cyan:** kun "små felter" + én gang et større
+  område renderet; drengen aldrig set → gameplay-verdens-draws har (stadig)
+  en port ud over depth (force-clear forud for hvert draw slog ikke til i
+  gameplay). pre-post-diff=0 ved store draws i gameplay; ns=43.556 statisk.
+- [udført] Evidens: `/root/cyan_draw_probe_vnext8_gameplay_20260908.log`.
+- [aftalt] **vnext9 (eae48aa5):** samme lap+force-clear, men SHADOW-probe med
+  var-depthoff/var-culloff AKTIV (CYAN_SHADOW_PROBE=1) og probe-loft hævet
+  (400 → dækker gameplay) → svarer om gameplay-draws rasterserer med depth
+  fra, eller om en anden port (fbo/attachment/program-tilstand) er aktiv.
+  Bruger trykker play ved "Press to play".
+
+## Checkpoint 20:55-21:15 — PRÆSENTATIONSSYMPTOM (4. gang) + shim-test
+
+- **vnext9 gameplay-data (big 3.250-4.250):** rigtige draws skriver stadig 0
+  trods force-clear; var-depthoff skriver (prog7 6273 v = 341.918 px, prog10
+  49.332 px, prog22 6.160 px) → gameplay-verdens-draws har stadig depth som
+  port (clearDepthf=1 forbliver; glGetFloatv(DEPTH_CLEAR_VALUE)=0 i gameplay
+  — driver-quirk). Loading skrev med force-clear, gameplay gør ikke → åbent.
+- **Præsentationssymptom gentaget (4. gang, 21:0x)** ved play-start, også med
+  BiDi-preload-shim AKTIV: loseContext blokeret + getContext hooked (bevist i
+  cyan_game.log), men INGEN "ALPHA-SHIM: alpha tvunget true"-linjer → alpha-
+  forcing IKKE bekræftet → shim-test foreløbigt inkonklusiv.
+- **DOM-check under symptom (tidligere kørsel):** canvas 836x470, display
+  block, visible, opacity 1 — canvas forsvinder IKKE fra DOM'et.
+- **Bruger (21:1x): ser poki-baggrund + ikoner til andre spil** = spil-canvas-
+  laget slippes af compositoren; poki-sidens indhold bagved skinner igennem.
+- **fb0-bevis (21:08):** skærm næsten statisk (2 px forskel over 2 s) trods
+  JS-draw-aktivitet (#13.200 drawElements i preload-tæller) — GL kører, men
+  intet præsenteres. Råbilleder `/tmp/fb_sym{1,2}.raw` (1920x540 synligt,
+  RGB565) + konverterede PNG'er på laptoppen (fb565→PNG via PIL; RGB;16/
+  BGR;16 varianter).
+- **Fælde bekræftet:** Firefox BiDi tillader KUN 1 aktiv session; død klient
+  efterlader sessionen hængende ("Maximum number of active sessions") →
+  eneste pålidelige frigørelse er Firefox-genstart. domcheck under symptom
+  kræver frisk kørsel.
+- **Åbent:** (a) bekræft canvas-attrs i shim-kørsel (alpha:true?) og tving
+  alpha hvis getContext-stien ikke fanges; (b) gameplay-depth: hvorfor fejler
+  verdens-draws mod depth trods clear — test depthfunc-ALWAYS/depth-off på
+  rigtige gameplay-draws; (c) compositor-lag: præsentationen taber canvas ved
+  play-start (software-layers/webrender-varianter).
+
 ## Status i ét blik
 
 - **SLUTSTATUS 8. sep aften:** boks genstartet → IP 192.168.0.171 (bring-up

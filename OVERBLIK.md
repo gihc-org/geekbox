@@ -13,6 +13,13 @@
   **1.5@3830101** (GLES 3.1), WebGL i Firefox virker.
 - Boks 1 genstartet 8. sep aften → IP **192.168.0.171**; bring-up efter
   strøm: ur-sync, `insmod` + `gpu_up.sh`, bindapi-lap, `/dev/sw_sync` 0666.
+- **Opdateret 8. sep 21:15 (cyan-scene):** shadow-probe (vnext5-9) viste at
+  verdens-draws live skriver 0 også ved umiddelbar gentagelse; DEPTH-TEST er
+  porten (var-depthoff rasterserer; loading skriver med tvungen depth-clear,
+  gameplay gør endnu ikke — åbent). Præsentationssymptom (spilområde forsvinder
+  ved play-start) gentaget 4×; canvas bliver i DOM (836x470) men compositoren
+  taber laget → poki-baggrund ses; alpha-shim-test endnu inkonklusiv. Detaljer:
+  `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (checkpoints 20:30-21:15).
 - Cyan-scene-sporet (8. sep): drawBuffers **ude** (`[COLOR_ATTACHMENT0]`),
   instanced-stien og `glMapBufferRange` virker offline; VBO/EBO-snapshots +
   matricer viser store prog7-draws **100 % i frustum**; offline-replay af

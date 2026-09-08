@@ -160,8 +160,14 @@ def main():
             print("spil-kontekst:", game_ctx, url[:80])
             break
     if not ctx:
-        print("INGEN SIDE-KONTEKST; har:", [(c.get("context"), c.get("url")) for c in contexts])
-        sys.exit(1)
+        if mode == "preload" and contexts:
+            ctx = contexts[0].get("context")
+            print("bruger top-kontekst:", ctx,
+                  [(c.get("context"), c.get("url")) for c in contexts])
+        else:
+            print("INGEN SIDE-KONTEKST; har:",
+                  [(c.get("context"), c.get("url")) for c in contexts])
+            sys.exit(1)
 
     if mode == "inject":
         expr = (
@@ -351,6 +357,14 @@ def main():
         )
         r = call("script.addPreloadScript", {"functionDeclaration": pre})
         print("PRELOAD:", json.dumps(r)[:300])
+        if len(sys.argv) > 2 and sys.argv[2] == "goto":
+            target = (sys.argv[3] if len(sys.argv) > 3
+                      else "https://poki.com/en/g/subway-surfers")
+            r = call("browsingContext.navigate",
+                     {"context": ctx, "url": target}, timeout=30)
+            print("NAVIGERET:", json.dumps(r)[:200])
+            if len(sys.argv) > 4:
+                time.sleep(int(sys.argv[4]))
         if len(sys.argv) > 2 and sys.argv[2] == "reload":
             r = call("browsingContext.reload", {"context": ctx})
             print("GENINDLASTET:", json.dumps(r)[:200])
@@ -422,8 +436,23 @@ def main():
             "var gl=cv.getContext&&(cv.getContext('webgl2')||cv.getContext('webgl'));"
             "if(gl&&gl.getContextAttributes)attrs=gl.getContextAttributes();"
             "var glver=gl&&gl.getParameter&&gl.getParameter(gl.VERSION);"
+            "var top=null;"
+            "try{var ex=Math.floor(r.left+r.width/2),ey=Math.floor(r.top+r.height/2);"
+            "var el=document.elementFromPoint(ex,ey);"
+            "var chain=[];var p=el;var n=0;"
+            "while(p&&n<6){var st=getComputedStyle(p);"
+            "chain.push({tag:p.tagName,id:p.id||'',cls:(typeof p.className==='string'?p.className:'').slice(0,40),"
+            "d:st.display,v:st.visibility,o:st.opacity,z:st.zIndex,pos:st.position});"
+            "p=p.parentElement;n++;}"
+            "top={atX:ex,atY:ey,el:el?el.tagName+'#'+(el.id||'')+'.'+(typeof el.className==='string'?el.className:'').slice(0,40):null,chain:chain};"
+            "}catch(e){top={fejl:String(e)};}"
+            "var vp={iw:window.innerWidth,ih:window.innerHeight,"
+            "sx:(window.scrollX||0),sy:(window.scrollY||0),"
+            "bw:document.body?document.body.scrollWidth:0,"
+            "bh:document.body?document.body.scrollHeight:0};"
             "out.push({w:cv.width,h:cv.height,rw:Math.round(r.width),rh:Math.round(r.height),"
-            "d:cs.display,v:cs.visibility,o:cs.opacity,attrs:attrs,glver:glver});}"
+            "d:cs.display,v:cs.visibility,o:cs.opacity,z:cs.zIndex,attrs:attrs,glver:glver,"
+            "top:top,vp:vp});}"
             "JSON.stringify({url:location.href,canvasser:out,"
             "iframeRect:(function(){var f=window.frameElement;"
             "if(!f)return null;var r=f.getBoundingClientRect();"
