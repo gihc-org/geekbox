@@ -56,7 +56,7 @@ hovedmålet.
 
 ## Milestones
 
-### M0 — baseline: test_triangle bygger cross ✅ (23. aug 2026)
+### M0 — baseline: test_triangle bygger cross (23. aug 2026)
 
 Verificeret link-linje (cross, g++ 13.3 → kører på boks 1, gcc 14.2):
 
@@ -88,7 +88,7 @@ Resultat: boksens `/root/test_triangle_cross` + ny `/root/system_shim.so` (cross
 NB: den gamle `system_shim.so` blev overskrevet med den cross-byggede (samme kilde;
 adfærd verificeret i kørslen). Boksen skal strøm-cykles efter sessionen (regel 2).
 
-### M1 — `devuan/gpu/gles_daemon.c` ✅ (23. aug 2026)
+### M1 — `devuan/gpu/gles_daemon.c` (23. aug 2026)
 
 - [x] `test_triangle.cpp`'s init genbrugt (hwc-modul, vindue, EGL, GLES2-shader).
 - [x] Unix-socket-lytter `/tmp/gles.sock` (stale socket fjernes ved start;
@@ -124,7 +124,7 @@ nu (`devuan/gpu/readback_probe.cpp`).
   nodm start` virkede bagefter. Om HDMI viser billedet uden strøm-cyklus skal
   bekræftes på TV'et; regel 2 står til den er målt afkræftet.
 
-### M2 — `devuan/gpu/frontend.py` ✅ (23. aug 2026)
+### M2 — `devuan/gpu/frontend.py` (23. aug 2026)
 
 - [x] Python 3, kun stdlib. Åbn `/dev/fb0` O_RDWR + mmap; var/fix-info læst via
       ioctl (arvet teknik fra `fb_overscan.py`).

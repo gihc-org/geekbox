@@ -1,6 +1,6 @@
 # TODO: Nyere Linux på GeekBox (RK3368)
 
-## Spor A (aktivt): Devuan Excalibur med vendor-kernel — BOOTER ✅ (aug 2026)
+## Spor A (aktivt): Devuan Excalibur med vendor-kernel — BOOTER ok (aug 2026)
 
 Moderne userspace (Devuan Excalibur/Trixie-base, armhf) på vendor-kernen 3.10.79.
 Bevarer HDMI/GPU/WiFi. Boot-strategi: uændret boot-kæde på eMMC; root på eMMC
@@ -234,8 +234,8 @@ bevares som fallback, indtil vi ved, hvad der virker.
 ## Realistisk forventning (verificeret august 2026)
 
 Mainline `rk3368-geekbox.dts` aktiverer i dag kun:
-- ✅ eMMC, Ethernet (GMAC), USB host + OTG, UART2 (seriel konsol), watchdog, temperatursensor
-- ❌ HDMI/display, GPU (PowerVR G6110 — ingen mainline-driver overhovedet), WiFi (AP6354), lyd
+- [x] eMMC, Ethernet (GMAC), USB host + OTG, UART2 (seriel konsol), watchdog, temperatursensor
+- [ ] HDMI/display, GPU (PowerVR G6110 — ingen mainline-driver overhovedet), WiFi (AP6354), lyd
 
 Konklusion: mainline-sporet giver en **headless server** (SSH, netværk, USB-storage).
 En grafisk desktop kræver, at HDMI/VOP først får liv (stretch goal, se fase 7).

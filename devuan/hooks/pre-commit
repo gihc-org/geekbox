@@ -1,0 +1,23 @@
+#!/bin/sh
+# pre-commit-hook: kør DejaVu-tegnreglen (AGENTS.md) på staged .md-filer.
+# Tjekker indholdet i index (git show :fil), ikke kun arbejdskopien.
+repo=$(git rev-parse --show-toplevel) || exit 1
+cd "$repo" || exit 1
+
+PAT='[\x{1F000}-\x{1FAFF}\x{2700}-\x{27BF}\x{2600}-\x{26FF}\x{FE0F}]'
+files=$(git diff --cached --name-only --diff-filter=ACM -- '*.md')
+[ -z "$files" ] && exit 0
+
+hits=
+for f in $files; do
+    h=$(git show ":$f" 2>/dev/null | rg -n --pcre2 "$PAT") || continue
+    hits="${hits}${f}: ${h}
+"
+done
+
+if [ -n "$hits" ]; then
+    echo "FEJL: staged .md indeholder emoji/symbol-ikoner (DejaVu-regel). Ret før commit:" >&2
+    printf '%s' "$hits" >&2
+    exit 1
+fi
+exit 0

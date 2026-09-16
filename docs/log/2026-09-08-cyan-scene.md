@@ -164,7 +164,7 @@
 - Commit `14434ef` (5 filer, [codex:deepseek-v4-flash]) — inkl. alle
   vnext5-9-ændringer + dokumentation.
 
-## Checkpoint 21:40-22:00 — SPILLET ER SPILBART (vnext11/12) 🎉
+## Checkpoint 21:40-22:00 — SPILLET ER SPILBART (vnext11/12)
 
 - **vnext11 (617ca884): force-clear med EKSPLICIT rgl_glClearDepthf(1) før
   glClear** → verden renderer konstant allerede i attract (huse + skinner;
