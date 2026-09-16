@@ -41,8 +41,10 @@ Du er en elektronik/computer ekspert
   `bash devuan/check_no_emoji.sh` (hele repoet); pre-commit-hooken
   `devuan/hooks/pre-commit` (installeret i .git/hooks) kører samme regel på
   staged .md-filer — ret hits før commit.
-  Installation af hooken (én gang pr. klon):
-  `ln -sfn ../../devuan/hooks/pre-commit .git/hooks/pre-commit`.
+    Installation af hooken (én gang pr. klon): `bash devuan/hooks/install.sh`.
+    Den lægger en rigtig fil i `.git/hooks/` frem for et symlink, så en branch
+    uden `devuan/hooks/pre-commit` giver en advarsel i stedet for at slå reglen
+    fra i stilhed.
 
 ## Checkpoint- og tråd-disciplin
 
