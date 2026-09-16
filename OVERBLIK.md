@@ -35,8 +35,9 @@
   modsigelsen er det åbne spor** → næste: shadow-draw-probe i live-proxyen.
 - Præsentationssymptom (2× målt 8. sep): ved "Press to play"-start forsvinder
   spilområdet fra siden — kør næste gang med poki-fix-udvidelsen/alpha-shim.
-- Proxy på boksen: **vnext4 `631f9a40`** (grid + nonsky-tælling +
-  clearDepthf-log + VBO/EBU-snapshots; stabil). Backups i `/root/egl_proxy_*.so.bak`.
+- Proxy på boksen: **vnext12 `dcc0a68f`** (alpha-shim via BiDi-preload +
+  depthmask-lap + depth-clear 1×/frame med eksplicit `clearDepthf(1)`; kræver
+  env `CYAN_DEPTHCLEAR=1`). Backups i `/root/egl_proxy_*.so.bak`.
 
 ## De mange elementer — hvad er hvad
 
@@ -88,7 +89,9 @@
 | `63fe4c6c…` | + VBO/EBO-snapshot via `glMapBufferRange` + pre/post-grid-diff | Stabil (kørsel 4) |
 | `e4e4ca74…` | vnext2: + fuld-frame pre/post-diff | **Crashede 2/2 ved første store draw — brug ikke** |
 | `746522ec…` | vnext3: vnext minus fuld-frame | Stabil (kørsel 7) |
-| `631f9a40…` | vnext4: + nonsky-tælling + `clearDepthf`-log + divisor-log | **NUVÆRENDE på boksen**; stabil (kørsler 8-9) |
+| `631f9a40…` | vnext4: + nonsky-tælling + `clearDepthf`-log + divisor-log | Stabil (kørsler 8-9), men afløst |
+| vnext5-11 | shadow-draw-probe, force-clear m.m. (8. sep) | Diagnose — se `docs/log/2026-09-08-cyan-scene.md` |
+| `dcc0a68f…` | vnext12: + alpha-shim, depthmask-lap, depth-clear 1×/frame | **NUVÆRENDE på boksen** — spillet er spilbart |
 
 ## Nøglekommandoer (boksen efter strømcyklus)
 
@@ -103,9 +106,9 @@ sed "s/BOX=root@192.168.0.188/BOX=root@<ip>/" \
   devuan/gpu/eglplatform_x11/patch_android_bindapi.sh > /tmp/pb.sh && bash /tmp/pb.sh
 # Firefox + måling:
 nohup /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &
-# proxy-genbyg på boksen (efter ændring af egl_proxy.c → scp til /root/egl_proxy_vnext4.c):
-gcc -shared -fPIC -Wl,-soname,libEGL.so.1 -o /tmp/libEGL_vnext4.so /root/egl_proxy_vnext4.c \
-  -L/opt/hybris -Wl,--no-as-needed -l:libEGL_r.so -ldl && cp /tmp/libEGL_vnext4.so /opt/hybris/libEGL.so.1.0.0
+# proxy-genbyg på boksen (repoets egl_proxy.c ER vnext12 — scp den over som /root/egl_proxy_vnext12.c):
+gcc -shared -fPIC -Wl,-soname,libEGL.so.1 -o /tmp/libEGL_vnext12.so /root/egl_proxy_vnext12.c \
+  -L/opt/hybris -Wl,--no-as-needed -l:libEGL_r.so -ldl && cp /tmp/libEGL_vnext12.so /opt/hybris/libEGL.so.1.0.0
 # poki-frit instanced/map-test + replay af fangede buffers:
 LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DISPLAY=:0 \
   /root/scene_instanced_probe /root/p7.vs /root/p7.fs
