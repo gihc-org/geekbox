@@ -1,7 +1,9 @@
 # Flash Linux på GeekBox (RK3368)
 
-> **Ny her? Læs [docs/README.md](docs/README.md)** — kortet over al dokumentationen, og hvor
-> boksen hænger sammen, opskriften på en ny boks, og hver enkelt fælde vi er faldet i med
+> **Ny her? Læs [docs/README.md](docs/README.md)** — kortet over al dokumentationen, med
+> én linje om hvad hver fil indeholder og hvor du skal begynde.
+>
+> **[docs/faeller.md](docs/faeller.md)** er opslagsværket: hver fælde vi er faldet i, med
 > symptom, årsag og fix. Skrevet så den kan læses uden forhåndsviden.
 >
 > **[docs/styresystemet/devuan.md](docs/styresystemet/devuan.md)** er den fulde tekniske historie:
