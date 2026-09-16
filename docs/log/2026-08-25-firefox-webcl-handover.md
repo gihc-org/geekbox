@@ -8,7 +8,7 @@
 - **Åben blokering:** spillet på poki.com (Subway Surfers) indlæser, første
   frame tegnes korrekt på skærmen — men spillet **fryser** (ingen nye frames;
   main-processen spinner på ~118 % CPU). Se §5 nedenfor.
-- Læs først `FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md` §14-15 — de to store
+- Læs først `docs/log/2026-08-25-firefox-webcl.md` §14-15 — de to store
   fund (sort chrome + manglende dekorationer) er løst der.
 
 ## 1. Virkende opskrift (pr. i dag)
@@ -101,6 +101,6 @@ over 4 s (kun panelets ur). main ~118 % CPU, spil-content ~21 %.
 
 ## 6. Filer
 
-- `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md` — hele historien.
+- `docs/log/2026-08-25-firefox-webcl.md` — hele historien.
 - `devuan/gpu/eglplatform_x11/` — platform, launcher, patches, test-værktøjer.
-- `DOKUMENTATION.md` §5.15c + status.
+- `docs/DOKUMENTATION.md` §5.15c + status.

@@ -1,6 +1,6 @@
 # DDK-sporet — handover 26. aug 2026 (~02:5x)
 
-> Læs dette dokument + `GPU-FAULT-GENNEMBRUD-SESSION-NOTAT-2026-08-26.md`
+> Læs dette dokument + `docs/log/2026-08-26-gpu-fault-gennembrud.md`
 > (sektionen "DDK-sporet (research)") og fortsæt derfra.
 > Mål: få Subway Surfers (poki.com) til at spille i firefox-esr på boks 1
 > (192.168.0.188).
@@ -13,8 +13,8 @@
 > 2,7 s), så 1.5-KM kan ikke byttes ind uden kernel-rebuild. 1.5-UM kræver Android
 > 6.0's libc (`__register_atfork` — ikke i 5.1-libc), og dumpets pvrsrvctl er 64-bit
 > (ikke brugbar på 32-bit userspace). Restore til 1.4 er gennemført og verificeret
-> (baseline: "Extension not supported"). Fuld detalje: `DDK-PROEVEINSTALLATION-
-> SESSION-NOTAT-2026-08-26.md`.
+> (baseline: "Extension not supported"). Fuld detalje:
+> `docs/log/2026-08-26-ddk-proeveinstallation.md`.
 
 ## Hvad DDK er
 
@@ -200,13 +200,15 @@ curl -sSL -o /tmp/ddk16/libGLESv2_POWERVR_ROGUE.so \
 ## Næste skridt (prioriteret)
 
 1. ~~Prøveinstallation af DDK 1.5~~ — **UDFØRT med NEGATIVT resultat**
-   (1.5-UM hænger indbygget KM; se `DDK-PROEVEINSTALLATION-SESSION-NOTAT-
-   2026-08-26.md`). Boksen er tilbage i 1.4-baseline (verificeret).
+   (1.5-UM hænger indbygget KM; se
+   `docs/log/2026-08-26-ddk-proeveinstallation.md`). Boksen er tilbage i
+   1.4-baseline (verificeret).
 2. **Beslut spor-videre (foreslået, kræver brugerens valg):**
    (a) 1.5-KM via kernel-rebuild (mmallow_kernel 3.10 + aarch64-krydskompiler
    + flash — stort projekt), (b) spil uden MRT-shaders (WebGL1 uden Unity-
    modern-renderer), (c) acceptér begrænsningen for moderne Unity-spil.
-3. Opdater DOK/TODO/HAANDBOG med resultatet + commit (gjort i denne session).
+3. Opdater `docs/DOKUMENTATION.md`, `TODO.md` og `docs/HAANDBOG.md` med
+   resultatet + commit (gjort i denne session).
 4. Fortsæt separat: buffer-fix/kadence (stress-siden) — uafhængigt af DDK-sporet.
 
 ## Kan vi bare opgradere til en 4.4-kernel? (bruger-spørgsmål 26. aug)
@@ -226,20 +228,20 @@ opgradering — og det er IKKE nødvendigt for spillet.** Begrundelse:
   (myinit, X-konfig, eglplatform_x11-hwcomposer-vejen) og Android-system.img
   (Android 7.1-æra med DRM-hwcomposer + DDK 1.8-userspace) skal skiftes med.
   Android 7.1 RK3368-userspace er formentlig 64-bit → kollision med vores
-  bevidste 32-bit armhf-hybris-valg (DOK §2).
+  bevidste 32-bit armhf-hybris-valg (docs/DOKUMENTATION.md §2).
 - Boot-kæden skal også med: nyere U-Boot/ATF (Android 7-æra) eller tilpasset
   nuværende loader; kræver seriel konsol (USB-TTL) + Mask ROM-redning klar.
 - **DDK 1.5 på nuværende 3.10 er den hurtige vej** (15 min-test, draw_buffers
   allerede i kompileren). 4.4 giver først mening bagefter (nyere DDK 1.8+,
   nyere kernel, KMS) som en separat Spor B-udvidelse.
 
-Kilder: TODO.md "Spor B", DOKUMENTATION.md §2/§3/§6, DRIVER-PORTERING.md,
+Kilder: TODO.md "Spor B", docs/DOKUMENTATION.md §2/§3/§6, docs/grafik/driver-portering.md,
 Firefly-kernel-repoet (plrg-mirror), Rockchip-DRM-udviklingsguide (16rd BBS).
 
 ## God start i en ny session
 
-> "Læs `devuan/gpu/DDK-HANDOVER-2026-08-26.md` og `devuan/gpu/GPU-FAULT-
-> GENNEMBRUD-SESSION-NOTAT-2026-08-26.md` (DDK-sektionen) og fortsæt derfra.
+> "Læs `docs/log/2026-08-26-ddk-handover.md` og
+> `docs/log/2026-08-26-gpu-fault-gennembrud.md` (DDK-sektionen) og fortsæt derfra.
 > Vi skal prøveinstallationere DDK 1.5@3830101 på boks 1 (192.168.0.188)
 > for at få GL_EXT_draw_buffers i shader-kompileren og dermed Subway Surfers
 > til at køre. Backup + restore ligger klar i handoveren."

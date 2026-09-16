@@ -466,4 +466,4 @@ Scenen står altså på skærmen (WebGL-kontekst + første frame virker), men de
 kommer ingen nye frames. Hypoteser til næste session: (a) Basic-kompositor-
 readback-stien (WebGL-canvas → glReadPixels → CPU → X) er for langsom/fastlåst
 pr. frame på ARM'en; (b) rAF-throttling; (c) glReadPixels-livelock i main.
-Handover: `devuan/gpu/FIREFOX-WEBCL-HANDOVER-2026-08-25.md`.
+Handover: `docs/log/2026-08-25-firefox-webcl-handover.md`.

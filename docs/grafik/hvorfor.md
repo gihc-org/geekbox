@@ -10,7 +10,7 @@ læse selv, læse højt eller give videre.
 (DDK 1.5) til at køre, så Firefox tegner med hardware-3D (GL_VERSION "OpenGL ES
 3.1 build 1.5@3830101"). Resten af dette dokument er den historiske rejse der
 gjorde det muligt. Ét spil (Subway Surfers på poki.com) er stadig blokeret på et
-teknisk præsentationslag — se `devuan/gpu/DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md`.
+teknisk præsentationslag — se `docs/log/2026-08-26-ddk15-komplet-handover.md`.
 
 ---
 
@@ -47,7 +47,7 @@ Vi troede længe, at alt manglede. Men da vi målte på boksen, fandt vi ud af n
 sjovere: **døren stod faktisk åben** (kernel-driveren `pvrsrvkm` var loadet!), og
 **fabrikkens maskiner lå gemt i producentens efterladte filer** (en hel lille Android
 i en fil: `system.img`). Der manglede altså "kun" oversætteren imellem — men den del
-tog en hel aften. (Detaljer: DOKUMENTATION.md §5.13 og §5.15.)
+tog en hel aften. (Detaljer: docs/DOKUMENTATION.md §5.13 og §5.15.)
 
 Og hvorfor kunne skrivebordet køre, når WebGL ikke kunne? Fordi skrivebordet ikke
 bruger fabrikken — det maler billedet **i hånden** med CPU'en direkte i VOP'ens
@@ -61,17 +61,17 @@ En aften, otte opdagelser:
 
 1. **Browseren var uskyldig.** Firefox 140 støtter WebGL fint. Beskeden "browseren
    understøtter ikke WebGL" betyder faktisk "jeg kan ikke få fat i et grafikkort".
-   (DOK §5.13, HAANDBOG fælde 16)
+   (docs/DOKUMENTATION.md §5.13, docs/HAANDBOG.md fælde 16)
 2. **Fabrikken var der.** Kernel-driveren var loadet og dens hjælpetråde kørte — men
    den stod i tomgang, fordi ingen gav den ordrer. Som en bil med motor, men uden
-   gearkasse og hjul. (DOK §5.15)
+   gearkasse og hjul. (docs/DOKUMENTATION.md §5.15)
 3. **Maskinerne lå gemt.** Vi hentede dualOS-imaget (en ældre Android-firmware) og
    fandt de lukkede PowerVR-programmer i den. Endnu bedre: producentens egen
    Lubuntu-firmware indeholdt en hel **hybris-bro** (et sæt oversættere, de selv
    havde bygget til Kodi) — klar til brug.
 4. **Startknappen manglede.** Fabrikken skal startes af et helt bestemt program
    (`pvrsrvctl`). Uden det svarede kernen bare "init ikke færdig" for evigt — uden
-   fejlbesked. Vi fandt det ved at læse kernel-kildekoden. (DOK §5.15)
+   fejlbesked. Vi fandt det ved at læse kernel-kildekoden. (docs/DOKUMENTATION.md §5.15)
 5. **Fabrikkens lager var for lille.** Da vi endelig fik gang i den, kunne den kun
    holde **ét** helt skærmbillede i sit hurtige lager (CMA). Andet billede →
    "Operation not permitted" — uden nogen forklaring. Løsningen var at give kernen
@@ -84,11 +84,11 @@ En aften, otte opdagelser:
    `GL_RENDERER=PowerVR Rogue G6110`, 500 billeder i træk. Fabrikken tegnede!
 8. **Skærmen overlevede ikke festen.** Da vi bagefter startede skrivebordet igen,
    var HDMI'en død: kernen troede, den sendte billede, men TV'et fik intet signal.
-   Kun en strøm-cyklus kunne vække den. (DOK §5.15, boks 2's HDMI-erfaring i DOK §10)
+   Kun en strøm-cyklus kunne vække den. (docs/DOKUMENTATION.md §5.15, boks 2's HDMI-erfaring i docs/DOKUMENTATION.md §10)
 
 Undervejs faldt der to sidehistorier af, som også er dokumenteret: boksen crashede
 engang under en installation, og det viste sig at være **strømforsyningen**, der løj
-om sine 2 ampere — bevist med et A/B-forsøg og en stress-test (DOK §5.14, HAANDBOG
+om sine 2 ampere — bevist med et A/B-forsøg og en stress-test (docs/DOKUMENTATION.md §5.14, docs/HAANDBOG.md
 fælde 17, `devuan/stress_test.sh`).
 
 ### Hvad laver Android-laget egentlig?
@@ -189,7 +189,7 @@ programmet kaldte adresse 0, og til sidst læste vi selve telefonbogens tegninge
 Løsningen var lille: ved opstart slår daemonen selv den rigtige adresse op i
 fabrikkens rigtige telefonbog og skriver den ind i den tomme plads. Siden da kan
 programmet "læse pixels" fra GPU'en — og daemonen kan hente sine billeder ud til
-skærmen. (Teknisk historie: DOK §5.15a; opslagsværket: HAANDBOG fælde 18.)
+skærmen. (Teknisk historie: docs/DOKUMENTATION.md §5.15a; opslagsværket: docs/HAANDBOG.md fælde 18.)
 
 ### Fabrikken maler ind i et vindue — eglplatform_x11
 
@@ -228,8 +228,8 @@ tilstande af gåde 1, der tilfældigt fulgtes ad. Læren står fast: **mål kana
 (VT) først**, når noget ikke kommer på skærmen.
 
 Resultatet i dag: et 640x360-vindue viser fabrikkens cos-mønster på TV'et — ~9
-billeder i sekundet — mens skrivebordet kører. (Teknisk historie: DOK §5.15b;
-fælderne: HAANDBOG fælde 19-22; koden: `devuan/gpu/eglplatform_x11/`.)
+billeder i sekundet — mens skrivebordet kører. (Teknisk historie: docs/DOKUMENTATION.md §5.15b;
+fælderne: docs/HAANDBOG.md fælde 19-22; koden: `devuan/gpu/eglplatform_x11/`.)
 
 ### Firefox' synsprøve er bestået — nu kæmper vi med selve brillerne
 
@@ -257,8 +257,8 @@ vi rettede den ene sammenligning i selve proben (med backup).
 ikke få selve tegnemaskinen (WebRender) i gang: oprettelsen af en GPU-kontekst
 fejler på to målbare måder, og Firefox falder tilbage til software-WebRender.
 Vi har sporet begge fejl med gdb og ved præcis, hvor vi skal kigge næste gang.
-(Teknisk: DOK §5.15c; fælder: HAANDBOG 23 + to nye spor i
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`; værktøjer:
+(Teknisk: docs/DOKUMENTATION.md §5.15c; fælder: docs/HAANDBOG.md 23 + to nye spor i
+`docs/log/2026-08-24-firefox-webcl.md`; værktøjer:
 `devuan/gpu/eglplatform_x11/`.)
 
 ### Spillet kører — men skærmen tier stille (25. aug 2026)
@@ -295,15 +295,15 @@ en animeret WebGL-verden), så vi kan se om skærmen også tier dér — hvis de
 gør, er fejlen vores egen præsentations-sti; hvis ikke, er det noget særligt
 ved poki/Unity-spillet. Vi prøver også at blokere reklamerne (uBlock) som
 kontrol — de er ikke årsagen, men de slider på en i forvejen presset boks.
-(Teknisk: DOK §5.15d; hele måle-forløbet:
-`devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.)
+(Teknisk: docs/DOKUMENTATION.md §5.15d; hele måle-forløbet:
+`docs/log/2026-08-25-gl-layers.md`.)
 
 ## 4. Hvad kan vi nu — og hvad kan vi ikke?
 
 **Det vi kan:**
 - Skrive vores **egne programmer**, der bruger GPU'en: 3D-trekanten kører — og
   almindelig GLES 3.1-programmering er nu åben. (Opskriften og programmet:
-  `devuan/gpu/`, DOK §5.15)
+  `devuan/gpu/`, docs/DOKUMENTATION.md §5.15)
 - Vække stakken med én kommando (`gpu_up.sh`) og teste, måle og lege med den.
 - Bygge et lille grafisk system: en Python-frontend der tegner sin egen UI direkte på
   `/dev/fb0` (som `fb_overscan.py` gør) og taler med en GLES-daemon i baggrunden over
@@ -325,7 +325,7 @@ kontrol — de er ikke årsagen, men de slider på en i forvejen presset boks.
   første billede (en travl venteløkke i præsentationsstien). Med
   GL-layers-kompositoren animerer spillet i vinduet, men skærmen opdaterer
   ikke — og spil-kørsler har taget boksen ned to gange. Næste skridt står i
-  DOK §5.15d og `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
+  docs/DOKUMENTATION.md §5.15d og `docs/log/2026-08-25-gl-layers.md`.
 
 **Reglerne vi lærte (kort):**
 1. En GPU-stak er tre lag — og mangler ét, virker intet.
@@ -337,10 +337,10 @@ kontrol — de er ikke årsagen, men de slider på en i forvejen presset boks.
 
 | Vil du vide mere om... | Læs |
 |---|---|
-| Historien om hele Devuan-projektet og alle beslutningerne | `DOKUMENTATION.md` |
-| Grafikken i tekniske detaljer (målinger, fejlsøgning, opskrift) | `DOKUMENTATION.md` §5.13-5.15 |
-| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `HAANDBOG.md` (især fælde 16-22) |
-| Hvorfor vi ikke bare kan bruge en ny kerne | `DRIVER-PORTERING.md` |
-| Hvordan GPU'en kan komme ind i en browser — løsningsanalyse og rækkefølge | `BROWSER-VEJE.md` |
+| Historien om hele Devuan-projektet og alle beslutningerne | `docs/DOKUMENTATION.md` |
+| Grafikken i tekniske detaljer (målinger, fejlsøgning, opskrift) | `docs/DOKUMENTATION.md` §5.13-5.15 |
+| Fælderne, skrevet som opslagsværk med symptom → årsag → kur | `docs/HAANDBOG.md` (især fælde 16-22) |
+| Hvorfor vi ikke bare kan bruge en ny kerne | `docs/grafik/driver-portering.md` |
+| Hvordan GPU'en kan komme ind i en browser — løsningsanalyse og rækkefølge | `docs/grafik/firefox-webgl.md` |
 | Vores GPU-programmer og diagnose-værktøjer | `devuan/gpu/` (og `devuan/gpu/diagnostik/`, `devuan/gpu/eglplatform_x11/`) |
 | Hele rejsens historie i git | `git log` — hver commit fortæller et kapitel |

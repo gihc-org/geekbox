@@ -2,9 +2,9 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
-> `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (seneste),
-> `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` (opgavebaggrund) og
-> `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` (beslutningslog).
+> `docs/log/2026-09-08-cyan-scene.md` (seneste),
+> `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
+> `docs/log/2026-08-26-gralloc-lock-spor.md` (beslutningslog).
 
 ## Status i ét blik (8. sep 2026 aften)
 
@@ -19,13 +19,13 @@
   gameplay gør endnu ikke — åbent). Præsentationssymptom (spilområde forsvinder
   ved play-start) gentaget 4×; canvas bliver i DOM (836x470) men compositoren
   taber laget → poki-baggrund ses; alpha-shim-test endnu inkonklusiv. Detaljer:
-  `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (checkpoints 20:30-21:15).
+  `docs/log/2026-09-08-cyan-scene.md` (checkpoints 20:30-21:15).
 - **OPDATERET 8. sep ~22:00 (cyan-scene): SPILLET ER SPILBART 🎉** — vnext12
   (md5 `dcc0a68f`) = alpha-shim (BiDi-preload, attrs alpha:true bekræftet) +
   depthmask-lap + depth-clear ÉN gang pr. frame med EKSPLICIT clearDepthf(1)
   (CYAN_DEPTHCLEAR=1). Dreng/tog/bygninger i korrekt perspektiv; brune flader
   væk. Tilbage: blå glitches + lav fps (instrumentering). Opskrift og beviser:
-  `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` (checkpoint 21:40-22:00).
+  `docs/log/2026-09-08-cyan-scene.md` (checkpoint 21:40-22:00).
 - Cyan-scene-sporet (8. sep): drawBuffers **ude** (`[COLOR_ATTACHMENT0]`),
   instanced-stien og `glMapBufferRange` virker offline; VBO/EBO-snapshots +
   matricer viser store prog7-draws **100 % i frustum**; offline-replay af
@@ -119,14 +119,14 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 |---|---|
 | `README.md` | Projektets formål + flash-veje + upgrade_tool-brug |
 | `TODO.md` | Opgaveliste/spor (seneste pointer øverst) |
-| `DOKUMENTATION.md`, `HAANDBOG.md` | Samlet viden + fælder (opdateres løbende) |
-| `GRAFIK-FORKLARET.md`, `BROWSER-VEJE.md`, `DEBUG-SORT-SKAERM.md` m.fl. | Ældre del-emner (grafikstak, browser-veje, skærm) |
+| `docs/DOKUMENTATION.md`, `docs/HAANDBOG.md` | Samlet viden + fælder (opdateres løbende) |
+| `docs/grafik/hvorfor.md`, `docs/grafik/firefox-webgl.md`, `docs/boksen/skaerm.md` m.fl. | Ældre del-emner (grafikstak, browser-veje, skærm) |
 | `devuan/gpu/README.md` | GPU-arbejdsområde (værktøjer, historik) |
-| `devuan/gpu/DDK15-*-HANDOVER/NOTAT-2026-08-26.md` | DDK 1.5-installation, baseline-flashtest, kernel-rebuild |
-| `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` | Beslutnings-/målelog: præsentation virker, spillet spilbart, cyan-scene åben |
-| `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` | **Opgaverammen:** cyan-scene + fuld virkende konfiguration + fælder |
-| `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` | **Seneste session:** kernel clone3-fix, GL-målinger, replay-probe, load-stall-fælder |
-| `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` | **Seneste session (8. sep):** divisor ude, live-vs-offline, præsentationssymptom, nye probes/fælder |
+| `docs/log/2026-08-26-ddk*.md` | DDK 1.5-installation, baseline-flashtest, kernel-rebuild |
+| `docs/log/2026-08-26-gralloc-lock-spor.md` | Beslutnings-/målelog: præsentation virker, spillet spilbart, cyan-scene åben |
+| `docs/log/2026-08-27-cyan-scene-handover.md` | **Opgaverammen:** cyan-scene + fuld virkende konfiguration + fælder |
+| `docs/log/2026-09-06-cyan-clone3.md` | **Seneste session:** kernel clone3-fix, GL-målinger, replay-probe, load-stall-fælder |
+| `docs/log/2026-09-08-cyan-scene.md` | **Seneste session (8. sep):** divisor ude, live-vs-offline, præsentationssymptom, nye probes/fælder |
 | `devuan/gpu/eglplatform_x11/*.c/.py/.sh` | Kode: proxy, probes, scripts (se §De mange elementer) |
 
 ## Åbne spor / næste skridt

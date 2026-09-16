@@ -1,6 +1,6 @@
 # DDK 1.5 komplet — handover 26. aug 2026 (~18:1x)
 
-> Læs dette + `DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md` (fuldt
+> Læs dette + `docs/log/2026-08-26-ddk15-baseline-flashtest.md` (fuldt
 > beslutnings- og målingslog) + de ældre `DDK15-KERNEL-REBUILD-*`-dokumenter og
 > fortsæt derfra. Agent/model: [codex:deepseek-v4-flash].
 >
@@ -19,7 +19,7 @@
 - **PRÆSENTATIONEN VIRKER NU (26. aug aften):** gralloc-lock-EINVAL's rodårsag
   var `/dev/sw_sync`-permissions (0600 root:root → kristian fik EACCES i
   lock'ens sync-fence-sti) + x11ws' lock-usage (0x80 skulle være 0x3 for
-  1.5-gralloc'ens SW-bit-maske). Se `GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md`.
+  1.5-gralloc'ens SW-bit-maske). Se `docs/log/2026-08-26-gralloc-lock-spor.md`.
 - **Subway Surfers er IKKE i mål:** spillet loader og kan vise loading-frame,
   men mister WebGL-konteksten ved gameplay-start → sort canvas. 2
   GPU-crash-klasser fixet undervejs (shader-overread i proxy-hook;
@@ -175,8 +175,8 @@ Uanset spor:
 
 ## God start i en ny session
 
-> "Læs `devuan/gpu/DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md` og
-> `devuan/gpu/DDK15-BASELINE-FLASHTEST-SESSION-NOTAT-2026-08-26.md` og fortsæt
+> "Læs `docs/log/2026-08-26-ddk15-komplet-handover.md` og
+> `docs/log/2026-08-26-ddk15-baseline-flashtest.md` og fortsæt
 > derfra. DDK 1.5@3830101 kører fuldt (GL_VERSION 'OpenGL ES 3.1 build
 > 1.5@3830101', draw_buffers OK, WebGL OK). Subway Surfers' shader-blokader er
 > løst via proxy-omskrivning (frag_depth + WR cs_blur); spilsiden loader og

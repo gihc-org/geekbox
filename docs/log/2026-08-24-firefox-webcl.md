@@ -4,9 +4,9 @@ Handover fra arbejdssessionen "få WebGL til at virke i firefox-esr på boks 1
 (192.168.0.188)" via hybris/`eglplatform_x11`-stakken. Skrevet for at bevare
 guldkornene efter kontekst-komprimering; byg videre herfra i en ny session.
 
-Relaterede dokumenter: `BROWSER-VEJE.md` (især §2.A og §4 eksperiment 2),
-`devuan/gpu/GLES-DAEMON-PLAN.md` (især M4a), `DOKUMENTATION.md` §5.15c,
-`HAANDBOG.md` fælde 19–23.
+Relaterede dokumenter: `docs/grafik/firefox-webgl.md` (især §2.A og §4 eksperiment 2),
+`devuan/gpu/GLES-DAEMON-PLAN.md` (især M4a), `docs/DOKUMENTATION.md` §5.15c,
+`docs/HAANDBOG.md` fælde 19–23.
 
 ## 1. Status i ét blik
 
@@ -213,7 +213,7 @@ error 300C. Intern `eglCreateContext` @+0x6534.
    `firefox --screenshot`, eller læs `about:support` via CDP), platformens
    præsent-log ("x11ws: vindue ... pakket ind" + present) og fbdump
    (`dd if=/dev/fb0 of=/root/ff_fb.raw bs=3840 count=1080`).
-5. Opdater `DOKUMENTATION.md` §5.15c og `BROWSER-VEJE.md` §4 med resultaterne
+5. Opdater `docs/DOKUMENTATION.md` §5.15c og `docs/grafik/firefox-webgl.md` §4 med resultaterne
    (inkl. dette notat som reference).
 
 ## 10. Filer og logs (boksen /root/)
@@ -265,7 +265,7 @@ error 300C. Intern `eglCreateContext` @+0x6534.
 
 ## 12. Uafklarede detaljer / ting at være opmærksom på
 
-- "BROWSER-VEJE.md" ligger i **repoets rod** (ikke `devuan/gpu/`).
+- "docs/grafik/firefox-webgl.md" ligger i **repoets rod** (ikke `devuan/gpu/`).
 - `dlsym_trace.so` på boksen er i stykker (interposer returnerer NULL) — brug
   den ikke.
 - Firefox loadede wrapperens `eglGetDisplay` med X-`Display*` (ikke

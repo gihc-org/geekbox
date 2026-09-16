@@ -1,7 +1,7 @@
 # Handover — GL-layers-forsøget, nat 25.→26. aug 2026 (WebGL-frys i Firefox)
 
-Læs først `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md` (fuldt målenotat,
-"Aftaler og beslutninger" + "Status i ét blik" øverst) og `DOKUMENTATION.md`
+Læs først `docs/log/2026-08-25-gl-layers.md` (fuldt målenotat,
+"Aftaler og beslutninger" + "Status i ét blik" øverst) og `docs/DOKUMENTATION.md`
 §5.15d. Dette er overleveringen til næste session: hvor vi er, hvad der er
 afkræftet siden sidste commit, og hvad der skal gøres nu.
 

@@ -3,8 +3,8 @@
 Spørgsmålet der startede dokumentet: *"Vil det være en uoverkommelig opgave at forke
 Firefox og få den til at tale med vores GPU-stak?"* Svaret er nej — men arbejdet
 ligger næsten alle andre steder end i Firefox' egen kode. Dette dokument samler
-løsningen, risikoerne og en foreslået rækkefølge (aug 2026). Grundlaget er DOK §5.15,
-`GRAFIK-FORKLARET.md` og operationskortet `devuan/gpu/README.md`.
+løsningen, risikoerne og en foreslået rækkefølge (aug 2026). Grundlaget er docs/DOKUMENTATION.md §5.15,
+`docs/grafik/hvorfor.md` og operationskortet `devuan/gpu/README.md`.
 
 ## 1. Grundlaget: hvad broen kan og ikke kan (målt i repoet)
 
@@ -19,7 +19,7 @@ løsningen, risikoerne og en foreslået rækkefølge (aug 2026). Grundlaget er D
   2016 kørt både en medie-app og en browser mod stakken. Målt (aug 2026): chromium'en
   er en GTK2+X11-build (`libgtk2ui.so`, `libx11_events_platform.so` i dens `libs/`),
   så den kørte under X — og dens wrapper starter med `--no-sandbox` (samme
-  syscall-problem som HAANDBOG fælde 14). Stadig umålt: hvilken GL-vej den brugte
+  syscall-problem som docs/HAANDBOG.md fælde 14). Stadig umålt: hvilken GL-vej den brugte
   (`libgl_wrapper.so` = GLX vs. `libgles2_c_lib.so` = GLES2) og hvilken ozone-platform
   der præsenterede — se måleprogrammet i §3.
 - Konsekvens for en browser: den *skal* køre under X (vinduer, mus, tastatur), men
@@ -245,8 +245,8 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
    Bemærk desuden at `Exiting due to channel error.` efter en kørsel oftest
    er vores egen `pkill -9 -x firefox-esr` (rammer kun main; børnene lukker
    kanalen og exit(0)-kaskader). Detaljer:
-   `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md` (handover),
-   `DOKUMENTATION.md` §5.15c, `HAANDBOG.md` fælde 23.
+   `docs/log/2026-08-25-firefox-webcl.md` (handover),
+   `docs/DOKUMENTATION.md` §5.15c, `docs/HAANDBOG.md` fælde 23.
 3. **Prototype af A:** vis et PVR-renderet billede i et X-vindue, mens X kører.
    Virker det, er den store tekniske risiko afklaret — og stykket kan bruges af alle.
    **GJORT (24. aug 2026)** via M2b-vindue-demoen (`window_demo.py` + daemonens
@@ -277,11 +277,11 @@ A6/C10/C11 — og derefter eksperimenterne i næste afsnit.
 4. Først derefter: beslutningen om browseren — som til den tid måske viser sig at
    hedde "stock Firefox + MOZ_X11_EGL + en lille patch" frem for en egentlig fork.
 5. I mellemtiden: `chromium` + SwiftShader er den eneste browser-vej med WebGL, der
-   virker i dag (HAANDBOG fælde 16) — CPU-fart, men den virker.
+   virker i dag (docs/HAANDBOG.md fælde 16) — CPU-fart, men den virker.
 
 ## 6. Dommen
 
-Ikke uoverkommeligt — men "uger-måneder" (`GRAFIK-FORKLARET.md` §4) holder, og
+Ikke uoverkommeligt — men "uger-måneder" (`docs/grafik/hvorfor.md` §4) holder, og
 arbejdet ligger næsten alle andre steder end i Firefox' egen kode. Risikoen samler
 sig i to punkter: A (kendt form, afgrænset) og C (uafklaret indtil målt —
 eksperiment 3 afgør den). Målet "webspil i dag" → chromium+SwiftShader. Målet
@@ -291,7 +291,7 @@ eksperiment 3 afgør den). Målet "webspil i dag" → chromium+SwiftShader. Mål
 
 | Vil du vide mere om... | Læs |
 |---|---|
-| GPU-stakken, opskriften og reglerne | `devuan/gpu/README.md`, DOK §5.15 |
-| Historien i hverdagssprog | `GRAFIK-FORKLARET.md` |
-| WebGL-fælden og chromium-nødløsningen | `HAANDBOG.md` fælde 16, DOK §5.13-5.14 |
+| GPU-stakken, opskriften og reglerne | `devuan/gpu/README.md`, docs/DOKUMENTATION.md §5.15 |
+| Historien i hverdagssprog | `docs/grafik/hvorfor.md` |
+| WebGL-fælden og chromium-nødløsningen | `docs/HAANDBOG.md` fælde 16, docs/DOKUMENTATION.md §5.13-5.14 |
 | Planen i kort form | `TODO.md` (trin 2 og Python/GLES-daemon-projektet) |

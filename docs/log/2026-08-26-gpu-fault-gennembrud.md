@@ -96,7 +96,7 @@
   indbyggede KM hårdt ved EGL-init (2× wedge; anden gang på rent filsystem).
   KM'en er bygget ind i kernen ("Rogue L 0.22", tom /proc/modules) → 1.5-KM kan
   ikke byttes som .ko. Restore til 1.4 gennemført og verificeret. Detaljer:
-  `devuan/gpu/DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md`.
+  `docs/log/2026-08-26-ddk-proeveinstallation.md`.
 - [vurderet] **4.4-kernel-opgradering (26. aug, ~03:0x): muligt, men et
   porteprojekt — ikke nødvendigt for spillet.** Fakta: Firefly
   `firefly-linux-kernel-4.4.55` har RK3368 + PVR-DDK-1.8-kbuild-overlay
@@ -126,7 +126,7 @@
   hænger boksens indbyggede KM hårdt ved EGL-init (2× wedge; anden gang på rent
   filsystem + 6.0-libc). KM'en er bygget ind i kernen ("Rogue L 0.22") og kan
   ikke byttes som .ko. Boksen er tilbage i 1.4-baseline (verificeret). Detaljer:
-  `DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md`.
+  `docs/log/2026-08-26-ddk-proeveinstallation.md`.
 
 ## PVR_K-dmesg-sekvensen (målt 00:41, precache run 5 — bevis fanget før
 ringrotation; gdb-log: `devuan/gpu/beviser/gdb_wr_reset-precache5.log`)
@@ -174,7 +174,7 @@ PVR_K:   Recovery 1: PID = 0 ... Innocent Lockup (samme request)
    kræver `GL_EXT_draw_buffers`-shaders, og 2016-æra PowerVR-blob'ens
    shader-kompiler afviser direktivet (uanset udvidelsesliste/patch). Veje
    videre: (a) nyere DDK — **DDK 1.5 fundet, prøveinstallation planlagt i
-   `DDK-HANDOVER-2026-08-26.md`**, (b) find et andet spil der ikke bruger
+   `docs/log/2026-08-26-ddk-handover.md`**, (b) find et andet spil der ikke bruger
    MRT-shaders (WebGL1-spil uden Unity-modern-renderer), (c) acceptér
    begrænsningen for moderne Unity-spil.
 2. **Buffer-fixet står:** stress-siden nåede #350–450 uden reset og
@@ -277,7 +277,7 @@ er nok til at løse kompiler-blokaden. (Rogue 5.12 nævnt i Firefly-kernen er
   `vendor/lib/hw/{gralloc,memtrack}.rk3368.so`, `vendor/bin/{pvrsrvctl,pvrtld}`,
   `lib/modules/pvrsrvkm.ko`.
 - 1.4-reference (restore): `geekboxzone/mmallow_vendor_rockchip_common/geekbox/gpu/libG6110/G6110_32/...`.
-- md5'er for alle hentede filer: `devuan/gpu/DDK-HANDOVER-2026-08-26.md` (§Filer).
+- md5'er for alle hentede filer: `docs/log/2026-08-26-ddk-handover.md` (§Filer).
 
 ## Fælder + sikkerhedsregler (målt, overtræd ikke)
 

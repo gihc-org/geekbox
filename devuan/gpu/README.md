@@ -1,8 +1,8 @@
 # GPU-stakken — operationskort (start her i en ny session)
 
 Kort over hvad der ligger HVOR på boksen, og hvordan man kører en GPU-session.
-Historien og beviserne: DOKUMENTATION.md §5.13-5.15. Hverdagssprog-versionen:
-`GRAFIK-FORKLARET.md`.
+Historien og beviserne: docs/DOKUMENTATION.md §5.13-5.15. Hverdagssprog-versionen:
+`docs/grafik/hvorfor.md`.
 
 ## Boksens runtime-layout (boks 1, aug 2026)
 
@@ -39,7 +39,7 @@ Reglerne (målt, ikke gættet):
    køre mens X kører — kun skærm-output kolliderer.
 2. **Efter en GPU-session: strøm-cyklus.** Display-dansen kan ikke vække
    HDMI-transmitteren (kernen tror den sender; TV'et får intet).
-3. Kør ikke tunge installationer på boksen (brownout-historien, DOK §5.14) — og brug
+3. Kør ikke tunge installationer på boksen (brownout-historien, docs/DOKUMENTATION.md §5.14) — og brug
    aldrig "5V 2A"-adapteren.
 
 ## Bygning — cross på laptoppen (M0, aug 2026)
@@ -104,7 +104,7 @@ urørte ved quit); dræb en kørende daemon før scp.
 
 ## eglplatform_x11-prototype (24. aug 2026) — GLES ind i et X-vindue
 
-BROWSER-VEJE §2.A i udført form: `devuan/gpu/eglplatform_x11/` er en rigtig
+docs/grafik/firefox-webgl.md §2.A i udført form: `devuan/gpu/eglplatform_x11/` er en rigtig
 libhybris-EGL-platform, der renderer via PVR (offscreen, gralloc) og
 præsenterer i et X-vindue via XPutImage. Bygges på boksen (`build_box.sh`),
 testes med `test_client_x11` (`EGL_PLATFORM=x11`). Verificeret: cos-scenen
@@ -112,8 +112,8 @@ viser på fb0 i 640x360-vinduet, ~9 fps, GL 3.1. To vigtige fælder (fikset):
 hybris' EGL-init skifter aktiv VT væk fra X (platformen chvt'er tilbage ved
 første present — fbdev-X viser kun indhold, når dens VT er aktiv), og tegning
 skal gå gennem vinduets egen X-forbindelse (klienten sender sit Display* som
-EGL-native-display). Fælderne: `HAANDBOG.md` 19-22. Detaljer:
-`GLES-DAEMON-PLAN.md` M4a + `DOKUMENTATION.md` §5.15b.
+EGL-native-display). Fælderne: `docs/HAANDBOG.md` 19-22. Detaljer:
+`GLES-DAEMON-PLAN.md` M4a + `docs/DOKUMENTATION.md` §5.15b.
 
 **Browser-status (24. aug 2026):** Firefox' GL-probe (`glxtest`) er GRØN —
 PowerVR Rogue G6110 / GLES 3.1 / TEST_TYPE=EGL — efter platformens
@@ -121,7 +121,7 @@ PowerVR Rogue G6110 / GLES 3.1 / TEST_TYPE=EGL — efter platformens
 henter dem via `eglGetProcAddress`, ikke dlsym) og glxtest-binæren er patchet
 (dybde-tjek 24→16, X er 16-bit; backup `/root/glxtest.orig`). Hele Firefox
 blokerer stadig på WebRender-hardwarekontekst (0x300c/0x3000, målt med gdb).
-Handover med alle spor: `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+Handover med alle spor: `docs/log/2026-08-24-firefox-webcl.md`.
 
 Arkitektur: Python-frontend (tegner UI direkte på `/dev/fb0`, som `fb_overscan.py`)
 ↔ unix-socket ↔ GLES-daemon (C, skelet = `test_triangle.cpp`), der renderer offscreen
@@ -145,5 +145,5 @@ Første konkrete skridt:
 ```bash
 sudo devuan/testflash.sh                 # image har cma=128M + myinit-mount
 devuan/gpu/gpu_setup.sh <ny-ip>          # system.img + broer + færdige binærer
-# strøm-cykl — se DOK §5.15 "Ny boks i samme tilstand"
+# strøm-cykl — se docs/DOKUMENTATION.md §5.15 "Ny boks i samme tilstand"
 ```

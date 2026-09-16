@@ -1,7 +1,7 @@
 # Handover — GL-layers-forsøget (spillet fryser) (25. aug 2026, nat)
 
-Læs først `devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md` (alle målinger)
-og `DOKUMENTATION.md` §5.15d (sammenfatning). Dette er den korte overlevering:
+Læs først `docs/log/2026-08-25-gl-layers.md` (alle målinger)
+og `docs/DOKUMENTATION.md` §5.15d (sammenfatning). Dette er den korte overlevering:
 hvad der virker, hvad der er målt, og hvad næste session skal gøre.
 
 ## Status i ét blik

@@ -39,11 +39,11 @@
   (pvrsrvctl-exit=0), baseline bekræftet: shader_ext_test = "Extension not supported"
   (1.4-adfærd).
 - [udført] **Løsningsdokument oprettet (26. aug ~04:2x, [codex:gpt-5]):**
-  `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md` beskriver den fulde vej —
+  `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md` beskriver den fulde vej —
   kernel-rebuild med 1.5-KM fra `geekboxzone/mmallow_kernel` (gren `geekbox`,
   `drivers/gpu/rogue` = 1.5@3830101) + løsning af blokaderne (`__register_atfork`
   via shim/patch; 64-bit `pvrsrvctl` via dumpets 64-bit-runtime). Refereret i
-  TODO.md + DOKUMENTATION.md §5.15e.
+  TODO.md + docs/DOKUMENTATION.md §5.15e.
 - [foreslået] **Næste skridt (kræver brugerens go):** build-forberedelse — klargør
   aarch64-krydskompileren, klon `mmallow_kernel` gren `geekbox`, verificér
   `drivers/gpu/rogue` = 1.5@3830101, byg baseline-kernel (uændret) og derefter
@@ -64,7 +64,7 @@
   MRT-shaders, (d) acceptér begrænsningen.
 - **Løsningen er dokumenteret (26. aug ~04:2x):** kernel-rebuild med 1.5-KM er den
   samlede vej (både ABI-fix og blokade-løsninger) — se
-  `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md`; næste skridt er
+  `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md`; næste skridt er
   build-forberedelse, som afventer brugerens godkendelse.
 
 ## Detaljeret forløb
@@ -127,4 +127,4 @@ rmmod pvrsrvkm            # Module unloading is not supported
   DDK-HANDOVER (opdateret).
 - TODO.md: DDK-sporet skal markeres "afprøvet, ikke anvendelig uden kernel-rebuild".
 - Næste (foreslået): beslut om spor-videre (kernel-rebuild vs. spil uden MRT vs.
-  accept), opdater DOKUMENTATION.md §5.15e + TODO.md.
+  accept), opdater docs/DOKUMENTATION.md §5.15e + TODO.md.

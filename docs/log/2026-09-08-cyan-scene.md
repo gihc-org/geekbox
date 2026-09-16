@@ -1,7 +1,7 @@
 # Cyan-scene-sporet — session-notat 8. sep 2026 (drawBuffers, instanced-sti, buffer-snapshots)
 
 > Agent/model: [codex:deepseek-v4-flash].
-> Fortsætter `CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `CYAN-SCENE-HANDOVER-2026-08-27.md`.
+> Fortsætter `docs/log/2026-09-06-cyan-clone3.md` + `docs/log/2026-08-27-cyan-scene-handover.md`.
 
 ## Stop for i aften (8. sep ~22:1x, bruger: "mens vi er på toppen")
 

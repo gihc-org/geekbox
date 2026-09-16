@@ -1,7 +1,7 @@
 # Cyan-scene-handover — næste session (27. aug 2026, tidlig morgen)
 
 > Agent/model: [codex:deepseek-v4-flash]. Læs dette + 
-> `GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` (fuldt beslutnings- og
+> `docs/log/2026-08-26-gralloc-lock-spor.md` (fuldt beslutnings- og
 > målingslog) og fortsæt derfra.
 
 ## Status i ét blik
@@ -106,8 +106,8 @@ deaktiverer spillet bevidst scenen via en kapabilitets-check.
 
 ## God start i en ny session
 
-"Læs `devuan/gpu/CYAN-SCENE-HANDOVER-2026-08-27.md` og
-`devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-NOTAT-2026-08-26.md` og fortsæt derfra.
+"Læs `docs/log/2026-08-27-cyan-scene-handover.md` og
+`docs/log/2026-08-26-gralloc-lock-spor.md` og fortsæt derfra.
 Subway Surfers loader stabilt og er spilbart (lyd/HUD) med konfigurationen i
 handoveren — men 3D-scenen renderer cyan (kun himlen; objekter usynlige).
 Målinger: canvas læser ensartet cyan, clear er pink, kun 18-verts-draws,

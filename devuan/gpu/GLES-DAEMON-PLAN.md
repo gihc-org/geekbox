@@ -3,7 +3,7 @@
 Plan for TODO-punktet "Python-frontend + GLES-daemon" (TODO.md): Python tegner UI
 direkte på `/dev/fb0`, taler med en C-daemon over en unix-socket (JSON-linjer), og
 daemonen renderer GLES offscreen og blitter resultatet til fb0. X stoppes under
-brug; strøm-cyklus bagefter (reglerne i DOK §5.15). Arkitektur-kortet:
+brug; strøm-cyklus bagefter (reglerne i docs/DOKUMENTATION.md §5.15). Arkitektur-kortet:
 `devuan/gpu/README.md`.
 
 **Hovedformål (præciseret af brugeren 24. aug 2026):** teste
@@ -34,7 +34,7 @@ hovedmålet.
    `vendor_root`. Boks 1 er i dag det eneste byggehost (`gpu_setup.sh` henter
    færdige binærer derfra); cross-bygning gør byggekæden reproducerbar og
    uafhængig af en bestemt boks, giver hurtig iteration uden ssh-ture og
-   belaster ikke boksen (brownout-historien, DOK §5.14). Boksens eget gcc
+   belaster ikke boksen (brownout-historien, docs/DOKUMENTATION.md §5.14). Boksens eget gcc
    beholdes som fallback. Verifikation foregår stadig på boks 1 (M0/M3).
 2. **Offscreen via FBO, ikke pbuffer.** hwcomposer-platformens
    pbuffer-understøttelse er ikke verificeret; FBO er core i GLES 3.1 (rendereren
@@ -119,7 +119,7 @@ nu (`devuan/gpu/readback_probe.cpp`).
 - `EGL_PLATFORM=null` crasher ved `eglCreateWindowSurface(NULL)` (NULL-deref i
   `android_createDisplaySurface`-vejen → exit(42)) — null-platformen er IKKE en
   genvej på denne boks; hwcomposer-platformen + patchen er vejen (B7-proben fra
-  BROWSER-VEJE.md er dermed besvaret med nej).
+  docs/grafik/firefox-webgl.md er dermed besvaret med nej).
 - Daemonen kalder aldrig `eglSwapBuffers` → ingen hwc-præsentation → `service
   nodm start` virkede bagefter. Om HDMI viser billedet uden strøm-cyklus skal
   bekræftes på TV'et; regel 2 står til den er målt afkræftet.
@@ -138,7 +138,7 @@ nu (`devuan/gpu/readback_probe.cpp`).
 - [x] Flag: `--fb`, `--socket`, `--rect WxH+X+Y`, `--frames`, `--fps`,
       `--no-gles`, `--dump`, `--title`.
 - [x] Accept: kører på boksen uden X; fb0 dumpet til PNG viser rammer, tekst og
-      GLES-scene (metoden fra DEBUG-SORT-SKAERM) — verificeret på boks 1:
+      GLES-scene (metoden fra docs/boksen/skaerm.md) — verificeret på boks 1:
       baggrund (16,20,24) = (18,22,30) i RGB565, ramme (120,188,248), titel 240
       pixels, GLES-rect 102 farver (cos-mønster), statuslinje til stede.
       `--no-gles`: rect er tom baggrund, UI tegnet — verificeret.
@@ -160,10 +160,10 @@ vinduet. **X skal IKKE stoppes.** Vejen blev oprindeligt noteret som "et nyt
 spor oven på M2", men er per bruger-præcisering hovedformålet;
 frontend.py-kiosken (M2/M3) er sekundær.
 
-**Forbindelse til `BROWSER-VEJE.md`:** vindue-demoen er eksperiment 3
+**Forbindelse til `docs/grafik/firefox-webgl.md`:** vindue-demoen er eksperiment 3
 ("prototype af A — PVR-renderet billede i X-vindue, X kører") og bekræfter A's
 præsentationstese (offscreen → XPutImage). Næste skridt på browser-vejen er
-selve `eglplatform_x11`-platformen (BROWSER-VEJE §2.A).
+selve `eglplatform_x11`-platformen (docs/grafik/firefox-webgl.md §2.A).
 
 - [x] `frame`-kommando i `gles_daemon.c`: renderer scenen i FBO og RETURNERER rå
       pixels (JSON-header-linje + binær) — ingen fb0-blit, så X kan køre.
@@ -255,7 +255,7 @@ ssh -i ~/.ssh/geekbox_key root@<ip> \
   'LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer /root/gles_daemon &'
 ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 # verificér: daemon-log + fb0-dump → PNG
-# bagefter: strøm-cykl boksen (DOK §5.15)
+# bagefter: strøm-cykl boksen (docs/DOKUMENTATION.md §5.15)
 ```
 
 - [x] Daemon starter, `ping`/`fb` svarer; frontend tegner UI på fb0 (24. aug
@@ -276,12 +276,12 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 
 - [ ] `gpu_setup.sh`: byg `gles_daemon` + `frontend.py` fra repoet (cross) og
       distribuér dem; stop med at hente byggede binærer fra boks 1.
-- [ ] Opdatér `devuan/gpu/README.md` (operationskort) og DOKUMENTATION.md §5.15
+- [ ] Opdatér `devuan/gpu/README.md` (operationskort) og docs/DOKUMENTATION.md §5.15
       med daemon-arkitekturen + cross-byggelinjen.
 - [ ] Overvej udvidelser (ikke v1): scaling, select()-event-loop i daemonen,
       tastatur-input til frontenden, flere scener.
 
-### M4a — `eglplatform_x11`-prototype (24. aug 2026, BROWSER-VEJE §2.A)
+### M4a — `eglplatform_x11`-prototype (24. aug 2026, docs/grafik/firefox-webgl.md §2.A)
 
 `devuan/gpu/eglplatform_x11/` — en rigtig libhybris EGL-platform: PVR renderer
 offscreen i gralloc-buffere, og platformens `queueBuffer` præsenterer dem i et
@@ -308,7 +308,7 @@ GL 3.1 PowerVR G6110, aktiv VT og HDMI urørt bagefter. `ws_module`-kontrakten
    som EGL-native-display (`eglGetDisplay(dpy)`); platformens `GetDisplay`
    gemmer det, og `present()` tegner via klientens forbindelse.
 
-**Firefox-forsøg (24. aug 2026, BROWSER-VEJE eksperiment 2):** `MOZ_X11_EGL=1`
+**Firefox-forsøg (24. aug 2026, docs/grafik/firefox-webgl.md eksperiment 2):** `MOZ_X11_EGL=1`
 + `EGL_PLATFORM=x11` + shims lader Firefox' `glxtest` loade vores libEGL og
 Android-EGL-kæden, men `eglGetDisplay` fejlede i glxtest's proces
 (EGL_BAD_DISPLAY, logd "eglGetDisplay:218 error 300c"). **LØST:** rodårsagen
@@ -321,7 +321,7 @@ wrapperens egne eksporter (+ stubs for `eglQueryDeviceStringEXT`/
 16-bit; backup `/root/glxtest.orig`). `glxtest` melder nu PowerVR Rogue G6110 /
 GLES 3.1 / TEST_TYPE=EGL. **Ny blokering (fuld Firefox):** WebRender-hardware-
 kontekst fejler (0x300c: create rammer ikke wrapperen; 0x3000: create+MakeCurrent
-virker, Init fejler). Detaljer: `devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+virker, Init fejler). Detaljer: `docs/log/2026-08-24-firefox-webcl.md`.
 Diagnose-værktøjer: `dlsym_trace.c` (i stykker — brug ikke), `dlopen_egl_test.cpp`,
 `egl_display_probe.cpp`, `egl_getproc_probe2`, `ff_egl_mimic`,
 `android_internal_probe`, `epoxy_mimic` (kilde i `/tmp/epoxy_mimic.c`).
@@ -331,14 +331,14 @@ Diagnose-værktøjer: `dlsym_trace.c` (i stykker — brug ikke), `dlopen_egl_tes
 1. **X stoppes under brug** — daemonen blitter til fb0, så skærm-output kolliderer
    med X (README-regel 1).
 2. **Strøm-cyklus bagefter** — HDMI-transmitteren kan ikke vækkes af software
-   (DOK §5.15).
-3. `cma=128M` skal stå på cmdlinen, ellers EPERM ved 2. CMA-buffer (DOK §5.15).
+   (docs/DOKUMENTATION.md §5.15).
+3. `cma=128M` skal stå på cmdlinen, ellers EPERM ved 2. CMA-buffer (docs/DOKUMENTATION.md §5.15).
 4. `LD_PRELOAD=/root/system_shim.so` er nødvendig mod glibc-2.41-EFAULT i
-   hybris-processen (DOK §5.15).
+   hybris-processen (docs/DOKUMENTATION.md §5.15).
 5. `/dev/graphics/fb*` forsvinder ved hver boot — `gpu_up.sh` genskaber dem.
 6. fb0's bpp/stride kan variere ved boot (EDID-race) — myinit normaliserer;
    daemonen læser var-info ved start.
-7. Ikke kør tunge installationer på boksen (brownout, DOK §5.14).
+7. Ikke kør tunge installationer på boksen (brownout, docs/DOKUMENTATION.md §5.14).
 8. Racerbetingelsen frontend↔daemon om fb0 løses i v1 af den synkrone protokol og
    adskilte rects — dokumenteret, ikke løst.
 9. XPutImage til et vindue kræver `ZPixmap` (2) i `XCreateImage` — `XYPixmap`

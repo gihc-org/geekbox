@@ -86,7 +86,7 @@
 - [afventer] **Isolation (næste skridt):** (a) genopret kendt-god (original boot +
   eMMC-parameter); (b) ny kernel + eMMC-root → booter den = SD-stien er problemet,
   fryser den = kernen er skyldig → æra-match rebuild. Boksens lilla-LED/frys =
-  hænger i U-Boot/meget tidligt i kernen (HAANDBOG fælde 15; uboot-logo-on=0 er
+  hænger i U-Boot/meget tidligt i kernen (docs/HAANDBOG.md fælde 15; uboot-logo-on=0 er
   afkræftet — DTB er originalen).
 - [målt] **Tre baseline-byg fryser alle identisk (26. aug ~11:4x–12:1x):** (1)
   juni-træ + juni-defconfig + gcc-9; (2) jan-træ (80f6d15b9d2) + marts-defconfig

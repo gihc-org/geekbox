@@ -1,6 +1,6 @@
 # Gralloc-lock-sporet — session-notat 26. aug 2026 (aften)
 
-> Fortsættelse af `DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md`. Agent/model:
+> Fortsættelse af `docs/log/2026-08-26-ddk15-komplet-handover.md`. Agent/model:
 > [codex:deepseek-v4-flash]. Mål: find EINVAL-kilden i 1.5-gralloc'ens lock
 > (brugerens beslutning), så Subway Surfers kan præsenteres.
 

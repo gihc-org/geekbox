@@ -1,13 +1,13 @@
 # Flash Linux på GeekBox (RK3368)
 
-> **Ny her? Læs [HAANDBOG.md](HAANDBOG.md)** — alt forklaret fra grunden: ordbog, hvordan
+> **Ny her? Læs [docs/HAANDBOG.md](docs/HAANDBOG.md)** — alt forklaret fra grunden: ordbog, hvordan
 > boksen hænger sammen, opskriften på en ny boks, og hver enkelt fælde vi er faldet i med
 > symptom, årsag og fix. Skrevet så den kan læses uden forhåndsviden.
 >
-> **[DOKUMENTATION.md](DOKUMENTATION.md)** er den fulde tekniske historie: arkitektur,
+> **[docs/DOKUMENTATION.md](docs/DOKUMENTATION.md)** er den fulde tekniske historie: arkitektur,
 > beslutninger, blindgyder og hvordan hele Devuan-systemet genskabes.
 >
-> **[GRAFIK-FORKLARET.md](GRAFIK-FORKLARET.md)** fortæller historien om boksens grafik —
+> **[docs/grafik/hvorfor.md](docs/grafik/hvorfor.md)** fortæller historien om boksens grafik —
 > hvorfor WebGL ikke virkede, og hvordan vi vækkede GPU'en — i hverdagssprog uden fagudtryk.
 
 Metode til at flashe GeekBox-boksen med Lubuntu Linux fra en moderne Linux-maskine
@@ -28,6 +28,7 @@ Metode til at flashe GeekBox-boksen med Lubuntu Linux fra en moderne Linux-maski
 | `RK3368MiniLoaderAll_V2.26.bin` | Maskrom-loader til reservemetoden med `rkdeveloptool` |
 | `UpgradeTool_Geekbox_v1.39/` | Windows-værktøj (FactoryTool.exe) — ikke brugt, kun hentet for fuldstændighed |
 | `devuan/` | Scripts og filer til Devuan-sporet (nyere userspace på vendor-kernel, root på SD) — se TODO.md |
+| `docs/` | Al dokumentation: `boksen/` (maskinen), `grafik/` (GPU/WebGL), `log/` (daterede sessionsnotater). Start i `docs/HAANDBOG.md` |
 | `extracted/` | update.img udpakket: Loader.bin, parameter, uboot/trust/resource/boot-images, rootfs.img |
 
 ## Fremgangsmåde
@@ -77,7 +78,7 @@ Vigtige erfaringer:
 
 - **`DI -p` forventer parameteren som ren tekstfil** (`FIRMWARE_VER:`/`CMDLINE:`/...-linjer, CRLF). Værktøjet tilføjer selv PARM-header og CRC ved skrivning. Giver man den den binære PARM-fil, fejler den med "parameter is invalid, please check!"
 - `RL`/`WL` direkte i Loader-tilstand gav "The Device did not support this operation" på denne boks — brug `DI` til partitions-skrivning, `UF` til hele imaget
-- **`RS` er ubrugelig i denne build:** parseren afviser alle argument-varianter ("command is invalid"). Readback fra eMMC gøres i stedet med `dd` fra en kørende boks (se DOKUMENTATION.md §9-10). Og kør aldrig `upgrade_tool` helt uden argumenter mens boksen er tilsluttet — uden TTY looper den enhedsvalg-prompten uendeligt
+- **`RS` er ubrugelig i denne build:** parseren afviser alle argument-varianter ("command is invalid"). Readback fra eMMC gøres i stedet med `dd` fra en kørende boks (se docs/DOKUMENTATION.md §9-10). Og kør aldrig `upgrade_tool` helt uden argumenter mens boksen er tilsluttet — uden TTY looper den enhedsvalg-prompten uendeligt
 - Boksen reagerer ikke på `RD` — tag strømmen af/på for at genstarte
 
 ## Seriel konsol (debugging)

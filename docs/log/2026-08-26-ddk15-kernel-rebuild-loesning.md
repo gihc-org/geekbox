@@ -2,8 +2,8 @@
 
 > Skrevet 26. aug 2026 (~04:2x). Svarer på spørgsmålet: hvordan kommer vi fra
 > "1.5-UM kræver Android 6.0-bionic" + "dumpets pvrsrvctl er 64-bit" til en
-> virkende DDK 1.5? Se også `DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md`
-> (målingerne) og `DDK-HANDOVER-2026-08-26.md` (backup/restore-plan).
+> virkende DDK 1.5? Se også `docs/log/2026-08-26-ddk-proeveinstallation.md`
+> (målingerne) og `docs/log/2026-08-26-ddk-handover.md` (backup/restore-plan).
 
 ## Status i ét blik
 
@@ -17,7 +17,7 @@
   dumpet — nedenfor). De løser dog kun load/init, **ikke** ABI-wedgen mod KM'en.
 - **Den samlede løsning:** byg en 3.10-kernel med 1.5-KM-kilden
   (`geekboxzone/mmallow_kernel`, gren `geekbox`, `drivers/gpu/rogue`) indbygget —
-  og i samme hug opgraderet til 3.10.108 (DRIVER-PORTERING.md §6: stable-serie =
+  og i samme hug opgraderet til 3.10.108 (docs/grafik/driver-portering.md §6: stable-serie =
   ABI-frosset ved politik → dage, ikke år).
 
 ## Hvorfor userspace-bytte alene fejlede (målt)
@@ -129,14 +129,14 @@
   `rk3368_box-userdebug-6.0.1-MXC89K-user.root.20181130.004438-test-keys`
   (raw-mønster: `https://raw.githubusercontent.com/leddaz-dump-stash/android_rk3368_box_dump/<BR>/<sti>`)
 - 1.4-reference/restore: `geekboxzone/mmallow_vendor_rockchip_common` gren `geekbox`
-- DRIVER-PORTERING.md §6 (stable-by-policy), DOKUMENTATION.md §5.15e, TODO.md,
-  HAANDBOG.md fælde 16.
+- docs/grafik/driver-portering.md §6 (stable-by-policy), docs/DOKUMENTATION.md §5.15e, TODO.md,
+  docs/HAANDBOG.md fælde 16.
 
 ## God start i en ny session
 
-> Læs `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md` (løsningen),
-> `devuan/gpu/DDK-PROEVEINSTALLATION-SESSION-NOTAT-2026-08-26.md` (målingerne) og
-> `DRIVER-PORTERING.md` §6 og fortsæt derfra. Mål: byg en 3.10-kernel med DDK 1.5-KM
+> Læs `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md` (løsningen),
+> `docs/log/2026-08-26-ddk-proeveinstallation.md` (målingerne) og
+> `docs/grafik/driver-portering.md` §6 og fortsæt derfra. Mål: byg en 3.10-kernel med DDK 1.5-KM
 > indbygget fra `geekboxzone/mmallow_kernel` (gren `geekbox`, `drivers/gpu/rogue` =
 > 1.5@3830101), så 1.5-userspace kan køre på boks 1 (192.168.0.188) uden ABI-wedge —
 > helst i samme hug opgraderet til 3.10.108. Status: prøveinstallationen af 1.5-UM

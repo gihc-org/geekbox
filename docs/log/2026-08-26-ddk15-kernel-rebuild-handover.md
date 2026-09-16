@@ -1,7 +1,7 @@
 # DDK 1.5 kernel-rebuild — handover 26. aug 2026 (~13:0x)
 
-> Læs dette + `DDK15-KERNELREBUILD-SESSION-NOTAT-2026-08-26.md` (beslutninger,
-> målinger) + `DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md` (blokade-løsninger) og
+> Læs dette + `docs/log/2026-08-26-ddk15-kernelrebuild.md` (beslutninger,
+> målinger) + `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md` (blokade-løsninger) og
 > fortsæt derfra. Mål: få 1.5-userspace til at køre på boks 1 (192.168.0.188) uden
 > ABI-wedge — slutverifikation: `shader_ext_test` accepterer `GL_EXT_draw_buffers`
 > og Firefox about:support viser "OpenGL ES 3.1 build 1.5@3830101".
@@ -100,7 +100,7 @@ sudo ./upgrade_tool DI -p /home/kristian/projects/geekbox/devuan/gpu/kernelbuild
    `pvrsrvctl` (dumpets 64-bit-runtime: linker64 + lib64-sæt).
 4. Verificér: `shader_ext_test` accepterer draw_buffers → `trivial_test`
    (draw_buffers OK) → Firefox about:support "OpenGL ES 3.1 build 1.5@3830101".
-5. Fase B (når 1.5-vejen virker): merge til 3.10.108, jf. DRIVER-PORTERING.md §6.
+5. Fase B (når 1.5-vejen virker): merge til 3.10.108, jf. docs/grafik/driver-portering.md §6.
 
 ## Fælder
 
@@ -111,7 +111,7 @@ sudo ./upgrade_tool DI -p /home/kristian/projects/geekbox/devuan/gpu/kernelbuild
 - SD-kortet kan sidde i boksen uden at påvirke kernel-testen (kernel kommer fra
   eMMC-boot-partitionen; parameteren peger på eMMC-root).
 - `/proc/modules` er tomt på original-kernen (KM indbygget) — det er forventet, se
-  DOKUMENTATION.md. Efter testkernel er moduler aktive.
+  docs/DOKUMENTATION.md. Efter testkernel er moduler aktive.
 - `pkill -9 -x firefox-esr` (aldrig `-f`), tjek /system-plads før kopiering.
 - Korrigeret hovedvej (PVR fra + .ko) stod som [foreslået] i session-notatet —
   brugeren har fulgt den i praksis; formalisér gerne som [aftalt] i ny session.
@@ -119,9 +119,9 @@ sudo ./upgrade_tool DI -p /home/kristian/projects/geekbox/devuan/gpu/kernelbuild
 ## God start i en ny session
 
 ```text
-Læs devuan/gpu/DDK15-KERNEL-REBUILD-HANDOVER-2026-08-26.md,
-devuan/gpu/DDK15-KERNELREBUILD-SESSION-NOTAT-2026-08-26.md og
-devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md og fortsæt derfra.
+Læs docs/log/2026-08-26-ddk15-kernel-rebuild-handover.md,
+docs/log/2026-08-26-ddk15-kernelrebuild.md og
+docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md og fortsæt derfra.
 Status: bootimg-blokaden (SHA1-id) er løst; baseline- og testkernel er bygget og
 pakket med korrekt id i devuan/gpu/kernelbuild/out/. Næste skridt: flash baseline
 med parameter_emmc_myinit_cma.txt og verificér boot (LED blå, uname, shader_ext_test

@@ -1,7 +1,7 @@
 # Hvorfor er det så svært at porte 3.10-vendordrivere til en mainline-kernel?
 
 Dette dokument forklarer baggrunden for den vigtigste arkitektoniske beslutning i
-projektet (se DOKUMENTATION.md §2: vendor-kernel + nyt userland). Det besvarer to
+projektet (se docs/DOKUMENTATION.md §2: vendor-kernel + nyt userland). Det besvarer to
 spørgsmål:
 
 1. Hvad betyder det, at "Linux-kernens interne ABI ikke er stabil"?
@@ -277,5 +277,5 @@ en mur, mens en sikkerhedsopdatering er et overkommeligt stykke arbejde.
 - `Documentation/driver-api/` — de nuværende driver-frameworks
 - [Linux 3.10.108 (EOL) — LWN](https://lwn.net/Articles/738167/) — annonceringen
 - [Willy Tarreau: Look back to an end-of-life LTS kernel: 3.10](http://wtarreau.blogspot.com/2017/11/look-back-to-end-of-life-lts-kernel-310.html)
-- DOKUMENTATION.md §2 — hvorfor Spor A blev valgt
+- docs/DOKUMENTATION.md §2 — hvorfor Spor A blev valgt
 - TODO.md — Spor B (mainline), og hvorfor det er parkeret

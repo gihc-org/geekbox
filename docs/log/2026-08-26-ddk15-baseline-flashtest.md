@@ -1,6 +1,6 @@
 # DDK 1.5 baseline-flashtest — session-notat 26. aug 2026 (fortsættelse)
 
-> Fortsættelse af `DDK15-KERNEL-REBUILD-HANDOVER-2026-08-26.md`. Fokus: baseline
+> Fortsættelse af `docs/log/2026-08-26-ddk15-kernel-rebuild-handover.md`. Fokus: baseline
 > er flashet; den booter nu forbi U-Boot (blå LED), men fryser stadig. Mål: isolér
 > frysepunktet, få baseline til at boote, derefter testkernel + 1.5-KM.
 
@@ -106,7 +106,7 @@
   kontrol-boot ender ved input-opsætning (83 s), ingen fatal fejl; session dør
   tavst. Årsag fundet: **`S04lightdm` + `S05nodm` begge aktive i rc2.d** (lightdm
   genaktiveret på boksen 19. aug) → to display-managere kæmper om :0.
-  TODO.md/DOKUMENTATION siger eksplicit: lightdm virker ikke (logind-seat), nodm er
+  TODO.md/docs/DOKUMENTATION.md siger eksplicit: lightdm virker ikke (logind-seat), nodm er
   DM. Fix på boksen: `update-rc.d -f lightdm remove` (UDFØRT 26. aug ~14:3x, alle
   links væk) + patchet `devuan/07_desktop_audio.sh` så det ikke kommer tilbage.
 - [udført] **Genbygning i gang (26. aug ~14:3x):** test-kernel med

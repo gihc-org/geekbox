@@ -60,11 +60,11 @@ billedet ud af HDMI'en. Det er VOP'en der viser vores skrivebord — ikke GPU'en
 den renderer kun ind i buffere, når et program beder om det gennem hele driver-stakken —
 kernel-driver + proprietære blobs + integration mod skærmen. Stakken kører faktisk nu:
 blobs'ene er hentet fra dualOS-imaget og kører i deres egen lille Android-hal via
-libhybris (DOK §5.15). WebGL virker alligevel ikke — browseren vil kun gennem den
+libhybris (docs/DOKUMENTATION.md §5.15). WebGL virker alligevel ikke — browseren vil kun gennem den
 moderne dør (KMS/DRI), som kernen ikke har (fælde 16). Siden 24. aug 2026 findes
 der dog en EGL-omvej (`eglplatform_x11`): Firefox' GL-probe er grøn, men hele
 browseren blokerer stadig på WebRenders GPU-kontekst — se fælde 23 og
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+`docs/log/2026-08-24-firefox-webcl.md`.
 
 **KMS/DRM og DRI.** Den moderne vej, grafikprogrammer får billeder på skærmen ad.
 Kræver kernens KMS-grænseflade (`/dev/dri`) og en X-driver der bruger den. Vendor-kernen
@@ -565,7 +565,7 @@ er nu på boksen:
    døren: den tager imod kommandoer, den udfører ingenting selv.
 2. **De proprietære blobs** — laget der faktisk forstår 3D-kommandoer — er lukkede,
    Android-byggede fra 2016. Vi hentede dem fra dualOS-imagets `system.img` og kører
-   dem gennem libhybris i deres egen lille Android-hal (DOK §5.15).
+   dem gennem libhybris i deres egen lille Android-hal (docs/DOKUMENTATION.md §5.15).
 3. **Integrationen mod skærmen** — den gamle vej (libhybris) virker nu for vores egne
    programmer, men den moderne vej (KMS/DRI) mangler stadig i vendor-kernen — og det
    er kun den vej, browseren accepterer.
@@ -590,7 +590,7 @@ dpkg -l | grep mesa                        # installeret = bibliotekerne fejler 
 ```
 
 **Gjort:** hele GPU-stakken blev bragt op bagefter — blobs'ene kom ind, og fabrikken
-tegner (DOK §5.15). Men WebGL i Firefox kan stadig ikke lade sig gøre: browseren
+tegner (docs/DOKUMENTATION.md §5.15). Men WebGL i Firefox kan stadig ikke lade sig gøre: browseren
 kræver KMS/DRI i kernen. Hvis WebGL-spil er et mål, er `chromium` vejen: den har sin
 egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den findes til
 armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som fælde 14) og
@@ -601,7 +601,7 @@ Firefox fået en EGL-vej udenom KMS/DRI — dens GL-probe (`glxtest`) er nu GRØ
 (PowerVR Rogue G6110, GLES 3.1, TEST_TYPE=EGL; fælde 23 er løst). Hele Firefox
 blokerer stadig på WebRenders GPU-kontekst (to målte fejlmønstre, 0x300c/0x3000),
 så WebGL i browseren virker fortsat ikke i dag — status og næste skridt:
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-24.md`.
+`docs/log/2026-08-24-firefox-webcl.md`.
 
 ### Fælde 17: Boksen dør brat under belastning — strømforsyningen løj om 2A
 
@@ -670,7 +670,7 @@ virker readback fra både FBO og default-framebuffer.
 
 **Detektiv-sporet:** strace (dansen + `exit_group(42)`), grep "SIG" i strace
 (`SIGSEGV si_addr=NULL`), gdb (`glReadPixels_wrapper` kaldte 0x0), disassembly af
-wrapperen (slottet). Alt dokumenteret i DOK §5.15a.
+wrapperen (slottet). Alt dokumenteret i docs/DOKUMENTATION.md §5.15a.
 
 ### Fælde 19: Hybris' EGL-init skifter aktiv VT — X tegner ikke til fb0, før man skifter tilbage
 
@@ -790,8 +790,8 @@ KHR_debug-callback (ingen present, siden loader ikke) — kør UDEN variablen;
 — når main dør, lukker børnene kanalen og skriver `Exiting due to channel
 error.` + `_exit(0)` (og hybris display-dans kører). Det er altså et
 oprydningsresultat, ikke en browser-race. Alle spor:
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`; DOK §5.15c;
-`BROWSER-VEJE.md` eksperiment 2.
+`docs/log/2026-08-25-firefox-webcl.md`; docs/DOKUMENTATION.md §5.15c;
+`docs/grafik/firefox-webgl.md` eksperiment 2.
 
 ### Fælde 24: Firefox' GL-symboler snupper Mesa — kontekst-Init fejler stille
 
@@ -1040,11 +1040,11 @@ uden logning kan ikke fejlsøges — kun gættes på.
 
 ## 8. Hvis du vil vide mere
 
-- `DOKUMENTATION.md` — den fulde tekniske historie, inklusive hvordan boot-kæden blev
+- `docs/DOKUMENTATION.md` — den fulde tekniske historie, inklusive hvordan boot-kæden blev
   regnet ud, og alle fælder fra det tidligere arbejde.
-- `DEBUG-SORT-SKAERM.md` — hele fejlsøgningen af den sorte skærm, med beviskæden og de
+- `docs/boksen/skaerm.md` — hele fejlsøgningen af den sorte skærm, med beviskæden og de
   kildehenvisninger der hører til.
-- `DRIVER-PORTERING.md` — hvorfor vi ikke bare kan bruge en moderne Linux-kerne.
-- `GRAFIK-FORKLARET.md` — grafikhistorien i hverdagssprog (god at læse selv eller højt).
+- `docs/grafik/driver-portering.md` — hvorfor vi ikke bare kan bruge en moderne Linux-kerne.
+- `docs/grafik/hvorfor.md` — grafikhistorien i hverdagssprog (god at læse selv eller højt).
 - `TODO.md` — hvad der mangler.
 - `git log` — hver commit forklarer hvad der blev rettet og hvorfor.

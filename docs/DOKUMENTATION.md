@@ -50,7 +50,7 @@ HDMI, GPU eller WiFi på RK3368 — kun en headless server ville være realistis
 At porte vendor-driverne til en mainline-kernel er ikke bare besværligt, men reelt
 uoverkommeligt. Baggrunden — hvorfor kernens interne ABI ikke er stabil, og hvorfor
 ndiswrapper-tricket ikke kan gentages Linux → Linux — står i
-**[DRIVER-PORTERING.md](DRIVER-PORTERING.md)**. Samme dokument forklarer, hvorfor
+**[grafik/driver-portering.md](grafik/driver-portering.md)**. Samme dokument forklarer, hvorfor
 Spor A's grænseflade (syscall-ABI'en) er den ene, der faktisk holder.
 
 ## 3. Boot-arkitekturen — nøglen til alt det andet
@@ -227,7 +227,7 @@ LXDE-bakken eller `nmtui` i terminal (virker også over ssh).
 ES 3.1 build 1.5@3830101", draw_buffers OK). Dette afsnit er den historiske
 analyse fra før kernel-rebuild-vejen. Subway Surfers er stadig blokeret på et
 præsentationslag (gralloc-lock i GPU-processen) — se
-`devuan/gpu/DDK15-1.5-KOMPLET-HANDOVER-2026-08-26.md`.
+`docs/log/2026-08-26-ddk15-komplet-handover.md`.
 
 Webspil melder "browseren understøtter ikke WebGL" i firefox-esr. Det er hverken
 browseren (140.12esr, fuld WebGL2-støtte — og `webgl.disabled` står ikke i
@@ -267,7 +267,7 @@ chromium` (150.x findes til armhf).
 
 Vej ud af webspil-dødvandet: **chromium** med sin egen software-GL (SwiftShader) —
 behøver ingen system-GL. Forbehold: sandsynligvis `--no-sandbox` (samme
-seccomp/syscall-403-klasse som §5.5 og HAANDBOG fælde 14), installeret i qemu-chroot
+seccomp/syscall-403-klasse som §5.5 og docs/HAANDBOG.md fælde 14), installeret i qemu-chroot
 (§5.9), og alt renderes på CPU'en (8×A53) — simple spil har en chance, tunge ikke.
 Hardware-vejen er libhybris-stakken (§8) — fortsat vurderet "lav værdi".
 
@@ -298,7 +298,7 @@ ikke en garanti.
 Løsning: boksen kører nu på 2,4A. dpkg repareret med force-remove + `apt-get -f
 install` + autoremove. Værktøj til genskabelse: `devuan/stress_test.sh`
 (overvågningslog i `/root/stress_mon.log` — `/tmp` ryddes ved boot). Hele beviskæden
-i pædagogisk form: HAANDBOG.md fælde 17.
+i pædagogisk form: docs/HAANDBOG.md fælde 17.
 
 ### 5.15 GPU-vejene: hvad kan PowerVR'en bruges til (aug 2026)
 
@@ -318,7 +318,7 @@ næste byg); bcmdhd mangler (wifi); 3.10-compat mangler syscall 403
 → HTTP-ur-sync i myinit.sh; hybris-gralloc-headerne har forkerte GRALLOC_USAGE-
 værdier (rettet i eglplatform_x11.cpp); system.img-overskrivninger via loop-mount
 overlever ikke genstart (brug debugfs). Detaljer: `devuan/gpu/DDK15-1.5-KOMPLET-
-HANDOVER-2026-08-26.md` + TODO.md + HAANDBOG.md fælde 26+.
+HANDOVER-2026-08-26.md` + TODO.md + docs/HAANDBOG.md fælde 26+.
 
 Status: `pvrsrvkm` er loadet og fuldt initialiseret (kernel-tråde kører: `pvr_timer`,
 `pvr_sync_check_` m.fl.), men resten af stakken mangler. Tre veje ind:
@@ -454,7 +454,7 @@ kommandoer (`ping`/`fb`/`scenes`/`render`/`clear`/`quit`) svarer ok, og et
 mmap-dump af fb0 viser scenen i rect'en.
 
 **Betydning fremover:** enhver readback (også browser-WebGL-eksperimenter) ville
-have dødd på samme NULL-slot; patchen åbner vejen. Opslagsværket: HAANDBOG
+have dødd på samme NULL-slot; patchen åbner vejen. Opslagsværket: docs/HAANDBOG.md
 fælde 18.
 
 ### Ny boks i samme tilstand
@@ -483,7 +483,7 @@ målinger) — det, der stadig koster uger-måneder, er alene browser-integratio
 
 ### 5.15b `eglplatform_x11`-prototypen: GLES ind i et X-vindue (aug 2026)
 
-**Formål (BROWSER-VEJE §2.A):** en rigtig libhybris-EGL-platform, så GPU-billeder
+**Formål (docs/grafik/firefox-webgl.md §2.A):** en rigtig libhybris-EGL-platform, så GPU-billeder
 kan vises i et X-vindue, mens X kører — forudsætningen for Kodi og en browser.
 M2b-vindue-demoen (socket + Python + XPutImage) beviste mekanikken, men Kodi/browser
 kalder EGL direkte og kræver en platform, der selv præsenterer.
@@ -527,15 +527,15 @@ kalder `ws_module_info` — A3-kontrakten holder.
 request-streams (strace `writev` byte-identiske); XGetImage læste sort;
 xdraw-probe viste at settle + samme-forbindelse virkede; `chvt 8`-testen isolerede
 VT-fælden. LD_PRELOAD var et vildspor (tilfældig korrelation). Fælder 19-22 i
-HAANDBOG.md.
+docs/HAANDBOG.md.
 
 **Næste skridt:** afprøv platformen med en rigtig app (Kodi linker direkte mod
 hybris libEGL/libGLESv2 og kan køres med `EGL_PLATFORM=x11`), derefter stock
-Firefox + `MOZ_X11_EGL=1` (BROWSER-VEJE eksperiment 2).
+Firefox + `MOZ_X11_EGL=1` (docs/grafik/firefox-webgl.md eksperiment 2).
 
 ### 5.15c Firefox-forsøget: Android-loaderens `eglGetDisplay` vinder (aug 2026)
 
-**Forsøg** (BROWSER-VEJE eksperiment 2, 24. aug 2026): firefox-esr 140.12 med
+**Forsøg** (docs/grafik/firefox-webgl.md eksperiment 2, 24. aug 2026): firefox-esr 140.12 med
 `MOZ_X11_EGL=1`, `LD_LIBRARY_PATH=/opt/hybris`, `EGL_PLATFORM=x11`,
 `LD_PRELOAD` (system_shim + egl_platform_shim), `DISPLAY=:0`, temp-profil.
 
@@ -624,7 +624,7 @@ den levende X-størrelse (`refresh_size()`), `dequeueBuffer()` reallokerer ved
 sit GPU-reply-timeout og dræbe GPU-processen med "IPC reply timeout").
 
 **WebGL 2.0 er dermed STABILT målt virkende** (25. aug, NORMAL kørsel — se
-`devuan/gpu/FIREFOX-WEBCL-SESSION-NOTAT-2026-08-25.md`): `WEBGL_RESULT OK
+`docs/log/2026-08-25-firefox-webcl.md`): `WEBGL_RESULT OK
 PowerVR Rogue G6200, or similar WebGL 2.0` efter 3 tegnede frames, med
 `x11ws: present #2 (1280x948 ...)`, vinduestitel `OK PowerVR Rogue G6200,
 or similar WebGL 2.0 — Mozilla Firefox` og 0 X-fejl. De sidste to fund samme
@@ -834,7 +834,7 @@ eglMakeCurrent EGL+0x11d4, glGetError GLES2+0x2308c). Beviser:
 **Næste skridt:** find ud af HVAD der er unmappet (shim-buffer-lifecycle
 1×1→resize-dansen vs. WebRender-teksturcache; test 3–4 buffere + fence før
 frigørelse), og fang dmesg straks efter reset (automatisk `dmesg -c` i
-start_game.sh). Fuld detalje: `devuan/gpu/GPU-FAULT-GENNEMBRUD-SESSION-NOTAT-2026-08-26.md`.
+start_game.sh). Fuld detalje: `docs/log/2026-08-26-gpu-fault-gennembrud.md`.
 
 **Buffer-fix installeret og verificeret (26. aug, 01:1x):** `destroyBuffers()`
 retirer nu ALLE buffere (ikke kun busy) og frigør dem først efter 3 presents
@@ -879,16 +879,16 @@ i 5.1-libc, kun `__cxa_atexit`); (c) dumpets `pvrsrvctl` er 64-bit (ubrugbar på
 32-bit userspace); (d) 1.5's `libIMGegl.so` har minor-tjek på 0xa180 (ikke
 0x9194 som 1.4). DDK 1.8 er kun fundet til kernel 4.4. Restore til 1.4
 gennemført og verificeret. Fuld detalje: `devuan/gpu/DDK-PROEVEINSTALLATION-
-SESSION-NOTAT-2026-08-26.md`; plan/backup: `devuan/gpu/DDK-HANDOVER-2026-08-26.md`.
+SESSION-NOTAT-2026-08-26.md`; plan/backup: `docs/log/2026-08-26-ddk-handover.md`.
 **Løsning dokumenteret (26. aug ~04:2x):** kernel-rebuild med 1.5-KM indbygget i 3.10
-(helst i samme hug opgraderet til 3.10.108, jf. DRIVER-PORTERING.md §6) + løsning af
-de to blokader — se `devuan/gpu/DDK15-KERNEL-REBUILD-LØSNING-2026-08-26.md`.
+(helst i samme hug opgraderet til 3.10.108, jf. docs/grafik/driver-portering.md §6) + løsning af
+de to blokader — se `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md`.
 **Korrigeret (26. aug ~10:0x–12:5x):** 1.5-KM-kilden findes IKKE i 3.10-repoerne
 (mmallow/lollipop gren `geekbox` = 1.4@3632228); 1.5@3830101 findes kun som præbygget
 .ko (vermagic matcher, CONFIG_MODVERSIONS off) → vejen er en kerne UDEN indbygget PVR
 + `insmod` af 1.5-.ko'en. Alle tidligere lilla-frysere skyldtes manglende
 SHA1-`id`-felt i bootimg (løst i `package_bootimg.py`). Status: se
-`devuan/gpu/DDK15-KERNEL-REBUILD-HANDOVER-2026-08-26.md`.
+`docs/log/2026-08-26-ddk15-kernel-rebuild-handover.md`.
 
 **Bugzilla-signaturmatch (25. aug nat):** bug
 [1989579](https://bugzilla.mozilla.org/show_bug.cgi?id=1989579) (dup af
@@ -923,7 +923,7 @@ Oversigt over nye værktøjer: `xdump.c` (XGetImage-dump),
 med diffs), `stall_capture.sh` (gdb ved present-stall, rettet),
 `start_game.sh` (instrumenteret spil-launcher), `x32probe1–4.c`
 (X-kompositerings-prober), `webgl_stress.html` (lokal stress-side). Hele forløbet:
-`devuan/gpu/GL-LAYERS-SESSION-NOTAT-2026-08-25.md`.
+`docs/log/2026-08-25-gl-layers.md`.
 
 ### 5.15f Gralloc-lock-sporet: præsentationen virker, spillet kører (26.–27. aug 2026)
 
@@ -975,7 +975,7 @@ fangede prog7-shaders) beviser at shaderne + rasteriseringen VIRKER på 1.5 →
 fejlen ligger i draw-tilstand/data (drawBuffers/attachment, frustum,
 depth/cull-samspil). Næste skridt: fang `glDrawBuffers`-tilstand
 (GL_DRAW_BUFFER0..3) + evt. vertex-buffer-snapshots på en vellykket load.
-Detaljer: `devuan/gpu/CYAN-CLONE3-SESSION-NOTAT-2026-09-06.md` + `OVERBLIK.md`.
+Detaljer: `docs/log/2026-09-06-cyan-clone3.md` + `OVERBLIK.md`.
 Kernel 6. sep: compat-tabel 450 poster (404..449 → sys_ni_syscall; 435/clone3
 → ENOSYS) — Firefox' glean/clone3-crash væk.
 
@@ -991,7 +991,7 @@ verdens-draws (nonsky-indhold statisk; prog7-FS har ingen discard, så selv
 sort/0-alpha-output ville have talt). Præsentationssymptom: ved "Press to
 play"-start forsvinder spilområdet fra siden (alpha-shim/udvidelse ikke
 indlæst). Næste: shadow-draw-probe i live-proxyen + kørsel med alpha-shim.
-Detaljer: `devuan/gpu/CYAN-SCENE-SESSION-NOTAT-2026-09-08.md` + `OVERBLIK.md`.
+Detaljer: `docs/log/2026-09-08-cyan-scene.md` + `OVERBLIK.md`.
 
 ## 6. Slutarkitekturen
 
@@ -1055,7 +1055,7 @@ Gendan Lubuntu-boot: `sudo devuan/04_restore_param.sh` (eller fuld `UF`).
   to gange). Status og næste skridt: §5.15d + §5.15e (GPU-MMU-fault fundet)
 - Hardware video-decode/GPU-acceleration — WebGL 2.0 virker i firefox-esr via
   hybris-stakken (§5.15c); spil-præsentationen er det åbne spor (§5.15d).
-  Løsningsanalyse og rækkefølge: `BROWSER-VEJE.md`
+  Løsningsanalyse og rækkefølge: `docs/grafik/firefox-webgl.md`
 - Mainline-kernel-sporet (Spor B) — parkeret; kun headless-server potentiale
 - `reboot` slukker — brug strøm-cykling
 
@@ -1256,7 +1256,7 @@ crasher boksen under tunge apps (firefox), så trinnet er ikke valgfrit.
   `grayscale`/`nonstd` (kernens egen `rk_fb_disp_scale()` er død kode) og hænges op i
   lxsession-autostart. Vigtigste fælde undervejs: `/dev/mem` på `fb0/phys_addr` rammer
   ikke framebufferen — adressen er en IOVA, fordi VOP'ens IOMMU er slået til. Fuld
-  beviskæde og fældeliste: **DEBUG-SORT-SKAERM.md**.
+  beviskæde og fældeliste: **docs/boksen/skaerm.md**.
 
 ### Status boks 2 (aug 2026)
 
