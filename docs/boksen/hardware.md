@@ -50,7 +50,7 @@ HDMI, GPU eller WiFi på RK3368 — kun en headless server ville være realistis
 At porte vendor-driverne til en mainline-kernel er ikke bare besværligt, men reelt
 uoverkommeligt. Baggrunden — hvorfor kernens interne ABI ikke er stabil, og hvorfor
 ndiswrapper-tricket ikke kan gentages Linux → Linux — står i
-**[grafik/driver-portering.md](grafik/driver-portering.md)**. Samme dokument forklarer, hvorfor
+**[driver-portering.md](../grafik/driver-portering.md)**. Samme dokument forklarer, hvorfor
 Spor A's grænseflade (syscall-ABI'en) er den ene, der faktisk holder.
 
 ## 3. Boot-arkitekturen — nøglen til alt det andet

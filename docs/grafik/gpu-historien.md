@@ -101,8 +101,9 @@ næste byg); bcmdhd mangler (wifi); 3.10-compat mangler syscall 403
 (clock_gettime64 — nu patchet i build_kernel.sh); chrony/NTP afvises på vores byg
 → HTTP-ur-sync i myinit.sh; hybris-gralloc-headerne har forkerte GRALLOC_USAGE-
 værdier (rettet i eglplatform_x11.cpp); system.img-overskrivninger via loop-mount
-overlever ikke genstart (brug debugfs). Detaljer: `devuan/gpu/DDK15-1.5-KOMPLET-
-HANDOVER-2026-08-26.md` + TODO.md + docs/faeller.md fælde 26+.
+overlever ikke genstart (brug debugfs). Detaljer:
+`docs/log/2026-08-26-ddk15-komplet-handover.md` + TODO.md + docs/faeller.md
+fælde 26+.
 
 Status: `pvrsrvkm` er loadet og fuldt initialiseret (kernel-tråde kører: `pvr_timer`,
 `pvr_sync_check_` m.fl.), men resten af stakken mangler. Tre veje ind:
@@ -662,8 +663,9 @@ kallsyms-symboler, "Module unloading is not supported", bootlog
 i 5.1-libc, kun `__cxa_atexit`); (c) dumpets `pvrsrvctl` er 64-bit (ubrugbar på
 32-bit userspace); (d) 1.5's `libIMGegl.so` har minor-tjek på 0xa180 (ikke
 0x9194 som 1.4). DDK 1.8 er kun fundet til kernel 4.4. Restore til 1.4
-gennemført og verificeret. Fuld detalje: `devuan/gpu/DDK-PROEVEINSTALLATION-
-SESSION-NOTAT-2026-08-26.md`; plan/backup: `docs/log/2026-08-26-ddk-handover.md`.
+  gennemført og verificeret. Fuld detalje:
+  `docs/log/2026-08-26-ddk-proeveinstallation.md`; plan/backup:
+  `docs/log/2026-08-26-ddk-handover.md`.
 **Løsning dokumenteret (26. aug ~04:2x):** kernel-rebuild med 1.5-KM indbygget i 3.10
 (helst i samme hug opgraderet til 3.10.108, jf. docs/grafik/driver-portering.md §6) + løsning af
 de to blokader — se `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md`.
@@ -714,8 +716,7 @@ med diffs), `stall_capture.sh` (gdb ved present-stall, rettet),
 **Sammenfatning:** DDK 1.5@3830101 kører fuldt, og Subway Surfers loader nu
 STABILT og er spilbart (lyd, HUD, menuer) med den rette konfiguration. Den
 resterende blokade er at spillets 3D-scene renderer cyan (scenen tegnes ikke
-korrekt på 1.5-stakken). Fuld log: `devuan/gpu/GRALLOC-LOCK-SPOR-SESSION-
-NOTAT-2026-08-26.md`.
+  korrekt på 1.5-stakken). Fuld log: `docs/log/2026-08-26-gralloc-lock-spor.md`.
 
 **Rodårsagen til gralloc-lock EINVAL (præsentationen virkede ikke):**
 `/dev/sw_sync` er `0600 root:root`; 1.5-gralloc'ens `lock` laver en sw_sync-
