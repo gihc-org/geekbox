@@ -1,160 +1,8 @@
-# GeekBox-håndbogen — alt vi har lært, forklaret fra grunden
+# Fælderne — hvad der gik galt, og hvordan det blev løst
 
-Denne fil er skrevet så den kan læses uden at kende projektet i forvejen. Den forklarer
-hvad boksen er, hvordan man laver en ny, og — vigtigst — hver enkelt fælde vi er faldet i,
-så du ikke skal falde i den igen. Skrevet august 2026, efter at syv bokse er blevet
-flashet og fejlsøgt.
-
-**Kort om projektet:** en GeekBox er en lille TV-boks fra 2015 med en Rockchip RK3368-chip.
-Den blev solgt med Android og senere Lubuntu. Vi har sat et moderne Devuan Linux på den,
-men beholdt producentens gamle Linux-kerne (version 3.10 fra 2013), fordi driverne til
-grafik, lyd og netværk kun findes til den. Resultatet er en lille skrivebordscomputer der
-kan browse, se YouTube og bruges som almindelig maskine.
-
----
-
-## 1. Ordbogen
-
-Læs den her først. Resten af dokumentet bruger ordene uden at forklare dem igen.
-
-**Kerne (kernel).** Linux' inderste del. Den taler direkte med hardwaren. Vores er
-producentens egen "vendor-kerne" 3.10 — gammel, men den eneste der har drivere til
-chippen. Alt andet på boksen er moderne.
-
-**Driver.** Den del af kernen der styrer et bestemt stykke hardware, fx grafikchippen.
-
-**Rootfs.** Rodfilsystemet: alle filer der udgør systemet — `/etc`, `/usr`, `/home` osv.
-
-**Image.** En fil der indeholder et helt system, klar til at skrives over på boksens
-lager. Vores heder `update_devuan.img` og er 1,5 GB.
-
-**Flash.** At skrive et image over på boksens indbyggede lager (eMMC). Boksen skal sættes
-i **loader-tilstand** først: hold update-knappen nede mens du tænder den, så lytter den
-efter et image gennem USB-kablet i stedet for at boote.
-
-**eMMC.** Boksens indbyggede lager, svarer til en SSD. Cirka 16 GB.
-
-**Bootloader (U-Boot).** Det lille program der kører før kernen og henter den ind i
-hukommelsen. Ligger i sin egen del af lageret.
-
-**initramfs.** Et miniature-filsystem som kernen bruger *før* det rigtige rootfs er klar.
-Vores er arvet fra 2014-Lubuntu og laver en del rod — se fælde 3.
-
-**PID 1 / init.** Den første proces der starter, og som starter alt andet. Hos os er det
-`myinit.sh`, et lille script vi selv har skrevet, som rydder op efter initramfs'en og
-derefter overlader arbejdet til det rigtige `init`.
-
-**sysvinit.** Den klassiske måde at starte tjenester på, med scripts i `/etc/init.d/` og
-symlinks i `/etc/rc2.d/`. Devuan bruger den — i modsætning til de fleste andre
-distributioner, der bruger systemd.
-
-**Framebuffer.** Et stykke hukommelse hvor billedet står, pixel for pixel. 1920 × 1080
-punkter i 16-bit farve = cirka 4 MB. Display-controlleren (VOP) læser den 60 gange i
-sekundet og sender indholdet ud gennem HDMI. Vil du vide hvad boksen *forsøger* at vise,
-kigger du der. Den heder `/dev/fb0`. (VOP og GPU'en er to forskellige ting — se nedenfor.)
-
-**VOP (display-controlleren).** Den del af chippen der læser framebufferen og sender
-billedet ud af HDMI'en. Det er VOP'en der viser vores skrivebord — ikke GPU'en.
-
-**GPU (PowerVR G6110).** En separat regneenhed til 3D. Den tegner ingenting af sig selv:
-den renderer kun ind i buffere, når et program beder om det gennem hele driver-stakken —
-kernel-driver + proprietære blobs + integration mod skærmen. Stakken kører faktisk nu:
-blobs'ene er hentet fra dualOS-imaget og kører i deres egen lille Android-hal via
-libhybris (docs/DOKUMENTATION.md §5.15). WebGL virker alligevel ikke — browseren vil kun gennem den
-moderne dør (KMS/DRI), som kernen ikke har (fælde 16). Siden 24. aug 2026 findes
-der dog en EGL-omvej (`eglplatform_x11`): Firefox' GL-probe er grøn, men hele
-browseren blokerer stadig på WebRenders GPU-kontekst — se fælde 23 og
-`docs/log/2026-08-24-firefox-webcl.md`.
-
-**KMS/DRM og DRI.** Den moderne vej, grafikprogrammer får billeder på skærmen ad.
-Kræver kernens KMS-grænseflade (`/dev/dri`) og en X-driver der bruger den. Vendor-kernen
-har ingen af delene — derfor er fbdev den eneste X-driver der findes.
-
-**GLX og EGL.** De to døre, et GL-program (fx firefox' WebGL) kan bruge til at tale med
-skærmen. Firefox kræver den ene eller den anden; vores X-server tilbyder kun en tredje,
-forældet dør (IGLX), som Firefox ikke bruger.
-
-**X (Xorg).** Programmet der styrer skærm, mus og tastatur. Alle vinduer tegnes af X ned i
-framebufferen.
-
-**LXDE, lxpanel, pcmanfm.** Vores skrivebord. `lxpanel` er bjælken i bunden med startmenu
-og ur (26 pixels høj). `pcmanfm` tegner skrivebordet og baggrundsbilledet.
-
-**nodm.** Logger automatisk ind og starter skrivebordet, uden login-skærm.
-
-**udev.** Den tjeneste der opdager hardware og giver enhederne navne og mærkater. X spørger
-udev om hvilke mus og tastaturer der findes. Virker udev ikke, virker musen ikke.
-
-**ALSA og PulseAudio.** ALSA er kernens lydsystem. PulseAudio (PA) sidder ovenpå og
-blander lyd fra flere programmer. Firefox taler med PA, PA taler med ALSA.
-
-**Overscan.** En gammel tradition fra billedrørs-tv: fjernsynet zoomer en lille smule ind
-og klipper kanterne af billedet. Moderne tv gør det stadig, når de tror de får et
-tv-signal frem for et computer-signal.
-
-**IOMMU / IOVA.** En IOMMU er en oversætter mellem de adresser hardwaren bruger og de
-rigtige adresser i hukommelsen. En IOVA er en sådan oversat adresse: den *ser ud* som en
-hukommelsesadresse, men peger et helt andet sted hen. Det kostede os en hel dag — se
-fælde 8.
-
----
-
-## 2. Sådan hænger boksen sammen
-
-```
-BootROM (indbygget i chippen, kan ikke slettes)
-  → IDB-loader           starter hukommelsen op
-  → U-Boot               læser "parameter" og henter kernen
-  → parameter            en tekstblok med bl.a. root=/dev/mmcblk0p6 og init=/root/myinit.sh
-  → kernel 3.10          starter, initramfs finder rodfilsystemet
-  → /root/myinit.sh      VORES script: rydder op, sætter netværk op, udvider disken
-  → /sbin/init           sysvinit starter tjenester (netværk, rsyslog, chrony …)
-  → nodm                 logger ind som "kristian" og starter X
-  → X + LXDE             skrivebordet
-```
-
-To detaljer der er værd at kende:
-
-**Imagets rootfs er låst til 1408 MiB.** Vi bygger nyt system ind i det gamle image ved at
-overskrive præcis den plads originalen brugte. Det gør flashningen sikker — alle andre dele
-af imaget er byte-identiske med producentens — men det betyder at rootfs'en ikke kan blive
-større. Med firefox er den fyldt 84 %. `09` har en vagt der stopper i god tid.
-
-**Efter flash udvider `myinit.sh` selv filsystemet** til partitionens 15 GB. Det var
-tidligere et manuelt trin, og det blev glemt — med grimme følger (fælde 1).
-
----
-
-## 3. Sådan laver du en ny boks
-
-Fire trin. Alt andet er automatisk.
-
-```bash
-# 1. (kun hvis pakkelisten er ændret) hent pakkerne ind i bygge-rootfs'en
-sudo devuan/extra_packages.sh
-
-# 2. byg imaget og flash. Scriptet bygger FØRST (nogle minutter) og venter
-#    derefter på ENTER — brug ventetiden på trin 3.
-sudo devuan/testflash.sh
-
-# 3. boksen i loader-tilstand: strøm fra → USB-kablet i boksens OTG-port →
-#    hold update-knappen → strøm på → slip. Tryk så ENTER i scriptet.
-#    Det tjekker selv at boksen er synlig på USB, og siger til hvis den ikke er.
-
-# 4. tag strømmen af og på. Find boksen, og lav swapfilen:
-devuan/find_box.sh
-ssh -i ~/.ssh/geekbox_key root@<ip> 'bash -s' < devuan/emmc_first_boot.sh
-```
-
-Skærmen er sort de første 15-30 sekunder. Det er normalt — der er ikke noget boot-logo.
-
-**Sådan ser en rigtig boot ud:** blåt LXDE-tapet, en grå bjælke i bunden med startmenu til
-venstre og ur til højre. Firefox ligger i menuen og kan spille YouTube med lyd.
-
-**Husk USB-donglen til musen.** Sidder den stadig i den forrige boks, ser det ud præcis som
-en alvorlig softwarefejl. Vi faldt i.
-
----
+Hver fælde er skrevet som: *du ser → hvad der sker → sådan afgør du
+det → gjort → læren*. Står du midt i et problem, så spring til §5
+langt nede — det er de fem kommandoer du skal køre først.
 
 ## 4. Fælderne
 
@@ -565,7 +413,7 @@ er nu på boksen:
    døren: den tager imod kommandoer, den udfører ingenting selv.
 2. **De proprietære blobs** — laget der faktisk forstår 3D-kommandoer — er lukkede,
    Android-byggede fra 2016. Vi hentede dem fra dualOS-imagets `system.img` og kører
-   dem gennem libhybris i deres egen lille Android-hal (docs/DOKUMENTATION.md §5.15).
+   dem gennem libhybris i deres egen lille Android-hal (docs/grafik/gpu-historien.md §5.15).
 3. **Integrationen mod skærmen** — den gamle vej (libhybris) virker nu for vores egne
    programmer, men den moderne vej (KMS/DRI) mangler stadig i vendor-kernen — og det
    er kun den vej, browseren accepterer.
@@ -590,7 +438,7 @@ dpkg -l | grep mesa                        # installeret = bibliotekerne fejler 
 ```
 
 **Gjort:** hele GPU-stakken blev bragt op bagefter — blobs'ene kom ind, og fabrikken
-tegner (docs/DOKUMENTATION.md §5.15). Men WebGL i Firefox kan stadig ikke lade sig gøre: browseren
+tegner (docs/grafik/gpu-historien.md §5.15). Men WebGL i Firefox kan stadig ikke lade sig gøre: browseren
 kræver KMS/DRI i kernen. Hvis WebGL-spil er et mål, er `chromium` vejen: den har sin
 egen software-GL (SwiftShader) indbygget og behøver ingen system-GL. Den findes til
 armhf i arkivet, men forvent `--no-sandbox` (samme syscall-problemer som fælde 14) og
@@ -670,7 +518,7 @@ virker readback fra både FBO og default-framebuffer.
 
 **Detektiv-sporet:** strace (dansen + `exit_group(42)`), grep "SIG" i strace
 (`SIGSEGV si_addr=NULL`), gdb (`glReadPixels_wrapper` kaldte 0x0), disassembly af
-wrapperen (slottet). Alt dokumenteret i docs/DOKUMENTATION.md §5.15a.
+wrapperen (slottet). Alt dokumenteret i docs/grafik/gpu-historien.md §5.15a.
 
 ### Fælde 19: Hybris' EGL-init skifter aktiv VT — X tegner ikke til fb0, før man skifter tilbage
 
@@ -790,7 +638,7 @@ KHR_debug-callback (ingen present, siden loader ikke) — kør UDEN variablen;
 — når main dør, lukker børnene kanalen og skriver `Exiting due to channel
 error.` + `_exit(0)` (og hybris display-dans kører). Det er altså et
 oprydningsresultat, ikke en browser-race. Alle spor:
-`docs/log/2026-08-25-firefox-webcl.md`; docs/DOKUMENTATION.md §5.15c;
+`docs/log/2026-08-25-firefox-webcl.md`; docs/grafik/gpu-historien.md §5.15c;
 `docs/grafik/firefox-webgl.md` eksperiment 2.
 
 ### Fælde 24: Firefox' GL-symboler snupper Mesa — kontekst-Init fejler stille
@@ -1001,24 +849,6 @@ fjernsyn. Er det heller ikke i billedet, er det skrivebordet der er noget i veje
 
 ---
 
-## 6. Værktøjskassen
-
-| Script | Hvad det gør |
-|---|---|
-| `devuan/01_build_rootfs.sh` | bygger Devuan-rodfilsystemet fra bunden |
-| `devuan/07_desktop_audio.sh` | skrivebord, lyd, bruger, tapet, overscan-opsætning |
-| `devuan/extra_packages.sh` | pakkelisten: firefox, sudo, rsyslog, locale m.m. |
-| `devuan/09_make_emmc_img.sh` | bygger imaget og sikrer alt det en boks ikke kan undvære |
-| `devuan/testflash.sh` | bygger + flasher, med pause til loader-tilstand |
-| `devuan/find_box.sh` | finder boksen på netværket (dens IP skifter hver boot) |
-| `devuan/08_network_manager.sh` | NetworkManager på et **SD-kort** i læseren, og migrering af kendte wifi-netværk. eMMC-flowet får NM via `extra_packages.sh` + `09` |
-| `devuan/emmc_first_boot.sh` | swapfil på 2 GB efter flash |
-| `devuan/fb_overscan.py` | skrumper billedet, så fjernsynets beskæring ikke rammer noget |
-| `devuan/patch_uboot_logo.py` | ændrer DT-flag i imaget (til eksperimenter) |
-| `devuan/rollback.sh` | ruller DTB-flaget tilbage og flasher, hvis en boks ikke booter |
-
----
-
 ## 7. De tre store lærepunkter
 
 **Skift mellem at læse kode og at måle.** Vi læste driverkode i timevis og byggede en
@@ -1037,14 +867,3 @@ nogen syslog-tjeneste, og at en fuld disk gjorde selv de tomme logfiler tomme. E
 uden logning kan ikke fejlsøges — kun gættes på.
 
 ---
-
-## 8. Hvis du vil vide mere
-
-- `docs/DOKUMENTATION.md` — den fulde tekniske historie, inklusive hvordan boot-kæden blev
-  regnet ud, og alle fælder fra det tidligere arbejde.
-- `docs/boksen/skaerm.md` — hele fejlsøgningen af den sorte skærm, med beviskæden og de
-  kildehenvisninger der hører til.
-- `docs/grafik/driver-portering.md` — hvorfor vi ikke bare kan bruge en moderne Linux-kerne.
-- `docs/grafik/hvorfor.md` — grafikhistorien i hverdagssprog (god at læse selv eller højt).
-- `TODO.md` — hvad der mangler.
-- `git log` — hver commit forklarer hvad der blev rettet og hvorfor.

@@ -119,7 +119,7 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 |---|---|
 | `README.md` | Projektets formål + flash-veje + upgrade_tool-brug |
 | `TODO.md` | Opgaveliste/spor (seneste pointer øverst) |
-| `docs/DOKUMENTATION.md`, `docs/HAANDBOG.md` | Samlet viden + fælder (opdateres løbende) |
+| `docs/` | Al dokumentation — indgang i `docs/README.md` |
 | `docs/grafik/hvorfor.md`, `docs/grafik/firefox-webgl.md`, `docs/boksen/skaerm.md` m.fl. | Ældre del-emner (grafikstak, browser-veje, skærm) |
 | `devuan/gpu/README.md` | GPU-arbejdsområde (værktøjer, historik) |
 | `docs/log/2026-08-26-ddk*.md` | DDK 1.5-installation, baseline-flashtest, kernel-rebuild |

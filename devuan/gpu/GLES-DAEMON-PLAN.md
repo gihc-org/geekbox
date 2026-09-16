@@ -3,7 +3,7 @@
 Plan for TODO-punktet "Python-frontend + GLES-daemon" (TODO.md): Python tegner UI
 direkte på `/dev/fb0`, taler med en C-daemon over en unix-socket (JSON-linjer), og
 daemonen renderer GLES offscreen og blitter resultatet til fb0. X stoppes under
-brug; strøm-cyklus bagefter (reglerne i docs/DOKUMENTATION.md §5.15). Arkitektur-kortet:
+brug; strøm-cyklus bagefter (reglerne i docs/grafik/gpu-historien.md §5.15). Arkitektur-kortet:
 `devuan/gpu/README.md`.
 
 **Hovedformål (præciseret af brugeren 24. aug 2026):** teste
@@ -34,7 +34,7 @@ hovedmålet.
    `vendor_root`. Boks 1 er i dag det eneste byggehost (`gpu_setup.sh` henter
    færdige binærer derfra); cross-bygning gør byggekæden reproducerbar og
    uafhængig af en bestemt boks, giver hurtig iteration uden ssh-ture og
-   belaster ikke boksen (brownout-historien, docs/DOKUMENTATION.md §5.14). Boksens eget gcc
+   belaster ikke boksen (brownout-historien, docs/grafik/gpu-historien.md §5.14). Boksens eget gcc
    beholdes som fallback. Verifikation foregår stadig på boks 1 (M0/M3).
 2. **Offscreen via FBO, ikke pbuffer.** hwcomposer-platformens
    pbuffer-understøttelse er ikke verificeret; FBO er core i GLES 3.1 (rendereren
@@ -255,7 +255,7 @@ ssh -i ~/.ssh/geekbox_key root@<ip> \
   'LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=hwcomposer /root/gles_daemon &'
 ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 # verificér: daemon-log + fb0-dump → PNG
-# bagefter: strøm-cykl boksen (docs/DOKUMENTATION.md §5.15)
+# bagefter: strøm-cykl boksen (docs/grafik/gpu-historien.md §5.15)
 ```
 
 - [x] Daemon starter, `ping`/`fb` svarer; frontend tegner UI på fb0 (24. aug
@@ -276,7 +276,7 @@ ssh -i ~/.ssh/geekbox_key root@<ip> 'python3 /root/frontend.py'
 
 - [ ] `gpu_setup.sh`: byg `gles_daemon` + `frontend.py` fra repoet (cross) og
       distribuér dem; stop med at hente byggede binærer fra boks 1.
-- [ ] Opdatér `devuan/gpu/README.md` (operationskort) og docs/DOKUMENTATION.md §5.15
+- [ ] Opdatér `devuan/gpu/README.md` (operationskort) og docs/grafik/gpu-historien.md §5.15
       med daemon-arkitekturen + cross-byggelinjen.
 - [ ] Overvej udvidelser (ikke v1): scaling, select()-event-loop i daemonen,
       tastatur-input til frontenden, flere scener.
@@ -331,14 +331,14 @@ Diagnose-værktøjer: `dlsym_trace.c` (i stykker — brug ikke), `dlopen_egl_tes
 1. **X stoppes under brug** — daemonen blitter til fb0, så skærm-output kolliderer
    med X (README-regel 1).
 2. **Strøm-cyklus bagefter** — HDMI-transmitteren kan ikke vækkes af software
-   (docs/DOKUMENTATION.md §5.15).
-3. `cma=128M` skal stå på cmdlinen, ellers EPERM ved 2. CMA-buffer (docs/DOKUMENTATION.md §5.15).
+   (docs/grafik/gpu-historien.md §5.15).
+3. `cma=128M` skal stå på cmdlinen, ellers EPERM ved 2. CMA-buffer (docs/grafik/gpu-historien.md §5.15).
 4. `LD_PRELOAD=/root/system_shim.so` er nødvendig mod glibc-2.41-EFAULT i
-   hybris-processen (docs/DOKUMENTATION.md §5.15).
+   hybris-processen (docs/grafik/gpu-historien.md §5.15).
 5. `/dev/graphics/fb*` forsvinder ved hver boot — `gpu_up.sh` genskaber dem.
 6. fb0's bpp/stride kan variere ved boot (EDID-race) — myinit normaliserer;
    daemonen læser var-info ved start.
-7. Ikke kør tunge installationer på boksen (brownout, docs/DOKUMENTATION.md §5.14).
+7. Ikke kør tunge installationer på boksen (brownout, docs/grafik/gpu-historien.md §5.14).
 8. Racerbetingelsen frontend↔daemon om fb0 løses i v1 af den synkrone protokol og
    adskilte rects — dokumenteret, ikke løst.
 9. XPutImage til et vindue kræver `ZPixmap` (2) i `XCreateImage` — `XYPixmap`

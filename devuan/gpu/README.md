@@ -1,7 +1,7 @@
 # GPU-stakken — operationskort (start her i en ny session)
 
 Kort over hvad der ligger HVOR på boksen, og hvordan man kører en GPU-session.
-Historien og beviserne: docs/DOKUMENTATION.md §5.13-5.15. Hverdagssprog-versionen:
+Historien og beviserne: docs/grafik/gpu-historien.md §5.13-5.15. Hverdagssprog-versionen:
 `docs/grafik/hvorfor.md`.
 
 ## Boksens runtime-layout (boks 1, aug 2026)
@@ -39,7 +39,7 @@ Reglerne (målt, ikke gættet):
    køre mens X kører — kun skærm-output kolliderer.
 2. **Efter en GPU-session: strøm-cyklus.** Display-dansen kan ikke vække
    HDMI-transmitteren (kernen tror den sender; TV'et får intet).
-3. Kør ikke tunge installationer på boksen (brownout-historien, docs/DOKUMENTATION.md §5.14) — og brug
+3. Kør ikke tunge installationer på boksen (brownout-historien, docs/grafik/gpu-historien.md §5.14) — og brug
    aldrig "5V 2A"-adapteren.
 
 ## Bygning — cross på laptoppen (M0, aug 2026)
@@ -112,8 +112,8 @@ viser på fb0 i 640x360-vinduet, ~9 fps, GL 3.1. To vigtige fælder (fikset):
 hybris' EGL-init skifter aktiv VT væk fra X (platformen chvt'er tilbage ved
 første present — fbdev-X viser kun indhold, når dens VT er aktiv), og tegning
 skal gå gennem vinduets egen X-forbindelse (klienten sender sit Display* som
-EGL-native-display). Fælderne: `docs/HAANDBOG.md` 19-22. Detaljer:
-`GLES-DAEMON-PLAN.md` M4a + `docs/DOKUMENTATION.md` §5.15b.
+EGL-native-display). Fælderne: `docs/faeller.md` 19-22. Detaljer:
+`GLES-DAEMON-PLAN.md` M4a + `docs/grafik/gpu-historien.md §5.15b.
 
 **Browser-status (24. aug 2026):** Firefox' GL-probe (`glxtest`) er GRØN —
 PowerVR Rogue G6110 / GLES 3.1 / TEST_TYPE=EGL — efter platformens
@@ -145,5 +145,5 @@ Første konkrete skridt:
 ```bash
 sudo devuan/testflash.sh                 # image har cma=128M + myinit-mount
 devuan/gpu/gpu_setup.sh <ny-ip>          # system.img + broer + færdige binærer
-# strøm-cykl — se docs/DOKUMENTATION.md §5.15 "Ny boks i samme tilstand"
+# strøm-cykl — se docs/grafik/gpu-historien.md §5.15 "Ny boks i samme tilstand"
 ```
