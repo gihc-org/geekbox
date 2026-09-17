@@ -2,9 +2,33 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
-> `docs/log/2026-09-08-cyan-scene.md` (seneste),
+> `docs/log/2026-09-17-cyan-fps.md` (seneste),
 > `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
 > `docs/log/2026-08-26-gralloc-lock-spor.md` (beslutningslog).
+
+### Status 17. sep 2026 (fps-sporet)
+
+- **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
+  `CYAN_DEPTHCLEAR=1`), men **fps er lav, og det er driveren** — ikke proxyen
+  eller instrumenteringen. Målt: draw-kald koster ~0,10-0,14 ms
+  (`glDrawElementsInstanced` primcount=1 = 0,098 ms), og spillet laver
+  ~2.000-2.700 kald pr. frame → 250-370 ms pr. frame alene på kald. Dertil
+  software-compositing (1080p-readback = 173 ms). Tung og light proxy måler
+  identisk (1,5 fps begge), og et mindre vindue hjalp ikke.
+- **`eglSwapBuffers` kaldes ALDRIG** med software-layers → fps skal måles i
+  JS-laget (rAF) eller på skærmen (`fb_fps`), ikke i GL-laget.
+- **"Spilområdet forsvinder"** = browseren får ikke afleveret frames: to
+  skærmdumps med et minuts mellemrum var byte-identiske mens musemarkøren
+  bevægede sig fint. Se `docs/faeller.md` fælde 44 (display-dans/X-genstart)
+  og 45 (fps-loftet).
+- **Nye værktøjer** (i `devuan/gpu/eglplatform_x11/`): `fb_fps.c`,
+  `x_focus.c`, `x_resize.c`, `depthclear_probe.c`, `readback_probe.c`,
+  `drawbench_probe.c`, `cyan_fps_run.sh`, `raf_test.html`, `kill_bidi.sh`;
+  `bidi_ctxloss.py` har `preloadmin` + `SHOT_AT`/`SHOT_POLL` (screenshot fra
+  Firefox' egen gengivelse).
+- **Proxy på boksen:** vnext14 `7c508108` (vnext12 + `CYAN_LIGHT`-gating +
+  frame/draw-tælling). Backup af den spillbare vnext12:
+  `/root/egl_proxy_dcc0a68f.so.bak`.
 
 ## Status i ét blik (8. sep 2026 aften)
 
@@ -92,6 +116,7 @@
 | `631f9a40…` | vnext4: + nonsky-tælling + `clearDepthf`-log + divisor-log | Stabil (kørsler 8-9), men afløst |
 | vnext5-11 | shadow-draw-probe, force-clear m.m. (8. sep) | Diagnose — se `docs/log/2026-09-08-cyan-scene.md` |
 | `dcc0a68f…` | vnext12: + alpha-shim, depthmask-lap, depth-clear 1×/frame | **NUVÆRENDE på boksen** — spillet er spilbart |
+| `7c508108…` | vnext14: vnext12 + `CYAN_LIGHT`-gating (slår al måle- instrumentering fra) + GL-tick/draw-tæller | Bruges til fps-måling, 17. sep 2026 |
 
 ## Nøglekommandoer (boksen efter strømcyklus)
 
@@ -134,9 +159,15 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 
 ## Åbne spor / næste skridt
 
-- **Cyan-scene (SPILBAR, 8. sep aften):** rest = lav fps (CYAN_LIGHT-byg til
-  sammenligning), blå glitches, selvstart af alpha-shim + depth-clear,
-  driver-rodårsag (clearDepthf). Opskrift i session-notat checkpoint 21:40-22:00.
+- **Cyan-scene (SPILBAR, 8. sep aften):** rest = blå glitches (ikke undersøgt),
+  selvstart af alpha-shim + depth-clear (BiDi-preload + env i dag), og
+  driver-rodårsagen til clearDepthf (isolerede prober viser at driveren er
+  korrekt i alle enkelt-kontekst-tests; live drifter queryen til 0/skrald i
+  ~2,5 % af målene → næste skridt er en fler-trådet probe).
+- **fps-sporet er afklaret 17. sep:** lav fps skyldes driverens kald-omkostning
+  + software-compositing, ikke proxy/instrumentering. Uafprøvede levers:
+  fullscreen-præsentation, 720p-opløsning (kun compositing-delen), og om
+  GPU-lag-vejen kan komme til at virke (i dag: sort/ingen præsentation).
 - NTP/chrony (myinit-synk virker som plaster).
 - Næste kernel-byg (planlagt): `CONFIG_ANDROID_PARANOID_NETWORK` fra +
   bcmdhd (WiFi) — samme byggevej som dagens.

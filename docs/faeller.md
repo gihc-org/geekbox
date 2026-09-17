@@ -827,6 +827,51 @@ korrelerede desuden med load-stall → behold v2-funktionaliteten
 ivec2→vec2 + int()-casts. Generel regel: 1.5-kompileren er kræsen — verificér
 konstruktioner isoleret med `compile_file_probe.c`/`vertex_tex_test.c`.
 
+### Fælde 41: `pkill -f <mønster>` dræber din egen ssh-session
+`pkill -f bidi_cyan.py` (og lignende) matcher også den *kommando-linje* du
+kører via ssh, fordi mønsteret står i den — shellen dræber sig selv, og ssh
+returnerer 255 uden output. Målt 17. sep 2026 tre gange i træk (`bidi_cyan`,
+`crashreporter`). Brug `pkill -x <navn>` (match kun procesnavn), eller læg
+mønsteret i et hjælpescript hvor strengen er delt, fx
+`pgrep -f "bidi_cy""an"` (`devuan/gpu/eglplatform_x11/kill_bidi.sh`).
+
+### Fælde 42: BiDi-sessionen frigøres ikke af en død klient
+Firefox tillader kun **én** aktiv BiDi-session. En klient der dør, efterlader
+sessionen hængende ("Maximum number of active sessions"), og hverken
+`session.end` fra en ny klient eller et nyt `session.new` hjælper. Eneste
+pålidelige frigørelse er **Firefox-genstart**. Følge: man kan ikke tage et
+screenshot/domcheck fra en ny klient midt i en kørsel — læg funktionen ind i
+den klient der allerede kører (se `SHOT_AT`/`SHOT_POLL` i `bidi_ctxloss.py`,
+sat 17. sep 2026).
+
+### Fælde 43: `/root` er ikke læsbar for brugeren `kristian`
+Firefox kører som `kristian`, og `/root` er 0700. En testsides sti i `/root`
+giver "Access to the file was denied" i browseren (målt 17. sep 2026). Læg
+test-HTML i `/tmp` (mode 644) eller `/home/kristian`, og husk at `/tmp` ryddes
+ved genstart — kopiér filen ind igen efter boot.
+
+### Fælde 44: display-dansen ved Firefox-start kan efterlade X's fb-skrivning død
+Ved hver Firefox-start kører hybris-/EGL-stien
+`find /sys/class/display/*/enable | xargs ... echo 0/1` (ses som
+`[system-shim]`-linjer i loggen), og dmesg viser `hdmi remove from lcdc0` →
+`connect to lcdc0` hver gang. Efter mange sådanne genstart-toggles kan X holde
+op med at skrive til framebufferen: skærmen står frosset, musemarkøren virker
+stadig (X tegner den selv), og et direkte skriv til `/dev/fb0` er synligt på
+skærmen (LCDC læser altså den rigtige buffer). `service nodm restart` gav
+X-skrivningen tilbage (målt 17. sep 2026). Brug dette som første fix når
+"billedet står stille men markøren virker".
+
+### Fælde 45: 1080p-software-compositing + draw-kald sætter et hårdt fps-loft
+Målt 17. sep 2026 på 1.5-stakken: `glReadPixels` 1920x1080 = **173 ms**
+(≈5,8 fps), 836x470 = 34 ms, 300x150 = 4,9 ms; og et draw-kald koster
+**~0,10-0,14 ms** (`glDrawElementsInstanced` med primcount=1 = 0,098 ms).
+Subway Surfers laver ~2.000-2.700 kald pr. frame → alene kaldene er 250-370 ms
+pr. frame (~3 fps), og software-compositing lægger 173 ms oveni. Følge: spillet
+kører ~2-3 fps uanset proxy-instrumentering, og "spilområdet forsvinder" er
+sandsynligvis bare at browseren ikke får afleveret en færdig frame. Prober:
+`drawbench_probe.c`, `readback_probe.c`, `fb_fps.c` (alle i
+`devuan/gpu/eglplatform_x11/`).
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

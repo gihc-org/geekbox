@@ -103,6 +103,19 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   `docs/log/2026-09-08-cyan-scene.md` (21:40-22:00).
   Historik + målinger: `docs/log/2026-09-08-cyan-scene.md`,
   `docs/log/2026-08-27-cyan-scene-handover.md` (virkende konfiguration).
+- [x] **Lav fps: årsagen fundet 17. sep 2026 (driveren, ikke proxyen).**
+  `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
+  udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
+  ændrede intet. Målt med nye prober: draw-kald koster **0,098 ms**
+  (`glDrawElementsInstanced`, primcount=1) / 0,140 ms (`glDrawElements`), og
+  spillet laver ~2.000-2.700 kald pr. frame → 250-370 ms pr. frame alene på
+  kald; dertil software-compositing (1080p-readback = 173 ms, 836x470 = 34 ms).
+  `eglSwapBuffers` kaldes aldrig → fps måles via rAF/`fb_fps`.
+  "Spilområdet forsvinder" = browseren får ikke afleveret frames (to
+  byte-identiske skærmdumps med musemarkøren kørende).
+  Detaljer + værktøjer: `docs/log/2026-09-17-cyan-fps.md`,
+  `docs/faeller.md` fælde 44-45. **Næste (ikke aftalt):** blå glitches,
+  selvstart af alpha-shim + depth-clear, evt. fullscreen-/720p-test.
 - [x] **Gralloc-lock-EINVAL LØST (26. aug):** /dev/sw_sync 0600 root:root →
   EACCES i lock'ens sync-fence-sti; chmod 666 (myinit-retry). x11ws usage
   0x80→0x3. Poki-load-crash LØST: glesv2-proxyen brød WebGL1/ES1 → behold

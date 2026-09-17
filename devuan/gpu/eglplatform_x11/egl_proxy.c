@@ -41,6 +41,25 @@ typedef EGLint (*real_eglGetError_t)(void);
 
 static int g_force_clear_pending = 1;
 
+/* CYAN_LIGHT=1 slår al måle-instrumentering fra (fuld-frame-readbacks,
+ * draw/shader/uniform-dumps, buffer-snapshots, swap-prøver). De funktionelle
+ * lap kører uændret: frag_depth-omskrivning, depthmask-lap og den eksplicitte
+ * depth-clear (CYAN_DEPTHCLEAR). Formål: måle fps uden probe-overhead.
+ * CYAN_FPS=0 slår fps-linjen fra (default til). */
+static int cyan_light(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("CYAN_LIGHT");
+        v = (e && *e && strcmp(e, "0")) ? 1 : 0;
+    }
+    return v;
+}
+
+static void cyan_frame_tick(void);
+static unsigned long g_draw_calls = 0;
+static unsigned long g_draw_instanced = 0;
+
 static void cyan_swap_sample(void);
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count);
 static void cyan_predraw_capture(GLsizei count);
@@ -148,7 +167,7 @@ EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
     EGLBoolean rc = real(dpy, draw, read, ctx);
     EGLint e = err ? err() : EGL_SUCCESS;
     n++;
-    if (n <= 5 || n % 100 == 0) {
+    if (!cyan_light() && (n <= 5 || n % 100 == 0)) {
         FILE *f = plog();
         if (f) {
             fprintf(f, "eglMakeCurrent #%ld dpy=%p draw=%p read=%p ctx=%p rc=%d err=0x%x\n",
@@ -171,10 +190,11 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
     }
     cyan_swap_sample();
+    cyan_frame_tick();
     EGLBoolean rc = real(dpy, surface);
     EGLint e = err ? err() : EGL_SUCCESS;
     n++;
-    if (n <= 5 || n % 100 == 0) {
+    if (!cyan_light() && (n <= 5 || n % 100 == 0)) {
         FILE *f = plog();
         if (f) {
             fprintf(f, "eglSwapBuffers #%ld dpy=%p surf=%p rc=%d err=0x%x\n",
@@ -267,20 +287,22 @@ void hook_glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
             real_eglGetProcAddress_fn("glShaderSource");
 
     FILE *f = fopen("/tmp/fragdepth_probe.log", "a");
-    for (GLsizei i = 0; i < count && str && str[i]; i++) {
-        int sl = (len && len[i] >= 0) ? len[i] : (int)strlen(str[i]);
-        fprintf(f, "=== shader %u[%d] SRC len=%d\n", shader, i, sl);
-        fwrite(str[i], 1, (size_t)(sl < 20000 ? sl : 20000), f);
-        fputc('\n', f);
-        char path[128];
-        snprintf(path, sizeof path, "/tmp/shaders/%u_%d.glsl", shader, i);
-        FILE *sf = fopen(path, "w");
-        if (sf) {
-            fwrite(str[i], 1, sl, sf);
-            fclose(sf);
+    if (f && !cyan_light()) {
+        for (GLsizei i = 0; i < count && str && str[i]; i++) {
+            int sl = (len && len[i] >= 0) ? len[i] : (int)strlen(str[i]);
+            fprintf(f, "=== shader %u[%d] SRC len=%d\n", shader, i, sl);
+            fwrite(str[i], 1, (size_t)(sl < 20000 ? sl : 20000), f);
+            fputc('\n', f);
+            char path[128];
+            snprintf(path, sizeof path, "/tmp/shaders/%u_%d.glsl", shader, i);
+            FILE *sf = fopen(path, "w");
+            if (sf) {
+                fwrite(str[i], 1, sl, sf);
+                fclose(sf);
+            }
         }
+        fflush(f);
     }
-    fflush(f);
 
     int changed = 0;
     for (GLsizei i = 0; i < count && str && str[i]; i++) {
@@ -329,7 +351,8 @@ void hook_glShaderSource(GLuint shader, GLsizei count, const GLchar **str,
         }
         newstr[i] = out;
         newlen[i] = o;
-        fprintf(f, "--- shader %u[%d] REWRITTEN: %s\n", shader, i, out);
+        if (f && !cyan_light())
+            fprintf(f, "--- shader %u[%d] REWRITTEN: %s\n", shader, i, out);
     }
     if (f) fclose(f);
     real_glShaderSource(shader, count, (const GLchar **)newstr, newlen);
@@ -498,6 +521,41 @@ static void dlog_msg(const char *fmt, ...)
         n = (int)sizeof line - 1;
     line[n] = 0;
     dlog_line(line);
+}
+
+/* fps-tælling (kører i BÅDE normal og CYAN_LIGHT-tilstand, så de to kan
+ * sammenlignes direkte): én linje pr. 5 s med præsenterede frames/s og
+ * draw-kald/s. Pris: ét clock_gettime pr. eglSwapBuffers + to tællere. */
+static void cyan_frame_tick(void)
+{
+    static struct timespec t0;
+    static unsigned long frames = 0, last_draws = 0, last_inst = 0;
+    static int init = 0;
+    struct timespec t1;
+    const char *off = getenv("CYAN_FPS");
+    if (off && !strcmp(off, "0"))
+        return;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    if (!init) {
+        t0 = t1;
+        init = 1;
+        return;
+    }
+    frames++;
+    double dt = (double)(t1.tv_sec - t0.tv_sec) +
+                (double)(t1.tv_nsec - t0.tv_nsec) / 1e9;
+    if (dt < 5.0)
+        return;
+    dlog_msg("GL-tick: %.1f/s (%lu tick pa %.1f s) | draws=%lu/s "
+             "instanced=%lu/s (ialt %lu) | light=%d pid=%d",
+             (double)frames / dt, frames, dt,
+             (unsigned long)((double)(g_draw_calls - last_draws) / dt),
+             (unsigned long)((double)(g_draw_instanced - last_inst) / dt),
+             g_draw_calls, cyan_light(), (int)getpid());
+    frames = 0;
+    last_draws = g_draw_calls;
+    last_inst = g_draw_instanced;
+    t0 = t1;
 }
 
 /* ---- rigtige GL-funktioner (resolveres via real eglGetProcAddress) ---- */
@@ -704,6 +762,10 @@ static void maybe_force_depth_clear(GLsizei count)
     if (rgl_glGetFloatv)
         rgl_glGetFloatv(GL_DEPTH_CLEAR_VALUE, &cdv);
     rgl_glClear(GL_DEPTH_BUFFER_BIT);
+    /* Denne sti kører pr. frame i den spillbare opskrift (CYAN_DEPTHCLEAR) —
+     * brug den som frame-tick (eglSwapBuffers kaldes ikke med software-
+     * layers, så swap-stien tæller intet). */
+    cyan_frame_tick();
     GLint at_col = -1, at_dep = -1;
     if (rgl_glGetFramebufferAttachmentParameteriv) {
         rgl_glGetFramebufferAttachmentParameteriv(
@@ -715,7 +777,7 @@ static void maybe_force_depth_clear(GLsizei count)
     }
     static unsigned long n = 0;
     n++;
-    if (n <= 40 || n % 250 == 0)
+    if (!cyan_light() && (n <= 40 || n % 250 == 0))
         dlog_msg("force-depth-clear fbo=%d %dx%d count=%d att-col=0x%x "
                  "att-depth=0x%x depthfunc=0x%x clearval=%g (kald=%lu)",
                  (int)fbo, vp[2], vp[3], (int)count, (unsigned)at_col,
@@ -1100,6 +1162,8 @@ static void snapshot_vertex_buffers(GLuint prog, unsigned long seq,
                                     GLsizei count)
 {
     static int snaps = 0;
+    if (cyan_light())
+        return;
     if (snaps >= 32)
         return;
     if (!rgl_glMapBufferRange || !rgl_glUnmapBuffer || !rgl_glBindBuffer ||
@@ -1210,10 +1274,12 @@ static void dump_draw(const char *fn, GLenum mode, GLsizei count,
     static unsigned long skipped = 0;
     seq++;
     if (seq == 1)
-        dlog_msg("== proxy-build: vnext12 + depthmask-lap + tvungen "
+        dlog_msg("== proxy-build: vnext13 + CYAN_LIGHT=%d + depthmask-lap + tvungen "
                  "depth-clear EKSKLUSIVT én gang pr. frame (efter swap/"
                  "clear) med EKSPLICIT clearDepthf(1) + fbo-att/depthfunc/"
-                 "clearval-log (env CYAN_DEPTHCLEAR=1) ==");
+                 "clearval-log (env CYAN_DEPTHCLEAR=1) ==", cyan_light());
+    if (cyan_light())
+        return;
     GLint prog = 0;
     rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
     int want = (seq <= 150);
@@ -1311,6 +1377,7 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
                                 const void *indices)
 {
     rgl_resolve_all();
+    g_draw_calls++;
     dump_draw("glDrawElements", mode, count, type, -1, indices);
     cyan_predraw_capture(count);
     maybe_force_depth_clear(count);
@@ -1321,7 +1388,7 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
     if (dm_lap) {
         static unsigned long n = 0;
         n++;
-        if (n <= 120 || n % 300 == 0)
+        if (!cyan_light() && (n <= 120 || n % 300 == 0))
             dlog_msg("depthmask-lap glDrawElements count=%d (kald=%lu)",
                      (int)count, n);
     }
@@ -1333,6 +1400,7 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
 static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
     rgl_resolve_all();
+    g_draw_calls++;
     dump_draw("glDrawArrays", mode, count, 0, -1, NULL);
     cyan_predraw_capture(count);
     maybe_force_depth_clear(count);
@@ -1343,7 +1411,7 @@ static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
     if (dm_lap) {
         static unsigned long n = 0;
         n++;
-        if (n <= 120 || n % 300 == 0)
+        if (!cyan_light() && (n <= 120 || n % 300 == 0))
             dlog_msg("depthmask-lap glDrawArrays count=%d (kald=%lu)",
                      (int)count, n);
     }
@@ -1357,6 +1425,8 @@ static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
                                          GLsizei primcount)
 {
     rgl_resolve_all();
+    g_draw_calls++;
+    g_draw_instanced++;
     dump_draw("glDrawElementsInstanced", mode, count, type, primcount,
               indices);
     cyan_predraw_capture(count);
@@ -1371,7 +1441,7 @@ static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
     if (dm_lap) {
         static unsigned long n = 0;
         n++;
-        if (n <= 120 || n % 300 == 0)
+        if (!cyan_light() && (n <= 120 || n % 300 == 0))
             dlog_msg("depthmask-lap glDrawElementsInstanced count=%d "
                      "primcount=%d (kald=%lu)",
                      (int)count, (int)primcount, n);
@@ -1390,6 +1460,8 @@ static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
                                        GLsizei count, GLsizei primcount)
 {
     rgl_resolve_all();
+    g_draw_calls++;
+    g_draw_instanced++;
     dump_draw("glDrawArraysInstanced", mode, count, 0, primcount, NULL);
     cyan_predraw_capture(count);
     maybe_force_depth_clear(count);
@@ -1403,7 +1475,7 @@ static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
     if (dm_lap) {
         static unsigned long n = 0;
         n++;
-        if (n <= 120 || n % 300 == 0)
+        if (!cyan_light() && (n <= 120 || n % 300 == 0))
             dlog_msg("depthmask-lap glDrawArraysInstanced count=%d "
                      "primcount=%d (kald=%lu)",
                      (int)count, (int)primcount, n);
@@ -1423,7 +1495,7 @@ static void hook_glUseProgram(GLuint prog)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 40 || n % 200 == 0)
+    if (!cyan_light() && (n <= 40 || n % 200 == 0))
         dlog_msg("useProgram prog=%u (kald=%lu)", (unsigned)prog, n);
     rgl_glUseProgram(prog);
 }
@@ -1436,8 +1508,10 @@ static void hook_glLinkProgram(GLuint prog)
     rgl_glGetProgramiv(prog, GL_LINK_STATUS, &ok);
     rgl_glGetProgramiv(prog, GL_ACTIVE_UNIFORMS, &nu);
     rgl_glGetProgramiv(prog, GL_ACTIVE_ATTRIBUTES, &na);
-    dlog_msg("linkProgram prog=%u ok=%d active-uniforms=%d active-attribs=%d",
-             (unsigned)prog, (int)ok, (int)nu, (int)na);
+    if (!cyan_light())
+        dlog_msg("linkProgram prog=%u ok=%d active-uniforms=%d "
+                 "active-attribs=%d", (unsigned)prog, (int)ok, (int)nu,
+                 (int)na);
 }
 
 static void hook_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
@@ -1445,7 +1519,7 @@ static void hook_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 40 || n % 400 == 0)
+    if (!cyan_light() && (n <= 40 || n % 400 == 0))
         dlog_msg("viewport x=%d y=%d w=%d h=%d (kald=%lu)", (int)x, (int)y,
                  (int)w, (int)h, n);
     rgl_glViewport(x, y, w, h);
@@ -1456,7 +1530,7 @@ static void hook_glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 20 || n % 300 == 0)
+    if (!cyan_light() && (n <= 20 || n % 300 == 0))
         dlog_msg("clearColor r=%.4f g=%.4f b=%.4f a=%.4f (kald=%lu)",
                  (double)r, (double)g, (double)b, (double)a, n);
     rgl_glClearColor(r, g, b, a);
@@ -1467,7 +1541,7 @@ static void hook_glClearDepthf(GLfloat d)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 60 || n % 200 == 0)
+    if (!cyan_light() && (n <= 60 || n % 200 == 0))
         dlog_msg("clearDepthf d=%g (kald=%lu)", (double)d, n);
     {
         static void (*real)(GLfloat);
@@ -1489,7 +1563,7 @@ static void hook_glClear(GLbitfield mask)
     n++;
     if (mask & GL_DEPTH_BUFFER_BIT)
         g_force_clear_pending = 1;
-    if (n <= 30 || n % 200 == 0) {
+    if (!cyan_light() && (n <= 30 || n % 200 == 0)) {
         GLint fbo = -1, vp[4] = {0, 0, 0, 0};
         if (rgl_glGetIntegerv) {
             rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
@@ -1508,7 +1582,7 @@ static void hook_glBindFramebuffer(GLenum target, GLuint fb)
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 120 || n % 300 == 0)
+    if (!cyan_light() && (n <= 120 || n % 300 == 0))
         dlog_msg("bindFramebuffer target=0x%x fbo=%u (kald=%lu)",
                  (unsigned)target, (unsigned)fb, n);
     rgl_glBindFramebuffer(target, fb);
@@ -1521,7 +1595,7 @@ static void hook_glFramebufferTexture2D(GLenum target, GLenum attachment,
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 200 || n % 400 == 0)
+    if (!cyan_light() && (n <= 200 || n % 400 == 0))
         dlog_msg("fboTex target=0x%x attachment=0x%x textarget=0x%x tex=%u "
                  "level=%d (kald=%lu)",
                  (unsigned)target, (unsigned)attachment, (unsigned)textarget,
@@ -1535,7 +1609,7 @@ static void hook_glFramebufferRenderbuffer(GLenum target, GLenum attachment,
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 120 || n % 400 == 0)
+    if (!cyan_light() && (n <= 120 || n % 400 == 0))
         dlog_msg("fboRb target=0x%x attachment=0x%x rbtarget=0x%x rb=%u "
                  "(kald=%lu)",
                  (unsigned)target, (unsigned)attachment, (unsigned)rbtarget,
@@ -1550,7 +1624,7 @@ static void hook_glTexImage2D(GLenum target, GLint level, GLint ifmt,
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 250 || n % 500 == 0) {
+    if (!cyan_light() && (n <= 250 || n % 500 == 0)) {
         GLint tex = 0;
         rgl_glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex);
         dlog_msg("texImage2D tex=%u level=%d %dx%d ifmt=0x%x fmt=0x%x "
@@ -1567,7 +1641,7 @@ static void hook_glTexStorage2D(GLenum target, GLsizei levels, GLenum ifmt,
     static unsigned long n = 0;
     rgl_resolve_all();
     n++;
-    if (n <= 250 || n % 500 == 0) {
+    if (!cyan_light() && (n <= 250 || n % 500 == 0)) {
         GLint tex = 0;
         rgl_glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex);
         dlog_msg("texStorage2D tex=%u levels=%d %dx%d ifmt=0x%x (kald=%lu)",
@@ -1582,7 +1656,7 @@ static void hook_glDrawBuffers(GLsizei n, const GLenum *bufs)
     static unsigned long c = 0;
     rgl_resolve_all();
     c++;
-    if (c <= 120 || c % 250 == 0) {
+    if (!cyan_light() && (c <= 120 || c % 250 == 0)) {
         char line[512];
         int o = snprintf(line, sizeof line, "drawBuffers n=%d (kald=%lu) [",
                          (int)n, c);
@@ -1604,7 +1678,7 @@ static void hook_glVertexAttribDivisor(GLuint index, GLuint divisor)
     static unsigned long c = 0;
     rgl_resolve_all();
     c++;
-    if (c <= 120 || c % 100 == 0) {
+    if (!cyan_light() && (c <= 120 || c % 100 == 0)) {
         GLint prog = 0;
         rgl_glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
         dlog_msg("vertexAttribDivisor index=%u divisor=%u prog=%d "
@@ -1623,6 +1697,8 @@ static void cyan_swap_sample(void)
 {
     static unsigned long n = 0;
     rgl_resolve_all();
+    if (cyan_light())
+        return;
     n++;
     if (n > 80 && n % 25 != 0)
         return;
@@ -1688,6 +1764,8 @@ static int have_pre_grid = 0;
 static void cyan_predraw_capture(GLsizei count)
 {
     static unsigned long big = 0;
+    if (cyan_light())
+        return;
     if (count < 512)
         return;
     big++;
@@ -1906,6 +1984,8 @@ static void cyan_shadow_probe(const char *fn, GLenum mode, GLsizei count,
 {
     static unsigned long big = 0;
     static unsigned long nprobe = 0;
+    if (cyan_light())
+        return;
     if (count < 512)
         return;
     big++;
@@ -2018,6 +2098,8 @@ static void cyan_shadow_probe(const char *fn, GLenum mode, GLsizei count,
 static void cyan_postdraw_sample(const char *tag, GLuint prog, GLsizei count)
 {
     static unsigned long big = 0;
+    if (cyan_light())
+        return;
     if (count < 512)
         return;
     big++;

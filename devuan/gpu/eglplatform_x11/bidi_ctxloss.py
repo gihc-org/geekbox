@@ -8,6 +8,7 @@ import signal
 import socket
 import struct
 import sys
+import threading
 import time
 import urllib.request
 
@@ -121,6 +122,7 @@ def main():
         print("KUNNE IKKE FORBINDE TIL /session")
         sys.exit(1)
     stop = [False]
+    call_lock = threading.Lock()
 
     def _sig(signum, frame):
         stop[0] = True
@@ -131,15 +133,17 @@ def main():
 
     def call(method, params=None, timeout=20):
         nonlocal mid
-        mid += 1
-        ws.send({"id": mid, "method": method, "params": params or {}})
-        while True:
-            m = ws.recv(timeout=timeout)
-            if m and m.get("id") == mid:
+        with call_lock:
+            mid += 1
+            myid = mid
+            ws.send({"id": myid, "method": method, "params": params or {}})
+            while True:
+                m = ws.recv(timeout=timeout)
+                if m and m.get("id") == myid:
+                    return m
+                if m and m.get("type") == "event":
+                    continue
                 return m
-            if m and m.get("type") == "event":
-                continue
-            return m
 
     r = call("session.new", {"capabilities": {"alwaysMatch": {}}}, timeout=50)
     if r.get("type") != "success":
@@ -168,7 +172,7 @@ def main():
             print("spil-kontekst:", game_ctx, url[:80])
             break
     if not ctx:
-        if mode == "preload" and contexts:
+        if mode in ("preload", "preloadmin") and contexts:
             ctx = contexts[0].get("context")
             print("bruger top-kontekst:", ctx,
                   [(c.get("context"), c.get("url")) for c in contexts])
@@ -244,8 +248,69 @@ def main():
         elif len(sys.argv) > 2 and sys.argv[2] == "reload":
             r = call("browsingContext.reload", {"context": ctx})
             print("GENINDLASTET:", json.dumps(r)[:200])
-    elif mode == "preload":
-        pre = (
+    elif mode in ("preload", "preloadmin"):
+        # Fælles måling i BEGGE varianter (så kørslerne kan sammenlignes):
+        # rAF-tælling pr. 10 s = opnået frame-rate i browseren. NB: eglSwap-
+        # Buffers kaldes IKKE i denne konfiguration (software-layers), så
+        # målingen skal ligge i JS-laget.
+        pre_measure = (
+            "window.__frames=0;"
+            "(function(){function t(){window.__frames++;"
+            "try{requestAnimationFrame(t);}catch(e){}}"
+            "try{requestAnimationFrame(t);}catch(e){}})();"
+            "setInterval(function(){"
+            "try{dump('FPS tr='+Math.round((window.performance&&"
+            "performance.now?performance.now():0)/1000)+'s raf='+"
+            "window.__frames+'/10s draws='+"
+            "(window.__dc|0)+' vis='+document.visibilityState+"
+            "' focus='+(document.hasFocus?document.hasFocus():'?')+"
+            "' href='+String(location.href).slice(0,70)+'\\n');"
+            "window.__frames=0;"
+            "if(window.__dc)window.__dc=0;}catch(x){}},10000);"
+        )
+        # preloadmin: KUN alpha-shim + loseContext-blok (ingen per-draw-JS-
+        # wrappers, ingen __cap, ingen 10-s-intervaller) — bruges til fps-
+        # sammenligning hvor shimmen skal være så billig som muligt.
+        pre_min = (
+            "function(){"
+            "try{"
+            "try{dump('PRELOAD-MIN aktiv i '+location.href+'\\n');}catch(x){}"
+            "window.__ctxLoss=[];"
+            "function __hook(cv){try{"
+            "cv.addEventListener('webglcontextlost',function(e){"
+            "window.__ctxLoss.push({t:Date.now(),url:location.href});"
+            "try{dump('CTXLOST '+location.href+'\\n');}catch(x){}"
+            "});}catch(e){}}"
+            "function __alpha(args){"
+            "if(args[1]&&typeof args[1]==='object'){"
+            "var a={};for(var k in args[1])a[k]=args[1][k];"
+            "if(a.alpha===false){a.alpha=true;try{dump('ALPHA-SHIM: alpha tvunget true\\n');}catch(x){}}"
+            "if(a.premultipliedAlpha===false){a.premultipliedAlpha=true;try{dump('ALPHA-SHIM: premultipliedAlpha tvunget true\\n');}catch(x){}}"
+            "args[1]=a;}return args;}"
+            "var __gc=HTMLCanvasElement.prototype.getContext;"
+            "HTMLCanvasElement.prototype.getContext=function(){"
+            "var args=__alpha(Array.prototype.slice.call(arguments));"
+            "var r=__gc.apply(this,args);__hook(this);"
+            "try{dump('GETCONTEXT canvas='+this.width+'x'+this.height+' type='+arguments[0]+' result='+(r?'OK':'NULL')+' attrs='+JSON.stringify(r&&r.getContextAttributes?r.getContextAttributes():{})+'\\n');}catch(x){}"
+            "try{if(r&&r.getExtension){"
+            "var __ge=r.getExtension.bind(r);"
+            "r.getExtension=function(n){"
+            "if(String(n).toUpperCase()==='WEBGL_LOSE_CONTEXT'){"
+            "return{loseContext:function(){},restoreContext:function(){},__blokeret:true};}"
+            "return __ge(n);};}}catch(e){}"
+            "return r;};"
+            "if(typeof OffscreenCanvas!=='undefined'){"
+            "var __ogc=OffscreenCanvas.prototype.getContext;"
+            "OffscreenCanvas.prototype.getContext=function(){"
+            "var args=__alpha(Array.prototype.slice.call(arguments));"
+            "var r=__ogc.apply(this,args);__hook(this);return r;};}"
+            "try{dump('CAPNAV hw='+navigator.hardwareConcurrency+'\\n');}catch(x){}"
+            "window.addEventListener('error',function(e){"
+            "try{dump('PAGE-ERROR: '+e.message+'\\n');}catch(x){}});"
+            + pre_measure +
+            "}catch(e){}}"
+        )
+        pre_full = (
             "function(){"
             "try{"
             "try{dump('PRELOAD-AKTIV i '+location.href+'\\n');}catch(x){}"
@@ -283,11 +348,11 @@ def main():
             "}}catch(e){}"
             "try{if(r&&r.drawArrays){"
             "var __da=r.drawArrays.bind(r),__dc=0;"
-            "r.drawArrays=function(m,f,c){__dc++;"
+            "r.drawArrays=function(m,f,c){__dc++;window.__dc=(window.__dc|0)+1;"
             "if(__dc<=10||__dc%300===0){try{dump('DRAWARRAYS #'+__dc+' mode='+m+' first='+f+' count='+c+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
             "return __da(m,f,c);};"
             "var __de=r.drawElements.bind(r);"
-            "r.drawElements=function(m,c,t,i){__dc++;"
+            "r.drawElements=function(m,c,t,i){__dc++;window.__dc=(window.__dc|0)+1;"
             "if(__dc<=10||__dc%300===0){try{dump('DRAWELEMENTS #'+__dc+' mode='+m+' count='+c+' type='+t+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
             "return __de(m,c,t,i);};"
             "var __cl=r.clear.bind(r),__cc=0;"
@@ -361,8 +426,10 @@ def main():
             "}}"
             "}catch(e){}}"
             ",10000);"
+            + pre_measure +
             "}catch(e){}}"
         )
+        pre = pre_min if mode == "preloadmin" else pre_full
         r = call("script.addPreloadScript", {"functionDeclaration": pre})
         print("PRELOAD:", json.dumps(r)[:300])
         if len(sys.argv) > 2 and sys.argv[2] == "goto":
@@ -371,6 +438,126 @@ def main():
             r = call("browsingContext.navigate",
                      {"context": ctx, "url": target}, timeout=30)
             print("NAVIGERET:", json.dumps(r)[:200])
+            # SHOT_AT="60,180": tag Firefox' EGEN gengivelse af siden på de
+            # tidspunkter (uafhængigt af hvad skærmen viser).
+            shot_at = os.environ.get("SHOT_AT")
+            if shot_at:
+                shot_dir = os.environ.get("SHOT_DIR", "/root/shots")
+                try:
+                    os.makedirs(shot_dir, exist_ok=True)
+                except Exception as e:
+                    print("kunne ikke lave %s: %s" % (shot_dir, e))
+
+                def _shots():
+                    t_start = time.time()
+                    for at in str(shot_at).split(","):
+                        at = at.strip()
+                        if not at:
+                            continue
+                        while time.time() - t_start < float(at):
+                            time.sleep(0.5)
+                        try:
+                            rr = call("browsingContext.captureScreenshot",
+                                      {"context": ctx}, timeout=120)
+                            data = (rr.get("result") or {}).get("data")
+                            if data:
+                                path = os.path.join(shot_dir,
+                                                    "shot_%s.png" % at)
+                                with open(path, "wb") as fh:
+                                    fh.write(base64.b64decode(data))
+                                print("SHOT gemt: %s" % path)
+                            else:
+                                print("SHOT fejlede: %s" % json.dumps(rr)[:200])
+                        except Exception as e:
+                            print("SHOT-fejl: %s" % e)
+                threading.Thread(target=_shots, daemon=True).start()
+            # "Tag et billede NU"-knap: hvis SHOT_POLL er sat, tages et
+            # screenshot hver gang filen /tmp/shot_now dukker op (og fjernes).
+            if os.environ.get("SHOT_POLL"):
+                shot_dir2 = os.environ.get("SHOT_DIR", "/root/shots")
+                try:
+                    os.makedirs(shot_dir2, exist_ok=True)
+                except Exception:
+                    pass
+
+                def _shot_poll():
+                    while not stop[0]:
+                        time.sleep(2)
+                        if not os.path.exists("/tmp/shot_now"):
+                            continue
+                        try:
+                            os.unlink("/tmp/shot_now")
+                        except Exception:
+                            pass
+                        try:
+                            rr = call("browsingContext.captureScreenshot",
+                                      {"context": ctx}, timeout=120)
+                            data = (rr.get("result") or {}).get("data")
+                            if data:
+                                path = os.path.join(
+                                    shot_dir2,
+                                    "now_%d.png" % int(time.time()))
+                                with open(path, "wb") as fh:
+                                    fh.write(base64.b64decode(data))
+                                print("SHOT gemt: %s" % path)
+                            else:
+                                print("SHOT fejlede: %s" % json.dumps(rr)[:200])
+                        except Exception as e:
+                            print("SHOT-fejl: %s" % e)
+                threading.Thread(target=_shot_poll, daemon=True).start()
+            # PLAY_AT=<sek>: send et rigtigt tastetryk (+klik) til spillet så
+            # "Press to play"-overlejringen forsvinder uden manuel input.
+            play_at = os.environ.get("PLAY_AT")
+            if play_at:
+                # PLAY_AT kan være kommasepareret ("110,210"): send input ved
+                # hvert tidspunkt (mere robust — spillet er måske ikke loadet
+                # ved første forsøg).
+                prev = 0
+                for at in str(play_at).split(","):
+                    at = at.strip()
+                    if not at:
+                        continue
+                    time.sleep(max(0, int(at) - prev))
+                    prev = int(at)
+                    tree2 = call("browsingContext.getTree", {})
+                    ctxs2 = []
+
+                    def walk3(items):
+                        for it in items or []:
+                            ctxs2.append(it)
+                            walk3(it.get("children"))
+                    walk3(tree2.get("result", {}).get("contexts", []))
+                    tgt = None
+                    for c in ctxs2:
+                        u = c.get("url", "")
+                        if "gdn.poki.com" in u or "index.html" in u:
+                            tgt = c.get("context")
+                            break
+                    if tgt is None:
+                        tgt = ctx
+                    print("PLAY-INPUT t=%ss mod kontekst %s" % (at, tgt))
+                    for nm, acts in (
+                        ("tast-mellemrum", [
+                            {"type": "key", "id": "kb", "actions": [
+                                {"type": "keyDown", "value": " "},
+                                {"type": "keyUp", "value": " "}]}]),
+                        ("tast-arrowup", [
+                            {"type": "key", "id": "kb", "actions": [
+                                {"type": "keyDown", "value": "\ue013"},
+                                {"type": "keyUp", "value": "\ue013"}]}]),
+                        ("klik-midt", [
+                            {"type": "pointer", "id": "m1",
+                             "parameters": {"pointerType": "mouse"},
+                             "actions": [
+                                 {"type": "pointerMove", "x": 400, "y": 300},
+                                 {"type": "pointerDown", "button": 0},
+                                 {"type": "pointerUp", "button": 0}]}]),
+                    ):
+                        rr = call("input.performActions",
+                                  {"context": tgt, "actions": acts}, timeout=25)
+                        print("PLAY-INPUT %s -> %s" % (nm,
+                                                       json.dumps(rr)[:160]))
+                        time.sleep(3)
             if len(sys.argv) > 4:
                 deadline = time.time() + int(sys.argv[4])
                 while time.time() < deadline and not stop[0]:
@@ -417,7 +604,6 @@ def main():
                 })
                 res = r2.get("result", {}).get("result", {}).get("value")
                 if res:
-                    import base64
                     for c in json.loads(res):
                         if "data" in c:
                             b64 = c["data"].split(",", 1)[1]
@@ -429,6 +615,20 @@ def main():
     elif mode == "reload":
         r = call("browsingContext.reload", {"context": ctx})
         print("GENINDLASTET:", json.dumps(r)[:200])
+    elif mode == "shot":
+        # Browserens EGEN gengivelse af siden (uafhængig af skærmen): bruges til
+        # at afgøre om spil-indholdet mangler i sidens rendering eller kun på
+        # vej ud til skærmen.
+        out = sys.argv[2] if len(sys.argv) > 2 else "/tmp/shot.png"
+        r = call("browsingContext.captureScreenshot", {"context": ctx},
+                 timeout=90)
+        data = (r.get("result") or {}).get("data")
+        if data:
+            with open(out, "wb") as fh:
+                fh.write(base64.b64decode(data))
+            print("SCREENSHOT gemt: %s (%d base64-tegn)" % (out, len(data)))
+        else:
+            print("SCREENSHOT fejlede:", json.dumps(r)[:300])
     elif mode == "read":
         r = call("script.evaluate", {
             "expression": "JSON.stringify(window.__ctxLoss||'ingen-data')",
@@ -566,7 +766,6 @@ def main():
         })
         res = r.get("result", {}).get("result", {}).get("value")
         if res:
-            import base64
             arr = json.loads(res)
             for c in arr:
                 if "data" in c:

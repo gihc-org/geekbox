@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>raf-test</title>
+<style>
+  html, body { margin: 0; background: #202020; }
+  #b { position: absolute; top: 40px; left: 0; width: 180px; height: 180px;
+       background: #00c000; }
+  #t { position: absolute; top: 240px; left: 10px; color: #fff;
+       font: 20px monospace; }
+</style>
+</head>
+<body>
+<div id="b"></div>
+<div id="t">raf-test</div>
+<script>
+var x = 0, n = 0;
+function loop() {
+  x = (x + 4) % 1600;
+  n++;
+  document.getElementById('b').style.transform = 'translateX(' + x + 'px)';
+  if (n % 30 === 0)
+    document.getElementById('t').textContent = 'raf frames: ' + n;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
