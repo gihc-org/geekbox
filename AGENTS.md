@@ -26,14 +26,20 @@ Du er en elektronik/computer ekspert
 - Ufuldstændige beslutninger (manglende detalje der kan ændre planen) skrives som `afventer` og stilles til brugeren — de må ikke forsvinde i samtalen.
 - Ved sessionslut/komprimering: kontrollér FØR handover at alle aftaler står i notatet (diff mellem "aftalt i samtalen" og "dokumenteret"); ret mangler og sig det højt.
 - Når en plan/beslutning ændres, opdatér også TODO.md og den relevante fil under `docs/` samme time (korte pointere, ikke dubletter).
-- **Git-commits:** hver commit slutter med et tag på formen `[agent:model]` — agent =
-  værktøjet (`codex`), model = den FAKTISKE model-id for DEN PÅGÆLDENDE session
-  (fx `[codex:deepseek-v4-flash]`). Model-id skal hentes fra den aktuelle sessions
-  egne oplysninger — du må IKKE arve/antage model-id fra tidligere sessioner,
-  dokumenter eller commit-historik (fejl begået 26. aug 2026: `[codex:gpt-5]` brugt
-  i en deepseek-v4-flash-session). Ved tvivl: spørg brugeren. Ret aldrig ældre
-  commits' tags uden brugerens godkendelse (omskriver historik). Notér desuden
-  agent/model øverst i session-notatet.
+- **Git-commits:** hver commit hvor en AI-agent har bidraget slutter med en
+  `Co-authored-by`-trailer nederst i *body'en* — efter en tom linje, aldrig i
+  emnet. Se `~/projects/guidelines/code-review.md` under "AI-medforfatterskab".
+  Formen er `Co-authored-by: <værktøj>/<model> <noreply-adresse>`, fx
+  `Co-authored-by: Codex/DeepSeek-flash v4 <noreply@openai.com>`.
+  Emne-suffikset `[agent:model]` er afløst 17. sep 2026; det står stadig i
+  ældre commits, men skal ikke kopieres.
+  Værktøj = det du kører som (`codex`), model = den FAKTISKE model-id for DEN
+  PÅGÆLDENDE session. Model-id skal hentes fra den aktuelle sessions egne
+  oplysninger — du må IKKE arve/antage model-id fra tidligere sessioner,
+  dokumenter eller commit-historik (fejl begået 26. aug 2026: `[codex:gpt-5]`
+  brugt i en deepseek-v4-flash-session). Ved tvivl: spørg brugeren. Ret aldrig
+  ældre commits' tags uden brugerens godkendelse (omskriver historik). Notér
+  desuden agent/model øverst i session-notatet.
 - **Tegnsæt i dokumentation (.md):** brug kun tegn der findes i DejaVu Sans /
   DejaVu Sans Mono (pandoc/xelatex bygger PDF'erne med dem). Ingen emojier eller
   symbol-ikoner (fx U+2705/U+274C/U+1F389/U+1F464/U+1F916); danske tegn (æøå),
