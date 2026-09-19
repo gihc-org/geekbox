@@ -139,6 +139,15 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 bash /root/cyan_ab_run.sh <tag> 110 "" ""'`
   — **de to SHIM-variable er vigtige: uden dem kan hybris' display-dans slå
   X's fb-skrivning ihjel (fælde 44/47), og livlinen er `service nodm restart`.**
+  KONTROLKØRSEL (samme kommando, triviel side — husk at lægge filen i /tmp
+  efter en genstart, den ryddes ved boot):
+  `... bash /root/cyan_ab_run.sh T1_trivial 80 "" "" file:///tmp/raf_test.html`.
+  Boksens filer i /root (`cyan_ab_run.sh`, `bidi_cyan.py`, `x_focus`, `fb_fps`,
+  `drawbench_probe.c`) ligger på eMMC og overlever genstart; ændrer du dem i
+  repoet, skal de kopieres over igen (ssh `cat >` virker, `scp` hænger fordi
+  dropbear ikke har SFTP). `x_focus` fejler fortsat (der er ingen
+  `/home/kristian/.Xauthority`), men spillets iframe rapporterer selv
+  `focus=true`, så målingerne er brugbare.
   NÆSTE FORSØG (forslag, ikke aftalt): (1) compositing-vejen — mindre
   vindue/canvas målt igen med de rettede tal, `gfx.webrender.software=true`,
   `layers.acceleration.disabled` til/fra (GPU-lag gav sort skærm 17. sep);
