@@ -872,6 +872,27 @@ sandsynligvis bare at browseren ikke får afleveret en færdig frame. Prober:
 `drawbench_probe.c`, `readback_probe.c`, `fb_fps.c` (alle i
 `devuan/gpu/eglplatform_x11/`).
 
+### Fælde 46: `CYAN_LIGHT=1` (uden readbacks) frøser præsentationen
+Målt 19. sep 2026 på den trivielle testsides `raf_test.html` (samme
+Firefox-opskrift hele vejen):
+
+| Konfiguration | Skærm-opdateringer/s |
+|---|---|
+| tung proxy vnext12 `dcc0a68f` (8.-sep-binæren) | **1,5** |
+| light proxy vnext14/vnext15 (`CYAN_LIGHT=1`) | **0,2** |
+| Firefox uden hybris/EGL-laget | **3,2** |
+
+Dvs.: (a) hybris-EGL-laget koster præsentationsevne, og (b) de løbende
+readbacks i den tunge proxy henter en stor del af den tilbage. Den "spilbare"
+tilstand fra 8. sep var derfor (utilsigtet) afhængig af instrumenteringen —
+det kostede ikke fps i JS-laget (rAF var ens, jf. 17. sep), men det holdt
+skærmen i gang. **Driftsregel:** brug den tunge vnext12 når spillet skal kunne
+ses; `CYAN_LIGHT=1` må kun bruges til isolerede målinger.
+
+Hypotese (ikke bevist): det er flush-effekten (readbacks/`glFinish`) der får
+den færdige frame ud til skærmen på denne driver. Kan testes med et billigt
+`glFinish` pr. frame i stedet for fulde readbacks.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer
