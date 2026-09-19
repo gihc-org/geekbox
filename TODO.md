@@ -122,7 +122,55 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (cyan-scene SPILBAR, 8. sep 2026 aften):**
+- **God start i en ny session (FPS-sporet, 19. sep 2026 aften) — NUVÆRENDE:**
+  *"Læs `OVERBLIK.md`, derefter `docs/log/2026-09-17-cyan-fps.md` (SLUTSTATUS
+  19. sep + checkpoints 19. sep 20:15 og 21:00) og `docs/faeller.md` fælde
+  41-46. STATUS: Subway Surfers ER spilbart igen (bruger-bekræftet 19. sep)
+  med proxy **vnext12 `dcc0a68f` (den TUNGE)** + alpha-shim via BiDi-preload
+  (`bidi_cyan.py preload`) + env `CYAN_DEPTHCLEAR=1`. Spilområdet forblev
+  synligt hele spilsessionen. VIGTIGT: `CYAN_LIGHT=1` frøser præsentationen
+  (0,2 skærm-opdateringer/s mod 1,5) — brug den KUN til målinger uden billede.
+  MÅLET NU: hæve fps (i dag ~2,6). Kendte loft: draw-kald 0,098-0,140 ms ×
+  ~2.000-2.700 kald pr. frame = 250-370 ms/frame, plus 1080p-software-
+  composite ~173 ms (readback 836x470 = 34 ms). `eglSwapBuffers` kaldes aldrig.
+  MÅL MED: `fb_fps` (skærm-opdateringer/s, følger ypan) + `FPS tr=`-linjen
+  (rAF/10 s fra preloaden) + `drawbench_probe`/`readback_probe` for enkeltdele.
+  NÆSTE FORSØG, i prioriteret rækkefølge (ikke aftalt endnu — tag dem med
+  brugeren):
+  (1) MINIMUM-FLUSH: den tunge proxy holder præsentationen i gang via sine
+      readbacks. Find den billigste intervention der gør det samme: `glFinish()`
+      én gang pr. frame, eller 1x1 `glReadPixels` pr. frame, mod fuld readback
+      (dagens tunge). Byg fx `CYAN_FLUSH=finish|px1|full|none` i `egl_proxy.c`
+      og mål BÅDE skærm-opdateringer og fps for hver variant. Hvis en billig
+      flush er nok, får vi præsentation uden readback-prisen.
+  (2) 720p: `echo 1280x720p-60 > /sys/class/display/HDMI/mode` + `service nodm
+      restart` → composite-delen falder til ca. 40 %. Mål og rul tilbage.
+  (3) Vindues-/canvasstørrelse (profilkopi med xulstore 1000x600 eller
+      `x_resize`): mindsker readback-delen; sidst målt uden gevinst, men prøv
+      igen sammen med (1).
+  (4) WebGL-vej-prefs: `webgl.out-of-process` til/fra, `layers.acceleration.
+      disabled` til/fra, `gfx.webrender.software=true` — mål med `fb_fps` +
+      rAF. (GPU-lag gav sort/0 opdateringer 17. sep.)
+  (5) Hvis intet hjælper: skriv loftet ind som endeligt resultat.
+  BRING-UP efter strøm: `bash devuan/find_box.sh` (IP skifter; boksen kan svare
+  på to IP'er samtidigt) → ur-sync, `insmod /root/pvrsrvkm_leddaz.ko` +
+  `sh /root/gpu_up.sh`, bindapi-lap (`bash devuan/gpu/eglplatform_x11/
+  patch_android_bindapi.sh`, IP står i scriptet), tjek `/dev/sw_sync` 0666,
+  læg proxyen ind: `cp /root/egl_proxy_dcc0a68f.so.bak
+  /opt/hybris/libEGL.so.1.0.0` (eller byg repoets `egl_proxy.c`).
+  START SPILLET: ren profil (cache2/startupCache/storage/cookies/
+  sessionstore) → `GAME_URL=about:blank CYAN_DEPTHCLEAR=1 nohup
+  /root/start_cyan_probe.sh &` → `PYTHONUNBUFFERED=1 nohup python3
+  /root/bidi_cyan.py preload goto https://poki.com/en/g/subway-surfers 7200 &`
+  → vent på attrakt-scenen og tryk play. Skærmen frosset? `service nodm
+  restart` genopretter X (fælde 44) — og husk at en frosset skærm ikke er
+  spillets skyld.
+  FÆLDER (kort): brug ikke `CYAN_LIGHT` når billedet skal ses (fælde 46);
+  `pkill -f <navn>` dræber din egen ssh-session (41); BiDi = én session, død
+  klient frigøres kun ved Firefox-genstart (42); `/root` er ikke læsbar for
+  `kristian` — testsider i /tmp (43); /tmp ryddes ved genstart; SIGKILL →
+  beskidt profil; hængt lyd = `kill -9 <pulsepid>`."*
+- **God start i en ny session (cyan-scene SPILBAR, 8. sep 2026 aften) — historisk:**
   *"Læs `OVERBLIK.md` (opdateret 22:00), derefter
   `docs/log/2026-09-08-cyan-scene.md` (checkpoints 20:30-22:00:
   shadow-probe → depth-port → force-clear → SPILBART) og

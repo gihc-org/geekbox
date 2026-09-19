@@ -1274,7 +1274,7 @@ static void dump_draw(const char *fn, GLenum mode, GLsizei count,
     static unsigned long skipped = 0;
     seq++;
     if (seq == 1)
-        dlog_msg("== proxy-build: vnext13 + CYAN_LIGHT=%d + depthmask-lap + tvungen "
+        dlog_msg("== proxy-build: vnext15 + CYAN_LIGHT=%d + depthmask-lap + tvungen "
                  "depth-clear EKSKLUSIVT én gang pr. frame (efter swap/"
                  "clear) med EKSPLICIT clearDepthf(1) + fbo-att/depthfunc/"
                  "clearval-log (env CYAN_DEPTHCLEAR=1) ==", cyan_light());
@@ -1687,6 +1687,33 @@ static void hook_glVertexAttribDivisor(GLuint index, GLuint divisor)
     }
     if (rgl_glVertexAttribDivisor)
         rgl_glVertexAttribDivisor(index, divisor);
+}
+
+/* vnext15 (17. sep 2026): log ALLE glReadPixels-kald der ikke kommer fra vores
+ * egne prober. Baggrund: Firefox' eget screenshot af siden viste en hvid flade
+ * hvor spillets canvas skulle være, mens proxyens postdraw-målinger viste at
+ * spillet tegnede korrekt. Med software-layers skal Firefox kopiere WebGL-
+ * canvas'et (836x470) ind i compositoren — formentlig netop med glReadPixels.
+ * Denne log svarer på om den kopiering overhovedet sker, og hvor ofte. */
+static void hook_glReadPixels(GLint x, GLint y, GLsizei w, GLsizei h,
+                              GLenum fmt, GLenum type, void *pixels)
+{
+    static unsigned long n = 0;
+    rgl_resolve_all();
+    n++;
+    if (n <= 20 || n % 200 == 0) {
+        GLint fbo = -1;
+        if (rgl_glGetIntegerv)
+            rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+        dlog_msg("readPixels #%lu %dx%d ved %d,%d fmt=0x%x type=0x%x fbo=%d",
+                 n, (int)w, (int)h, (int)x, (int)y, (unsigned)fmt,
+                 (unsigned)type, (int)fbo);
+    }
+    if (rgl_glReadPixels)
+        rgl_glReadPixels(x, y, w, h, fmt, type, pixels);
+    else
+        dlog_msg("readPixels #%lu: rgl_glReadPixels er NULL (sprunget over)",
+                 n);
 }
 
 /* ---- swap-readback (cyan-scene): prøvetag det aktuelle read-framebuffer
@@ -2273,6 +2300,8 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
         return (__eglMustCastToProperFunctionPointerType)hook_glTexStorage2D;
     if (name && !strcmp(name, "glDrawBuffers"))
         return (__eglMustCastToProperFunctionPointerType)hook_glDrawBuffers;
+    if (name && !strcmp(name, "glReadPixels"))
+        return (__eglMustCastToProperFunctionPointerType)hook_glReadPixels;
     if (name && !strcmp(name, "glVertexAttribDivisor"))
         return (__eglMustCastToProperFunctionPointerType)hook_glVertexAttribDivisor;
     if (name && !strcmp(name, "glVertexAttribDivisorANGLE"))

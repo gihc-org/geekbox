@@ -8,6 +8,16 @@
 
 ### Status 17. sep 2026 (fps-sporet)
 
+**Opdateret 19. sep 2026 (SLUTSTATUS):** spillet er **spilbart igen** —
+brugeren spillede 19. sep og satte det på pause, og spilområdet forblev synligt
+hele tiden. Opskriften er den samme som 8. sep: proxy **vnext12 `dcc0a68f`**
+(den TUNGE) + alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`.
+**Brug ikke `CYAN_LIGHT=1` når spillet skal ses** — uden de løbende readbacks
+frøser præsentationen (0,2 skærm-opdateringer/s mod 1,5). Målt 19. sep på en
+triviel side: tung vnext12 = 1,5/s, light = 0,2/s, Firefox uden hybris/EGL =
+3,2/s. Fps er stadig ~2,6 og er det åbne spor; se "God start"-prompten i
+`TODO.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`), men **fps er lav, og det er driveren** — ikke proxyen
   eller instrumenteringen. Målt: draw-kald koster ~0,10-0,14 ms
@@ -164,10 +174,13 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
   driver-rodårsagen til clearDepthf (isolerede prober viser at driveren er
   korrekt i alle enkelt-kontekst-tests; live drifter queryen til 0/skrald i
   ~2,5 % af målene → næste skridt er en fler-trådet probe).
-- **fps-sporet er afklaret 17. sep:** lav fps skyldes driverens kald-omkostning
-  + software-compositing, ikke proxy/instrumentering. Uafprøvede levers:
-  fullscreen-præsentation, 720p-opløsning (kun compositing-delen), og om
-  GPU-lag-vejen kan komme til at virke (i dag: sort/ingen præsentation).
+- **fps-sporet (ÅBENT, 19. sep):** lav fps skyldes driverens kald-omkostning
+  (~0,1 ms × ~2.000-2.700 kald/frame) + software-compositing (~173 ms for
+  1080p). Vigtig bivirkning målt 19. sep: de tunge proxies readbacks er det,
+  der holder præsentationen i gang — `CYAN_LIGHT` frøser skærmen. Næste
+  forsøg (prioriteret, se TODO-prompten): minimum-flush (`glFinish` eller 1x1
+  readback pr. frame i stedet for fulde readbacks), 720p-opløsning, mindre
+  vindue/canvas, WebGL-vej-prefs. Blå glitches er lagt til side indtil videre.
 - NTP/chrony (myinit-synk virker som plaster).
 - Næste kernel-byg (planlagt): `CONFIG_ANDROID_PARANOID_NETWORK` fra +
   bcmdhd (WiFi) — samme byggevej som dagens.
