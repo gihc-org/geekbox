@@ -18,6 +18,20 @@ triviel side: tung vnext12 = 1,5/s, light = 0,2/s, Firefox uden hybris/EGL =
 3,2/s. Fps er stadig ~2,6 og er det åbne spor; se "God start"-prompten i
 `TODO.md`.
 
+**Opdateret 19. sep 2026 ~22:25 (fps-sporet, målt i spillet):** spillet kører
+**2,4-2,6 fps** og skærmen opdaterer 2,4-2,6 gange/s (den følger spillet).
+Af de ~400 ms pr. frame er kun **~10 ms draw-kald** (~250-280 GL-kald/frame;
+driveren alene = 0,099 ms/kald, proxyens egne kald oveni = 0,004 ms/kald) og
+23-48 ms spillets egen JS — resten ligger uden for spillet. Bevis: en triviel
+CSS-side uden WebGL giver kun **1,1 skærm-opdateringer/s og 5,6 rAF/s** i samme
+opsætning. **Loftet er altså browserens compositing/præsentation på denne
+stak, ikke spillet, proxyen eller driverens kald-pris.** De tidligere
+"~2.000-2.700 kald pr. frame" var en JS-tællerfejl (~8x, rettet).
+Display-dansen kan nu slås fra (`SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1` i
+`system_shim.c`), så målinger ikke længere fryser X (fælde 47); 720p via
+`/sys/class/display/HDMI/mode` alene ødelagde billedet (fælde 48). Detaljer:
+`docs/log/2026-09-19-cyan-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`), men **fps er lav, og det er driveren** — ikke proxyen
   eller instrumenteringen. Målt: draw-kald koster ~0,10-0,14 ms
@@ -174,13 +188,17 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
   driver-rodårsagen til clearDepthf (isolerede prober viser at driveren er
   korrekt i alle enkelt-kontekst-tests; live drifter queryen til 0/skrald i
   ~2,5 % af målene → næste skridt er en fler-trådet probe).
-- **fps-sporet (ÅBENT, 19. sep):** lav fps skyldes driverens kald-omkostning
-  (~0,1 ms × ~2.000-2.700 kald/frame) + software-compositing (~173 ms for
-  1080p). Vigtig bivirkning målt 19. sep: de tunge proxies readbacks er det,
-  der holder præsentationen i gang — `CYAN_LIGHT` frøser skærmen. Næste
-  forsøg (prioriteret, se TODO-prompten): minimum-flush (`glFinish` eller 1x1
-  readback pr. frame i stedet for fulde readbacks), 720p-opløsning, mindre
-  vindue/canvas, WebGL-vej-prefs. Blå glitches er lagt til side indtil videre.
+- **fps-sporet (ÅBENT, 19. sep sen aften):** målt i spillet er loftet
+  **browserens compositing/præsentation** — en triviel CSS-side uden WebGL
+  giver kun 1,1 skærm-opdateringer/s og 5,6 rAF/s i samme opsætning, mens
+  spillet giver 2,4-2,6 fps/2,4-2,6 opdateringer/s. Draw-kald er kun ~10 ms af
+  de ~400 ms pr. frame (~250-280 kald/frame; 0,099 ms/kald i driveren, som
+  `drawbench_probe` måler uden om proxyen, + 0,004 ms/kald for proxyens egne
+  kald). Rettelse: de gamle "~2.000-2.700 kald/frame" var en JS-tællerfejl
+  (~8x). Næste forsøg (forslag, se TODO-prompten): compositing-vejen (mindre
+  vindue/canvas, `gfx.webrender.software`, `layers.acceleration.disabled`) og
+  720p gjort rigtigt (HDMI-mode + `fbset`/genstart). `CYAN_LIGHT` frøser
+  fortsat præsentationen. Blå glitches er lagt til side indtil videre.
 - NTP/chrony (myinit-synk virker som plaster).
 - Næste kernel-byg (planlagt): `CONFIG_ANDROID_PARANOID_NETWORK` fra +
   bcmdhd (WiFi) — samme byggevej som dagens.

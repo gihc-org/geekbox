@@ -865,12 +865,29 @@ X-skrivningen tilbage (målt 17. sep 2026). Brug dette som første fix når
 Målt 17. sep 2026 på 1.5-stakken: `glReadPixels` 1920x1080 = **173 ms**
 (≈5,8 fps), 836x470 = 34 ms, 300x150 = 4,9 ms; og et draw-kald koster
 **~0,10-0,14 ms** (`glDrawElementsInstanced` med primcount=1 = 0,098 ms).
-Subway Surfers laver ~2.000-2.700 kald pr. frame → alene kaldene er 250-370 ms
-pr. frame (~3 fps), og software-compositing lægger 173 ms oveni. Følge: spillet
-kører ~2-3 fps uanset proxy-instrumentering, og "spilområdet forsvinder" er
-sandsynligvis bare at browseren ikke får afleveret en færdig frame. Prober:
-`drawbench_probe.c`, `readback_probe.c`, `fb_fps.c` (alle i
-`devuan/gpu/eglplatform_x11/`).
+**RETTET 19. sep 2026 — "~2.000-2.700 kald pr. frame" var forkert.** Tallet kom
+fra JS-tælleren i preloaden, som var oppustet ~8x (samme WebGL-kontekst blev
+wrappet igen ved hvert `getContext`; 111 kald målt i én kørsel). Proxyens egen
+tælling (vnext15) siger **~250-280 draw-kald pr. frame** ved 2,5 fps —
+`drawbench_probe` måler desuden at det er **driveren alene** der koster 0,099 ms:
+proben linker direkte til `libEGL_r.so` og går uden om proxyen, og proxyens
+egne kald oveni er målt til **+0,004 ms/kald (8-11 ms/frame)** med probens
+variant 4-8. Kernelmodulets `gPVRDebugLevel` (1 i stedet for default 0x7)
+ændrede heller intet.
+
+**Det reelle billede (målt 19. sep 2026):** spillet kører 2,4-2,6 fps og
+skærmen opdaterer 2,4-2,6 gange/s (skærmen følger altså spillet). Af de ~400 ms
+pr. frame er kun **~10 ms draw-kald** og 23-48 ms spillets egen JS; resten
+ligger i browserens compositing/præsentation. Beviset: en **triviel CSS-side
+uden WebGL** (`raf_test.html`) i samme opsætning giver kun **1,1
+skærm-opdateringer/s og 5,6 rAF/s**. (17. sep-målingen af samme side gav 60
+rAF/s, men dér var skærmen frosset, så rAF løb frit uden backpressure — når
+præsentationen virker, drosles rAF til samme lave rate.)
+
+Følge: fps-loftet ligger i browserens software-compositing på denne stak
+(software-layers + fbdev + hybris-EGL), ikke i spillet, proxyen eller
+driverens kald-pris. Prober: `drawbench_probe.c`, `readback_probe.c`,
+`fb_fps.c`, `cyan_ab_run.sh` (alle i `devuan/gpu/eglplatform_x11/`).
 
 ### Fælde 46: `CYAN_LIGHT=1` (uden readbacks) frøser præsentationen
 Målt 19. sep 2026 på den trivielle testsides `raf_test.html` (samme
@@ -892,6 +909,55 @@ ses; `CYAN_LIGHT=1` må kun bruges til isolerede målinger.
 Hypotese (ikke bevist): det er flush-effekten (readbacks/`glFinish`) der får
 den færdige frame ud til skærmen på denne driver. Kan testes med et billigt
 `glFinish` pr. frame i stedet for fulde readbacks.
+
+### Fælde 47: Display-dansen ved Firefox-start kan slå X's fb-skrivning ihjel — og kan slås fra
+Hybris' EGL-init kører ved hver Firefox-start en "display-dans" via `system()`:
+`find /sys/class/display/*/enable | xargs … echo 0/1` **og** `chvt` frem og
+tilbage (ses som `[system-shim]`-linjer, og i dmesg som `hdmi remove from
+lcdc0` → `connect to lcdc0`). Målt 19. sep 2026: efter nok gentagelser holder X
+op med at skrive til framebufferen — skærmen står stille, musemarkøren virker,
+og et direkte skriv til `/dev/fb0` ses stadig på skærmen.
+
+**Fix (opt-in, ingen systemfiler røres):** vores egen `devuan/gpu/system_shim.c`
+har nu
+
+```bash
+SHIM_NO_DISPLAY_DANCE=1   # springer "echo 0/1 > /sys/class/display/*/enable" over
+SHIM_NO_CHVT=1            # springer chvt-kaldene over (fælde 19)
+```
+
+Uden env er shim'en uændret. Med begge sat kørte alle målekørsler 19. sep aften
+uden frysning (fb_fps målte 2,4-2,6 opdateringer/s hele vejen).
+`start_cyan_probe.sh` sender begge videre til Firefox. Livlinen er fortsat
+`service nodm restart` (giver X's skrivning tilbage uden genstart af boksen).
+
+**Vigtigt: en tom skærm er ikke det samme som en frosset skærm.** Et
+skrivebord uden animationer opdaterer 0 gange/s uden at være i stykker — se
+fælde 48 om den falske vagt.
+
+### Fælde 48: Tre målefælder fra 19. sep (JS-wrapper-multiplikation, falsk frysnings-vagt, 720p-mode uden fbset)
+- **JS-wrapperne blev lagt på samme kontekst igen og igen.**
+  `HTMLCanvasElement.prototype.getContext` kaldes mange gange på samme canvas
+  (111 kald målt i én kørsel), og preloaden wrappede `drawArrays`/`drawElements`
+  på det returnerede kontekst-objekt hver gang. Resultat: tælleren viste
+  `draws=50.652/10 s` mod proxyens 620/s — **~8x for højt**, og draw-tiden
+  (`drawms`) blev oppustet tilsvarende. Fix: wrap kun én gang
+  (`if(r&&r.drawArrays&&!r.__cywrapdone){r.__cywrapdone=1; …}`) — herefter
+  stemmer JS- og GL-tallene. **Konsekvens: alle kald-tal fra preloaden før
+  19. sep 2026 (fx "2.000-2.700 draws/frame") skal ikke bruges.**
+- **"Frosset skærm"-vagten gav falsk alarm.** Et `xmessage`-vindue som
+  testvinkel viste sig ikke at blive oprettet (0 vinduer i `xwininfo`), så
+  framebufferen stod naturligt stille, og scriptet afbrød en frisk kørsel med
+  "FROSSET". Fix: fjern vindue-testen, brug VT-tjekket (aktiv VT vs. X's
+  `vt`-argument) og husk at 0 opdateringer/s er normalt på et stille
+  skrivebord.
+- **720p via `/sys/class/display/HDMI/mode` alene ødelægger billedet.**
+  `echo 1280x720p-60 > /sys/class/display/HDMI/mode` ændrer LCDC's timing,
+  men **ikke** fb0's geometri (`fbset` blev ved med at vise 1920x1080,
+  LineLength 3840). Skærmen viste lange streger, og X holdt op med at skrive.
+  Rullet tilbage til `1920x1080p-60` + `service nodm restart`. Skal 720p
+  prøves igen, skal fb-geometrien ændres i samme omgang (fx `fbset`) eller
+  boksen genstartes, så X og scanout er enige.
 
 ---
 

@@ -253,19 +253,35 @@ def main():
         # rAF-tælling pr. 10 s = opnået frame-rate i browseren. NB: eglSwap-
         # Buffers kaldes IKKE i denne konfiguration (software-layers), så
         # målingen skal ligge i JS-laget.
+        # 19. sep 2026 (fps-sporet): rAF-linjen maaler nu OGSAA hvor lang tid
+        # sidens egen frame bruger, og hvor meget af den der ligger inde i
+        # draw-kaldene. Sammenholdt med intervallet (raf=N/10 s) deler det
+        # frame-budgettet i "spillets arbejde" mod "browser/compositor".
+        # NB: __raf0 fanges foer patchningen, saa vores egen taelle-loekke
+        # ikke selv bliver maalt.
         pre_measure = (
+            "var __raf0=window.requestAnimationFrame;"
+            "window.__rafwork=0;window.__rafn=0;"
+            "if(__raf0){window.requestAnimationFrame=function(cb){"
+            "return __raf0.call(window,function(ts){var __a=performance.now();"
+            "try{return cb(ts);}finally{"
+            "window.__rafwork+=performance.now()-__a;window.__rafn++;}});};}"
             "window.__frames=0;"
             "(function(){function t(){window.__frames++;"
-            "try{requestAnimationFrame(t);}catch(e){}}"
-            "try{requestAnimationFrame(t);}catch(e){}})();"
+            "try{(__raf0||requestAnimationFrame).call(window,t);}catch(e){}}"
+            "try{(__raf0||requestAnimationFrame).call(window,t);}catch(e){}})();"
             "setInterval(function(){"
             "try{dump('FPS tr='+Math.round((window.performance&&"
             "performance.now?performance.now():0)/1000)+'s raf='+"
             "window.__frames+'/10s draws='+"
-            "(window.__dc|0)+' vis='+document.visibilityState+"
+            "(window.__dc|0)+' rafwork='+(window.__rafn?"
+            "Math.round(window.__rafwork/window.__rafn):0)+'ms/'+"
+            "window.__rafn+'f drawms='+Math.round(window.__drawms||0)+'ms vis='+"
+            "document.visibilityState+"
             "' focus='+(document.hasFocus?document.hasFocus():'?')+"
             "' href='+String(location.href).slice(0,70)+'\\n');"
-            "window.__frames=0;"
+            "window.__frames=0;window.__rafwork=0;window.__rafn=0;"
+            "window.__drawms=0;"
             "if(window.__dc)window.__dc=0;}catch(x){}},10000);"
         )
         # preloadmin: KUN alpha-shim + loseContext-blok (ingen per-draw-JS-
@@ -346,15 +362,26 @@ def main():
             "restoreContext:function(){},__blokeret:true};}"
             "return __ge(n);};"
             "}}catch(e){}"
-            "try{if(r&&r.drawArrays){"
+            # 19. sep 2026: getContext kaldes MANGE gange paa samme canvas (111
+            # kald i én koersel maalt i loggen), og hver gang blev wrapperne
+            # lagt oven paa det SAMME kontekst-objekt. Det gjorde JS-taellerne
+            # ~8x for store (draws=50652/10 s mod proxyens 620/s). Vagten
+            # nedenfor wrapper hver kontekst praecis én gang.
+            "try{if(r&&r.drawArrays&&!r.__cywrapdone){r.__cywrapdone=1;"
             "var __da=r.drawArrays.bind(r),__dc=0;"
-            "r.drawArrays=function(m,f,c){__dc++;window.__dc=(window.__dc|0)+1;"
+            "r.drawArrays=function(m,f,c){var __a=performance.now();"
+            "__dc++;window.__dc=(window.__dc|0)+1;"
             "if(__dc<=10||__dc%300===0){try{dump('DRAWARRAYS #'+__dc+' mode='+m+' first='+f+' count='+c+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
-            "return __da(m,f,c);};"
+            "var __rv=__da(m,f,c);"
+            "window.__drawms=(window.__drawms||0)+(performance.now()-__a);"
+            "return __rv;};"
             "var __de=r.drawElements.bind(r);"
-            "r.drawElements=function(m,c,t,i){__dc++;window.__dc=(window.__dc|0)+1;"
+            "r.drawElements=function(m,c,t,i){var __a=performance.now();"
+            "__dc++;window.__dc=(window.__dc|0)+1;"
             "if(__dc<=10||__dc%300===0){try{dump('DRAWELEMENTS #'+__dc+' mode='+m+' count='+c+' type='+t+' prog='+r.getParameter(r.CURRENT_PROGRAM)+'\\n');}catch(x){}}"
-            "return __de(m,c,t,i);};"
+            "var __rv=__de(m,c,t,i);"
+            "window.__drawms=(window.__drawms||0)+(performance.now()-__a);"
+            "return __rv;};"
             "var __cl=r.clear.bind(r),__cc=0;"
             "r.clear=function(m){__cc++;"
             "if(__cc<=5||__cc%200===0){try{dump('CLEAR #'+__cc+' mask='+m+'\\n');}catch(x){}}"

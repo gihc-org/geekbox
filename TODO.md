@@ -122,7 +122,40 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 19. sep 2026 aften) — NUVÆRENDE:**
+- **God start i en ny session (FPS-sporet, 19. sep 2026 SEN AFTEN) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-09-19-cyan-fps.md` (status + checkpoint 21:30-22:25),
+  `docs/faeller.md` fælde 45-48 og `OVERBLIK.md`. STATUS 19. sep ~22:25:
+  spillet kører **2,4-2,6 fps** og skærmen opdaterer 2,4-2,6 gange/s (den
+  følger spillet). **Loftet er browserens compositing/præsentation, ikke
+  spillet:** en triviel CSS-side uden WebGL giver kun **1,1 skærm-opdateringer/s
+  og 5,6 rAF/s** i samme opsætning. Af de ~400 ms pr. frame er kun ~10 ms
+  draw-kald (~250-280 GL-kald/frame; driveren alene koster 0,099 ms/kald, og
+  proxyens kald oveni koster 0,004 ms/kald) og 23-48 ms spillets egen JS.
+  De gamle "2.000-2.700 kald pr. frame" var en JS-tællerfejl (~8x, nu rettet).
+  MÅL MED: `fb_fps` (skærm-opdateringer/s) + rAF-linjen (`FPS tr=` med
+  `rafwork=`/`drawms=`) + `cyan_ab_run.sh` (én kørsel, fokus-fix, VT-vagt,
+  oprydning).
+  KØR SÅDAN: `ssh -i ~/.ssh/geekbox_key root@<ip> 'SHIM_NO_DISPLAY_DANCE=1
+  SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 bash /root/cyan_ab_run.sh <tag> 110 "" ""'`
+  — **de to SHIM-variable er vigtige: uden dem kan hybris' display-dans slå
+  X's fb-skrivning ihjel (fælde 44/47), og livlinen er `service nodm restart`.**
+  NÆSTE FORSØG (forslag, ikke aftalt): (1) compositing-vejen — mindre
+  vindue/canvas målt igen med de rettede tal, `gfx.webrender.software=true`,
+  `layers.acceleration.disabled` til/fra (GPU-lag gav sort skærm 17. sep);
+  (2) 720p GJORT RIGTIGT: skift HDMI-mode OG fb-geometri (`fbset`) eller
+  genstart, så X og scanout er enige — `echo 1280x720p-60 >
+  /sys/class/display/HDMI/mode` alene giver streget billede (fælde 48);
+  (3) hvis intet hjælper: skriv loftet ind som endeligt resultat.
+  BRING-UP efter strøm: `bash devuan/find_box.sh` → ur-sync, `insmod
+  /root/pvrsrvkm_leddaz.ko` + `sh /root/gpu_up.sh`, bindapi-lap, `/dev/sw_sync`
+  0666, proxy ind: `cp /root/egl_proxy_dcc0a68f.so.bak
+  /opt/hybris/libEGL.so.1.0.0` (vnext12, spillbar) eller byg repoets
+  `egl_proxy.c` (= vnext15, md5 `63303776`, samme adfærd uden `CYAN_LIGHT`).
+  FÆLDER (kort): brug ikke `CYAN_LIGHT` når billedet skal ses (46); shim-ventilerne
+  ved måling (47); `pkill -f` dræber din ssh-session — brug `kill_bidi.sh`/`-x` (41);
+  BiDi = én session (42); testsider i /tmp (43); 0 opdateringer/s på et stille
+  skrivebord er normalt (48)."*
+- **God start i en ny session (FPS-sporet, 19. sep 2026 aften) — HISTORISK:**
   *"Læs `OVERBLIK.md`, derefter `docs/log/2026-09-17-cyan-fps.md` (SLUTSTATUS
   19. sep + checkpoints 19. sep 20:15 og 21:00) og `docs/faeller.md` fælde
   41-46. STATUS: Subway Surfers ER spilbart igen (bruger-bekræftet 19. sep)
@@ -133,6 +166,10 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   MÅLET NU: hæve fps (i dag ~2,6). Kendte loft: draw-kald 0,098-0,140 ms ×
   ~2.000-2.700 kald pr. frame = 250-370 ms/frame, plus 1080p-software-
   composite ~173 ms (readback 836x470 = 34 ms). `eglSwapBuffers` kaldes aldrig.
+  **RETTET 19. sep 2026 sen aften: "~2.000-2.700 kald pr. frame" var en
+  JS-tællerfejl (~8x). Proxyen måler ~250-280 GL-kald/frame = ~10 ms/frame, og
+  loftet er browserens compositing — se `docs/log/2026-09-19-cyan-fps.md` og
+  fælde 45/48.**
   MÅL MED: `fb_fps` (skærm-opdateringer/s, følger ypan) + `FPS tr=`-linjen
   (rAF/10 s fra preloaden) + `drawbench_probe`/`readback_probe` for enkeltdele.
   NÆSTE FORSØG, i prioriteret rækkefølge (ikke aftalt endnu — tag dem med
