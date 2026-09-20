@@ -122,7 +122,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 19. sep 2026 SEN AFTEN) — NUVÆRENDE:**
+- **God start i en ny session (FPS-sporet, 19. sep 2026 SEN AFTEN) — BRUGT
+  20. sep 2026; tråden kører videre i `docs/log/2026-09-20-cyan-fps.md`:
   *"Læs `docs/log/2026-09-19-cyan-fps.md` (status + checkpoint 21:30-22:25),
   `docs/faeller.md` fælde 45-48 og `OVERBLIK.md`. STATUS 19. sep ~22:25:
   spillet kører **2,4-2,6 fps** og skærmen opdaterer 2,4-2,6 gange/s (den
