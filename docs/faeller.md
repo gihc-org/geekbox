@@ -959,6 +959,70 @@ fælde 48 om den falske vagt.
   prøves igen, skal fb-geometrien ændres i samme omgang (fx `fbset`) eller
   boksen genstartes, så X og scanout er enige.
 
+### Fælde 49: `fb_fps` med 200 ms poll kan ikke måle over ~2-5/s — og en flyt-boks måler det forkerte
+Målt 20. sep 2026. `fb_fps` sammenligner hver bloks indhold med **forrige poll**
+og tæller "skift". Med poll-intervallet `T` (standard 200 ms, `argv[3]`) kan
+tallet derfor **højst blive 1/T = 5 skift/s**, uanset hvor hurtigt skærmen
+opdaterer. Alle "1,1-2,6 skærm-opdateringer/s"-tal fra 17.-19. sep ligger lige
+under den grænse og er derfor ikke til at skelne fra hinanden.
+
+Værre: på en side hvor kun et **lille element flytter sig** (fx den gamle
+`raf_test.html`, der flytter en 180x180-boks), tæller værktøjet i praksis
+**hvor længe boksen opholder sig i én blok** — ikke hvor ofte skærmen
+opdateres. Samme side og samme vindue gav 1,9/s ved 200 ms poll og 3,6/s ved
+50 ms poll: begge tal er artefakter af hvor boksen var, ikke en rate.
+
+**Brug i stedet:** en kontrolside der gentegner **hele vinduet** hver frame
+(`raf_test_full.html`), og et poll-interval der er mindst 10x hurtigere end
+den rate man vil måle (`POLL=20` → op til 50/s). Så bliver hver præsenteret
+frame et skift i alle blokke, og "skift/s" = præsentationsraten. Målt 20. sep:
+fuld flade 1920x1054 = **2,4/s**, 1000x600 = **10,3/s** — og rAF-linjen viste
+samme tal (2,3/s og 10,2/s), altså når hver frame faktisk frem til skærmen.
+
+### Fælde 50: `x_focus` blev ALDRIG kørt — "env: '/root/x_focus': Permission denied"
+Målt 20. sep 2026. `cyan_ab_run.sh` startede værktøjet med
+`runuser -u kristian -- env … /root/x_focus firefox`. `/root` er 0700, så
+brugeren `kristian` kan ikke engang eksekvere filen: `env:
+'/root/x_focus': Permission denied` (exit 126). Fejlen blev dæmpet til
+"x_focus fejlede", så **alle målinger til og med 20. sep har haft
+`document.hasFocus()=false`**. Notatets forklaring ("der er ingen
+`/home/kristian/.Xauthority`") var forkert — X tager imod root uden
+authority-fil (hverken `/root/.Xauthority` eller `~/.Xauthority` findes).
+
+Fix: kør værktøjet direkte som root:
+`DISPLAY=:0 /root/x_focus -big firefox`. X bekræfter herefter fokus på
+hovedvinduet, og `xprop -root _NET_ACTIVE_WINDOW` peger på det.
+
+**Men:** selv med korrekt X-fokus på hovedvinduet melder Firefox fortsat
+`document.hasFocus()=false` på denne stak. Det er altså Firefox' egen
+opfattelse, ikke X'ens — og det er ikke det der sætter loftet: den fuldt
+gentegnede kontrolside kørte 10,2 rAF/s i et 1000x600-vindue med
+`focus=false`. 17. sep-forskellen (1,9 → 8,9 skift/s) skyldtes derfor
+sandsynligvis at vinduet blev **rejst**, ikke fokus.
+
+### Fælde 51: et maksimeret vindue kan ikke ændres med XMoveResizeWindow — og værktøjerne ramte det forkerte vindue
+Målt 20. sep 2026. To ting spillede sammen:
+
+- **WM'en tager størrelsen tilbage.** FireFox-vinduet stod maksimeret (openbox
+  i LXDE). `x_resize -big firefox 1000 600` bad om 1000x600, og vinduet var
+  **straks 1920x1054 igen** (`er nu 1920x1054`). Firefox selv havde
+  `"sizemode":"maximized"` i profilens `xulstore.json` (plus en gemt
+  990x590-størrelse fra 17. sep).
+  **Fix:** med Firefox lukket, sæt `sizemode` til `normal` og `width`/`height`
+  i `/home/kristian/ffprof/xulstore.json` **før** start (læses ved opstart).
+  `cyan_ab_run.sh` gør det nu med `WIN="<b>x<h>"` og genskaber originalen ved
+  afslutning.
+- **Det forkerte vindue blev ramt.** Firefox har flere hjælpevinduer hvis
+  WM_CLASS indeholder `firefox-esr` (200x200 og 10x10), og de ligger **før**
+  hovedvinduet i en dybde-først-søgning. Både `x_resize` og `x_focus` tog
+  derfor et hjælpevindue. **Fix:** begge har nu `-big`, der vælger det største
+  match (hovedvinduet er 1010x610 mod hjælpevinduernes 200x200).
+
+Følge: **17. sep-konklusionen "et mindre vindue hjalp ikke" er ugyldig** — der
+blev målt på et vindue der aldrig blev mindre. Med `WIN=1000 600` +
+`raf_test_full.html` måltes 20. sep 10,3 skærm-opdateringer/s mod 2,4/s på
+fuld flade (samme side, samme opsætning).
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

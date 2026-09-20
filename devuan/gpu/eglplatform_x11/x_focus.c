@@ -8,7 +8,15 @@
  *
  * Byg/koer paa boksen:
  *   gcc -O2 -o /root/x_focus /root/x_focus.c -lX11
- *   DISPLAY=:0 /root/x_focus [wmklasse-substreng]
+ *   DISPLAY=:0 /root/x_focus [-big] [wmklasse-substreng]
+ *
+ * 20. sep 2026: to fejl fundet i de hidtidige maalinger:
+ *   (1) scriptet koerte værktøjet via "runuser -u kristian", men /root er 0700,
+ *       saa det fejlede med "env: '/root/x_focus': Permission denied" — fokus
+ *       blev ALDRIG sat (det var ikke Xauthority, som notatet antog). X tager
+ *       imod root uden .Xauthority, saa koer det som root i stedet.
+ *   (2) uden -big tages det foerste vindue hvis klasse indeholder "firefox" —
+ *       Firefox' hjaelpevinduer (200x200) ligger foer hovedvinduet. Brug -big.
  */
 #define _GNU_SOURCE
 #include <X11/Xatom.h>
@@ -54,24 +62,84 @@ static Window find_window(Display *d, Window w, const char *needle, int depth)
     return found;
 }
 
+/* Stoerste vindue hvis navn/klasse matcher (hovedvinduet, ikke hjaelpevinduerne). */
+static Window find_biggest(Display *d, Window w, const char *needle, int depth,
+                           unsigned long *best)
+{
+    Window root, parent, *kids = NULL;
+    unsigned n = 0;
+    Window found = 0;
+    int hit = 0;
+    char *name = NULL;
+    XWindowAttributes at;
+
+    if (XFetchName(d, w, &name) && name) {
+        if (strstr(name, needle))
+            hit = 1;
+        XFree(name);
+    }
+    if (!hit) {
+        XClassHint ch;
+        memset(&ch, 0, sizeof ch);
+        if (XGetClassHint(d, w, &ch)) {
+            if (ch.res_name && strcasestr(ch.res_name, needle))
+                hit = 1;
+            if (ch.res_class && strcasestr(ch.res_class, needle))
+                hit = 1;
+            if (ch.res_name)
+                XFree(ch.res_name);
+            if (ch.res_class)
+                XFree(ch.res_class);
+        }
+    }
+    if (hit && XGetWindowAttributes(d, w, &at) && !at.override_redirect) {
+        unsigned long area = (unsigned long)at.width * (unsigned long)at.height;
+        if (area > *best) {
+            *best = area;
+            found = w;
+        }
+    }
+    if (depth <= 6 && XQueryTree(d, w, &root, &parent, &kids, &n) && kids) {
+        for (unsigned i = 0; i < n; i++) {
+            Window c = find_biggest(d, kids[i], needle, depth + 1, best);
+            if (c)
+                found = c;
+        }
+        XFree(kids);
+    }
+    return found;
+}
+
 int main(int argc, char **argv)
 {
-    const char *needle = argc > 1 ? argv[1] : "firefox";
+    int big = 0;
+    int a = 1;
+
+    if (argc > 1 && strcmp(argv[1], "-big") == 0) {
+        big = 1;
+        a = 2;
+    }
+    const char *needle = argc > a ? argv[a] : "firefox";
     Display *d = XOpenDisplay(NULL);
     if (!d) {
         fprintf(stderr, "kan ikke aabne DISPLAY\n");
         return 1;
     }
     Window root = DefaultRootWindow(d);
-    Window w = find_window(d, root, needle, 0);
+    Window w;
+    if (big) {
+        unsigned long best = 0;
+        w = find_biggest(d, root, needle, 0, &best);
+    } else {
+        w = find_window(d, root, needle, 0);
+    }
     if (!w) {
         fprintf(stderr, "fandt intet vindue med '%s'\n", needle);
         return 2;
     }
     XRaiseWindow(d, w);
-    XSetInputFocus(d, w, RevertToParent, CurrentTime);
-    XFlush(d);
-    /* Bed ogsaa WM'en (openbox) om at aktivere vinduet. */
+    /* Bed foerst WM'en (openbox) om at aktivere vinduet, og saet derefter
+     * inputfokus direkte — openbox kan naa at flytte fokus efter XRaise. */
     Atom net_active = XInternAtom(d, "_NET_ACTIVE_WINDOW", False);
     XEvent ev;
     memset(&ev, 0, sizeof ev);
@@ -84,8 +152,17 @@ int main(int argc, char **argv)
     XSendEvent(d, root, False,
                SubstructureRedirectMask | SubstructureNotifyMask, &ev);
     XFlush(d);
-    printf("fokus sat paa vindue 0x%lx (soegte '%s')\n", (unsigned long)w,
-           needle);
+    XSync(d, False);
+    XSetInputFocus(d, w, RevertToParent, CurrentTime);
+    XFlush(d);
+    XSync(d, False);
+    Window focused = None;
+    int revert = 0;
+    XGetInputFocus(d, &focused, &revert);
+    XWindowAttributes at;
+    XGetWindowAttributes(d, w, &at);
+    printf("fokus sat paa vindue 0x%lx (%dx%d, soegte '%s'); X siger fokus=0x%lx\n",
+           (unsigned long)w, at.width, at.height, needle, (unsigned long)focused);
     XCloseDisplay(d);
     return 0;
 }

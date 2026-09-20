@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>raf-test-full</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+</style>
+</head>
+<body>
+<script>
+/* Kontrolside til praesentationsraten (20. sep 2026).
+ *
+ * Hvorfor: raf_test.html flytter kun en lille boks, og saa maaler fb_fps i
+ * virkeligheden hvor LAENGE boksen er inde i en blok — ikke hvor ofte skaermen
+ * opdateres (tallet maetter ved poll-raten). Denne side gentegner i stedet
+ * HELE vinduet hver frame (baggrundsfarven skifter), saa hver praesenteret
+ * frame aendrer ALLE blokke. Blok-taellingen bliver dermed et aegte maal for
+ * hvor mange frames pr. sekund der naar skaermen — ned til poll-intervallet,
+ * som er den nederste graense (brug POLL=20 for at kunne maale op til 50/s).
+ *
+ * Modellen svarer til spillets fuldt gentegnede canvas.
+ */
+var n = 0, el = document.body;
+function loop() {
+  n++;
+  el.style.background = 'rgb(' + (n % 256) + ',' + ((n * 7) % 256) + ',' +
+                        ((n * 13) % 256) + ')';
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

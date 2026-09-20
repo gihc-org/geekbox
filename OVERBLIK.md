@@ -32,13 +32,29 @@ Display-dansen kan nu slås fra (`SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1` i
 `/sys/class/display/HDMI/mode` alene ødelagde billedet (fælde 48). Detaljer:
 `docs/log/2026-09-19-cyan-fps.md`.
 
+**Opdateret 20. sep 2026 ~23:00 (areal-testen kørt):** loftet er
+**arealbestemt præsentation**. Målt med en kontrolside der gentegner hele
+vinduet hver frame (`raf_test_full.html`, poll hver 20 ms, så hver præsenteret
+frame ændrer alle blokke): **1920x1054 = 2,4 skærm-opdateringer/s** mod
+**1000x600 = 10,3/s** — 4,4x for 3,4x areal, dvs. ~0,2 µs pr. pixel og
+~5-6 Mpx/s gennem software-præsentationen. rAF-linjen viste samme tal, så hver
+frame når skærmen. **Spillets 2,4-2,6 fps ved 1080p er derfor
+præsentationsloftet (~430 ms/frame), ikke spillet.** Forventet gevinst: 720p
+(0,92 Mpx) ~2,2x → ~5 fps; et 1000x600-vindue ~3,4x → ~10 fps.
+Tre målefælder blev fundet og rettet undervejs (fælde 49-51): `fb_fps` med
+200 ms poll kan ikke måle over ~2-5/s (og den gamle flyt-boks-side målte
+opholdstid, ikke rate); `x_focus` blev **aldrig** kørt (`runuser -u kristian`
+mod en 0700-`/root` → Permission denied); og et maksimeret vindue kan ikke
+skaleres med `XMoveResizeWindow` — størrelsen skal sættes i profilens
+`xulstore.json` før start. **17. sep-konklusionen "et mindre vindue hjalp
+ikke" er derfor ugyldig.** Detaljer: `docs/log/2026-09-20-cyan-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
-  `CYAN_DEPTHCLEAR=1`), men **fps er lav, og det er driveren** — ikke proxyen
-  eller instrumenteringen. Målt: draw-kald koster ~0,10-0,14 ms
-  (`glDrawElementsInstanced` primcount=1 = 0,098 ms), og spillet laver
-  ~2.000-2.700 kald pr. frame → 250-370 ms pr. frame alene på kald. Dertil
-  software-compositing (1080p-readback = 173 ms). Tung og light proxy måler
-  identisk (1,5 fps begge), og et mindre vindue hjalp ikke.
+  `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
+  0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
+  kald +0,004 ms/kald. (De gamle "~2.000-2.700 kald pr. frame" var en
+  JS-tællerfejl ~8x, og "mindre vindue hjalp ikke" blev målt på et vindue der
+  aldrig blev mindre — se fælde 49-51.)
 - **`eglSwapBuffers` kaldes ALDRIG** med software-layers → fps skal måles i
   JS-laget (rAF) eller på skærmen (`fb_fps`), ikke i GL-laget.
 - **"Spilområdet forsvinder"** = browseren får ikke afleveret frames: to

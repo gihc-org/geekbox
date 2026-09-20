@@ -9,6 +9,14 @@
  * Byg/koer paa boksen:
  *   gcc -O2 -o /root/x_resize /root/x_resize.c -lX11
  *   DISPLAY=:0 /root/x_resize firefox 1000 600 [x y]
+ *
+ * 20. sep 2026: uden -big tages det FOERSTE vindue hvis navn/klasse indeholder
+ * "firefox" i dybde-foerst-soegningen. Firefox har flere smaa hjaelpevinduer
+ * (200x200 og 10x10, klasse "firefox-esr"), saa det ramte ikke altid
+ * hovedvinduet — og 17. sep-konklusionen "mindre vindue hjalp ikke" kan derfor
+ * vaere maalt paa det forkerte vindue. Brug -big: den tager det STOERSTE match
+ * (hovedvinduet er 1920x1080 mod hjaelpevinduernes 200x200).
+ * Man kan ogsaa give et vindues-id direkte (fx 0x1800056) i stedet for navnet.
  */
 #define _GNU_SOURCE
 #include <X11/Xlib.h>
@@ -53,22 +61,88 @@ static Window find_window(Display *d, Window w, const char *needle, int depth)
     return found;
 }
 
+/* Stoerste vindue hvis navn/klasse matcher. *best er den stoerste areal set
+ * indtil nu (deles paa tvaers af rekursionen). */
+static Window find_biggest(Display *d, Window w, const char *needle, int depth,
+                           unsigned long *best)
+{
+    Window root, parent, *kids = NULL;
+    unsigned n = 0;
+    Window found = 0;
+    int hit = 0;
+    char *name = NULL;
+    XWindowAttributes at;
+
+    if (XFetchName(d, w, &name) && name) {
+        if (strcasestr(name, needle))
+            hit = 1;
+        XFree(name);
+    }
+    if (!hit) {
+        XClassHint ch;
+        memset(&ch, 0, sizeof ch);
+        if (XGetClassHint(d, w, &ch)) {
+            if (ch.res_name && strcasestr(ch.res_name, needle))
+                hit = 1;
+            if (ch.res_class && strcasestr(ch.res_class, needle))
+                hit = 1;
+            if (ch.res_name)
+                XFree(ch.res_name);
+            if (ch.res_class)
+                XFree(ch.res_class);
+        }
+    }
+    if (hit && XGetWindowAttributes(d, w, &at) && !at.override_redirect) {
+        unsigned long area = (unsigned long)at.width * (unsigned long)at.height;
+        if (area > *best) {
+            *best = area;
+            found = w;
+        }
+    }
+    if (depth <= 6 && XQueryTree(d, w, &root, &parent, &kids, &n) && kids) {
+        for (unsigned i = 0; i < n; i++) {
+            Window c = find_biggest(d, kids[i], needle, depth + 1, best);
+            if (c)
+                found = c;
+        }
+        XFree(kids);
+    }
+    return found;
+}
+
 int main(int argc, char **argv)
 {
-    if (argc < 4) {
-        fprintf(stderr, "brug: %s <wmklasse> <bredde> <hoejde> [x y]\n", argv[0]);
+    int big = 0;
+    int a = 1;
+
+    if (argc > 1 && strcmp(argv[1], "-big") == 0) {
+        big = 1;
+        a = 2;
+    }
+    if (argc < a + 3) {
+        fprintf(stderr,
+                "brug: %s [-big] <wmklasse|vindues-id> <bredde> <hoejde> [x y]\n",
+                argv[0]);
         return 2;
     }
-    const char *needle = argv[1];
-    int w = atoi(argv[2]), h = atoi(argv[3]);
-    int x = argc > 5 ? atoi(argv[4]) : 0;
-    int y = argc > 5 ? atoi(argv[5]) : 0;
+    const char *needle = argv[a];
+    int w = atoi(argv[a + 1]), h = atoi(argv[a + 2]);
+    int x = argc > a + 4 ? atoi(argv[a + 3]) : 0;
+    int y = argc > a + 4 ? atoi(argv[a + 4]) : 0;
     Display *d = XOpenDisplay(NULL);
     if (!d) {
         fprintf(stderr, "kan ikke aabne DISPLAY\n");
         return 1;
     }
-    Window win = find_window(d, DefaultRootWindow(d), needle, 0);
+    Window win;
+    if (needle[0] == '0' && (needle[1] == 'x' || needle[1] == 'X')) {
+        win = (Window)strtoul(needle, NULL, 16);   /* vindues-id direkte */
+    } else if (big) {
+        unsigned long best = 0;
+        win = find_biggest(d, DefaultRootWindow(d), needle, 0, &best);
+    } else {
+        win = find_window(d, DefaultRootWindow(d), needle, 0);
+    }
     if (!win) {
         fprintf(stderr, "fandt intet vindue med '%s'\n", needle);
         return 2;

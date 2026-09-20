@@ -104,6 +104,19 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   Historik + målinger: `docs/log/2026-09-08-cyan-scene.md`,
   `docs/log/2026-08-27-cyan-scene-handover.md` (virkende konfiguration).
 - [x] **Lav fps: årsagen fundet 17. sep 2026 (driveren, ikke proxyen).**
+  **RETTET 20. sep 2026 (areal-testen):** konklusionen herover holder ikke.
+  Loftet er **arealbestemt præsentation**: en kontrolside der gentegner hele
+  vinduet hver frame giver 2,4 skærm-opdateringer/s ved 1920x1054 og 10,3/s i
+  et 1000x600-vindue (4,4x for 3,4x areal, ~0,2 µs/pixel). Spillets 2,4-2,6 fps
+  ved 1080p ER altså præsentationsloftet, ikke driveren. Målefælderne der
+  skjulte det: `fb_fps` med 200 ms poll kan ikke måle over ~2-5/s,
+  `x_focus` blev aldrig kørt (0700-`/root` + `runuser -u kristian`), og et
+  maksimeret vindue kan ikke skaleres med `XMoveResizeWindow` (brug
+  `xulstore.json`). Se `docs/faeller.md` fælde 49-51 og
+  `docs/log/2026-09-20-cyan-fps.md`.
+  **Næste (afventer brugerens valg):** spillet i et mindre vindue
+  (`WIN="1280 720"`) for at bekræfte gevinsten end-to-end, eller 720p "gjort
+  rigtigt" (HDMI-mode + `fbset`/genstart).
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
   ændrede intet. Målt med nye prober: draw-kald koster **0,098 ms**
