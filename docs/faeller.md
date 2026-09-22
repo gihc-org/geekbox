@@ -883,6 +883,11 @@ uden WebGL** (`raf_test.html`) i samme opsætning giver kun **1,1
 skærm-opdateringer/s og 5,6 rAF/s**. (17. sep-målingen af samme side gav 60
 rAF/s, men dér var skærmen frosset, så rAF løb frit uden backpressure — når
 præsentationen virker, drosles rAF til samme lave rate.)
+**NB (20. sep 2026):** "1,1 skærm-opdateringer/s" er ikke en rate — tallet kom
+fra en 200 ms-poll på en flyt-boks-side (fælde 49). Den rettede måling med en
+fuldt gentegnet side og 20 ms poll giver **2,4/s ved 1920x1054 og 10,3/s i et
+1000x600-vindue** (fælde 51). Konklusionen nedenfor står dog ved magt: loftet
+er præsentationen, og den er arealbestemt.
 
 Følge: fps-loftet ligger i browserens software-compositing på denne stak
 (software-layers + fbdev + hybris-EGL), ikke i spillet, proxyen eller
@@ -909,6 +914,12 @@ ses; `CYAN_LIGHT=1` må kun bruges til isolerede målinger.
 Hypotese (ikke bevist): det er flush-effekten (readbacks/`glFinish`) der får
 den færdige frame ud til skærmen på denne driver. Kan testes med et billigt
 `glFinish` pr. frame i stedet for fulde readbacks.
+
+**NB (20. sep 2026):** tabellens tal er målt med `fb_fps`' gamle 200 ms poll
+på en side der kun flytter en lille boks — begge dele gør dem ubrugelige som
+rater (se fælde 49). Behandl dem kun som relative signaler mellem de tre
+konfigurationer; driftsreglen ("brug den tunge vnext12 når billedet skal ses")
+står ved magt.
 
 ### Fælde 47: Display-dansen ved Firefox-start kan slå X's fb-skrivning ihjel — og kan slås fra
 Hybris' EGL-init kører ved hver Firefox-start en "display-dans" via `system()`:

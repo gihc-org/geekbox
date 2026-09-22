@@ -103,8 +103,9 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   `docs/log/2026-09-08-cyan-scene.md` (21:40-22:00).
   Historik + målinger: `docs/log/2026-09-08-cyan-scene.md`,
   `docs/log/2026-08-27-cyan-scene-handover.md` (virkende konfiguration).
-- [x] **Lav fps: årsagen fundet 17. sep 2026 (driveren, ikke proxyen).**
-  **RETTET 20. sep 2026 (areal-testen):** konklusionen herover holder ikke.
+- [x] **Lav fps: 17. sep-konklusionen var "driveren, ikke proxyen" — RETTET
+  20. sep 2026 (areal-testen).**
+  Konklusionen holdt ikke.
   Loftet er **arealbestemt præsentation**: en kontrolside der gentegner hele
   vinduet hver frame giver 2,4 skærm-opdateringer/s ved 1920x1054 og 10,3/s i
   et 1000x600-vindue (4,4x for 3,4x areal, ~0,2 µs/pixel). Spillets 2,4-2,6 fps
@@ -119,7 +120,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   rigtigt" (HDMI-mode + `fbset`/genstart).
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
-  ændrede intet. Målt med nye prober: draw-kald koster **0,098 ms**
+  ændrede intet — **den måling er ugyldig, vinduet blev aldrig mindre (fælde
+  51)**. Målt med nye prober: draw-kald koster **0,098 ms**
   (`glDrawElementsInstanced`, primcount=1) / 0,140 ms (`glDrawElements`), og
   spillet laver ~2.000-2.700 kald pr. frame → 250-370 ms pr. frame alene på
   kald; dertil software-compositing (1080p-readback = 173 ms, 836x470 = 34 ms).
@@ -135,8 +137,57 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 19. sep 2026 SEN AFTEN) — BRUGT
-  20. sep 2026; tråden kører videre i `docs/log/2026-09-20-cyan-fps.md`:
+- **God start i en ny session (FPS-sporet, 20. sep 2026 sen aften) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-09-20-cyan-fps.md` (status + "Målinger 20. sep" +
+  "Aftaler og beslutninger"), `docs/faeller.md` fælde 49-51 (og 44-48) og
+  `OVERBLIK.md`. STATUS 20. sep ~23:00: **areal-testen er kørt — loftet er
+  arealbestemt præsentation.** Målt på en kontrolside der gentegner HELE
+  vinduet hver frame (`raf_test_full.html`, poll hver 20 ms): **1920x1054 =
+  2,4 skærm-opdateringer/s** (= rAF-linjen), **1000x600 = 10,3/s** — 4,4x for
+  3,4x areal, ~0,2 µs pr. pixel (~5-6 Mpx/s gennem software-præsentationen).
+  **Spillets 2,4-2,6 fps ved 1080p ER præsentationsloftet (~430 ms/frame)** —
+  ikke spillet og ikke draw-kaldene (driveren 0,099 ms/kald, ~250-280
+  kald/frame = ~10 ms, proxyens egne kald +0,004 ms/kald). Forventet gevinst:
+  720p (0,92 Mpx) ~2,2x → ~5 fps; et 1000x600-vindue ~3,4x → ~10 fps.
+  MÅL MED: `fb_fps` med **POLL=20** (standard 200 ms kan IKKE måle over ~2-5/s,
+  fælde 49) + rAF-linjen (`FPS tr=` med `rafwork=`/`drawms=`/`focus=`) via
+  `cyan_ab_run.sh` (én kørsel: fokus som root, VT-vagt, oprydning).
+  KØR SÅDAN (find IP med `bash devuan/find_box.sh` — **.171 og .188 er SAMME
+  boks**, wifi + ethernet; ssh kan hænge i et forsøg uden at nå frem, prøv igen):
+  `ssh -i ~/.ssh/geekbox_key root@<ip> 'SHIM_NO_DISPLAY_DANCE=1
+  SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 bash /root/cyan_ab_run.sh <tag>
+  110 "" ""'`
+  SPILLET I MINDRE VINDUE (anbefalet første forsøg — rører ikke displayet):
+  `... POLL=20 WIN="1280 720" bash /root/cyan_ab_run.sh G1_720win 110 "" ""`.
+  Vinduesstørrelsen sættes i profilens `xulstore.json` FØR start (scriptet gør
+  det og genskaber originalen); `x_resize`/`x_focus` efter start virker IKKE på
+  et maksimeret vindue (fælde 51), og begge skal bruge `-big` for ikke at ramme
+  Firefox' 200x200-hjælpevinduer. `x_focus` skal køres som root (fælde 50).
+  NÆSTE FORSØG (forslag, ikke aftalt — vælg med brugeren): (1) spillet i mindre
+  vindue (`WIN="1280 720"` eller `"1000 600"`) og mål om de ~2,5 fps virkelig
+  bliver 2-4x højere; (2) 720p GJORT RIGTIGT: skift HDMI-mode OG fb-geometri
+  (`fbset`) eller genstart, så X og scanout er enige (fælde 48) —
+  `1280x720p-60` findes i `/sys/class/display/HDMI/modes`, `fbset` er
+  installeret; (3) hvis intet hjælper: skriv loftet ind som endeligt resultat.
+  Boks-tilstand efter 20. sep: vnext12 `dcc0a68f` (spillbar) i
+  `/opt/hybris/libEGL.so.1.0.0`, HDMI 1920x1080p-60, X på tty8, ingen Firefox,
+  profilens vinduesstørrelse genskabt. Boksens `/root`-værktøjer er nu
+  `cyan_ab_run.sh` `b58f3c99`, `x_focus.c` `61c13078`, `x_resize.c` `daf26139`,
+  `bidi_cyan.py` `50c3aa46` (= repoet; gamle versioner i `/root/*.bak*`).
+  Kopiér repo-ændringer over med `ssh ... 'cat > /root/<fil>'` (`scp` hænger —
+  dropbear har ingen SFTP). BRING-UP efter strøm: `bash devuan/find_box.sh` →
+  ur-sync, `insmod /root/pvrsrvkm_leddaz.ko` + `sh /root/gpu_up.sh`,
+  bindapi-lap, `/dev/sw_sync` 0666, proxy ind:
+  `cp /root/egl_proxy_dcc0a68f.so.bak /opt/hybris/libEGL.so.1.0.0` (vnext12,
+  spillbar); kontrolsiderne `raf_test.html` + `raf_test_full.html` skal lægges i
+  /tmp igen efter genstart (ryddes ved boot).
+  FÆLDER (kort): brug `POLL=20` og en fuldt gentegnet kontrolside, ellers måler
+  du ikke en rate (49); brug ikke `CYAN_LIGHT` når billedet skal ses (46);
+  shim-ventilerne ved måling (47); `pkill -f` dræber din ssh-session — brug
+  `kill_bidi.sh`/`-x` (41); BiDi = én session (42); testsider i /tmp (43);
+  0 opdateringer/s på et stille skrivebord er normalt (48)."*
+- **God start i en ny session (FPS-sporet, 19. sep 2026 SEN AFTEN) — HISTORISK
+  (brugt 20. sep 2026, resultatet står i `docs/log/2026-09-20-cyan-fps.md`):**
   *"Læs `docs/log/2026-09-19-cyan-fps.md` (status + checkpoint 21:30-22:25),
   `docs/faeller.md` fælde 45-48 og `OVERBLIK.md`. STATUS 19. sep ~22:25:
   spillet kører **2,4-2,6 fps** og skærmen opdaterer 2,4-2,6 gange/s (den

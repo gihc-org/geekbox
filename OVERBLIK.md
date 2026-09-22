@@ -15,8 +15,10 @@ hele tiden. Opskriften er den samme som 8. sep: proxy **vnext12 `dcc0a68f`**
 **Brug ikke `CYAN_LIGHT=1` når spillet skal ses** — uden de løbende readbacks
 frøser præsentationen (0,2 skærm-opdateringer/s mod 1,5). Målt 19. sep på en
 triviel side: tung vnext12 = 1,5/s, light = 0,2/s, Firefox uden hybris/EGL =
-3,2/s. Fps er stadig ~2,6 og er det åbne spor; se "God start"-prompten i
-`TODO.md`.
+3,2/s — **NB (20. sep): disse tre tal er målt med 200 ms poll på en
+flyt-boks-side og er derfor ikke rater, kun relative signaler (fælde 49);
+"light frøser" er stadig gyldig som driftsregel.** Fps er stadig ~2,6 og er det
+åbne spor; se "God start"-prompten i `TODO.md`.
 
 **Opdateret 19. sep 2026 ~22:25 (fps-sporet, målt i spillet):** spillet kører
 **2,4-2,6 fps** og skærmen opdaterer 2,4-2,6 gange/s (den følger spillet).
@@ -63,7 +65,9 @@ ikke" er derfor ugyldig.** Detaljer: `docs/log/2026-09-20-cyan-fps.md`.
   og 45 (fps-loftet).
 - **Nye værktøjer** (i `devuan/gpu/eglplatform_x11/`): `fb_fps.c`,
   `x_focus.c`, `x_resize.c`, `depthclear_probe.c`, `readback_probe.c`,
-  `drawbench_probe.c`, `cyan_fps_run.sh`, `raf_test.html`, `kill_bidi.sh`;
+  `drawbench_probe.c`, `cyan_fps_run.sh`, `raf_test.html`,
+  `raf_test_full.html` (fuldt gentegnet kontrolside, 20. sep),
+  `kill_bidi.sh`;
   `bidi_ctxloss.py` har `preloadmin` + `SHOT_AT`/`SHOT_POLL` (screenshot fra
   Firefox' egen gengivelse).
 - **Proxy på boksen:** vnext14 `7c508108` (vnext12 + `CYAN_LIGHT`-gating +
