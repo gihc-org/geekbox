@@ -1122,6 +1122,44 @@ så årsagen er ikke målt.
 varianter der ligger tæt på hinanden i tid. Et tal fra en tidligere aften (eller
 en tidligere time) kan være 25 % forkert.
 
+### Fælde 57: myinit's statiske nødnet giver en FORKERT default-rute — ingen internet
+Målt 25. sep 2026 efter en strøm-cyklus. Symptomerne så helt uskyldige ud, men
+hænger sammen:
+
+- **Uret stod på 2013** (`Thu Feb 7 14:45:48 CET 2013`) selvom `myinit.sh`
+  forsøger at synke via HTTP — fordi der ikke var nogen vej ud.
+- **Spillet fejlede ved play:** "Sorry, game did not load properly. Try again",
+  og i Firefox' log: `PAGE-REJECTION: Error: Game failed to load due to
+  network problems` (fra `js/index.js`).
+- `getent hosts poki.com` → *Temporary failure in name resolution*;
+  `ip -4 addr show eth0` viser **både** `192.168.1.50/24` (statisk) og
+  `192.168.0.171/24` (DHCP), og `ip route` viser
+  `default via 192.168.1.254 dev eth0` — altså default-ruten på det forkerte net.
+
+**Årsag:** `myinit.sh` kører `timeout 15 dhclient -1 eth0`; i carrier-racen kan
+den time ud, og så lægges den statiske fallback (`192.168.1.50` +
+`default via 192.168.1.254`) ind. Når `ifupdown`/`dhclient` i rcS senere får den
+rigtige lease, kan dens `default via 192.168.0.1` ikke overskrive den
+eksisterende default-route → boksen har to adresser men kun den forkerte vej ud.
+
+**Rettelse (i drift):**
+
+```bash
+ip route del default via 192.168.1.254 dev eth0
+ip addr del 192.168.1.50/24 dev eth0
+ip route replace default via 192.168.0.1 dev eth0
+getent hosts poki.com            # skal svare nu
+```
+
+**Rettelse (kode, `devuan/myinit.sh`):** fallback-ruten lægges ind med
+`metric 100`, så en rigtig DHCP-default (metric 0) altid vinder; DNS-linjen
+vælger den default der ikke er fallback'en. Den rettede fil skal lægges på
+boksen (`/root/myinit.sh`) — ellers gentager fejlen ved næste strøm-cyklus.
+
+**Lære:** "spillet vil ikke loade" i denne opsætning kan være et
+*netværksproblem i boksen*, ikke grafik. Tjek altid `ip route` + `getent hosts
+<navn>` + `date` (et ur der står på 2013 betyder næsten altid ingen vej ud).
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

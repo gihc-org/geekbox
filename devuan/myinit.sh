@@ -88,12 +88,22 @@ if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ]; then
     timeout 15 dhclient -1 eth0 2>/dev/null
     if ! ip addr show eth0 | grep -q "inet "; then
         ip addr add 192.168.1.50/24 dev eth0
-        ip route add default via 192.168.1.254
+        # metric 100 er VIGTIGT (målt 25. sep 2026): får dhclient i rcS sin
+        # lease bagefter, tilføjer den sin egen default-route med metric 0, og
+        # DEN vinder. Uden metric'en blev fallback-ruten den eneste default —
+        # boksen stod så med 192.168.0.171 (DHCP) PLUS en default via
+        # 192.168.1.254 = ingen internet: DNS døde, spillet fik "Game failed to
+        # load due to network problems", og uret blev stående på 2013 (myinit's
+        # HTTP-sync kunne ikke nå ud). Se fælde 57.
+        ip route add default via 192.168.1.254 metric 100
     fi
 fi
 # DNS (boksen har ingen RTC — ved statisk fallback skal nameserver sættes her)
+# Vælg den default-route der IKKE er fallback'en (metric 100), hvis den findes.
+DNSGW=$(ip route | awk '/^default via/ && !/metric 100/ {print $3; exit}')
+[ -n "$DNSGW" ] || DNSGW=$(ip route | awk '/^default via/ {print $3; exit}')
 grep -q nameserver /etc/resolv.conf 2>/dev/null || \
-    echo "nameserver $(ip route | awk '/default/ {print $3; exit}')" > /etc/resolv.conf
+    echo "nameserver $DNSGW" > /etc/resolv.conf
 
 # Uret: boksen har ingen RTC og chrony/NTP kan fejle på vendor-kernen (målt 26. aug
 # 2026: "No suitable source for synchronisation" selv med makestep på vores

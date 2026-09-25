@@ -165,6 +165,22 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   — det er ikke driver-/SoC-tilstand efter V3/V5. Kontrolsiden er uændret
   (2,3 vs 2,4/s), så merprisen sidder i WebGL-canvas'ets vej til kompositoren
   (`RemoteTexture ready timeout`), ikke i spillets JS (rafwork ~8 ms/frame).
+  **Opdateret 25. sep ~23:05 (efter test med brugeren):**
+  (a) **Netværksfejl fundet og rettet** — boksen fik efter genstarten både
+  `192.168.1.50` (myinit-fallback) og `192.168.0.171` (DHCP) og havde
+  default-ruten på det **forkerte** net (`via 192.168.1.254`), så DNS og
+  internet var dødt; spillet svarede "Game failed to load due to network
+  problems", og uret blev stående på 2013. Rettet i drift og i `myinit.sh`
+  (fallback-ruten har nu `metric 100`; rettet fil lagt på boksen med backup).
+  Se `docs/faeller.md` fælde 57. (b) **Netværket var IKKE fps-årsagen:** ny
+  kørsel med fungerende net gav samme 0,8/s og rAF 8-9/10s. (c) **Play er
+  heller ikke forskellen:** brugeren trykkede play midt i en kørsel — rAF var
+  fladt 8-10/10s før og efter (~0,95 fps i gameplay). (d) **GPU/readback er
+  uændret** (`readback_probe`: 33,5 ms @836x470, 171,7 ms @1080p = som 17./19.
+  sep). Tilbage som hovedmistanke: **canvas→kompositor-overdragelsen**, bl.a.
+  fordi spillets canvas i dag er 1031x580 (0,60 Mpx) mod 836x470 (0,39 Mpx) i
+  8. sep-referencen i samme maksimerede vindue. Derfor: **S3 (tving canvas
+  mindre via preload) og S2 (profilering) er de næste skridt.**
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
   ændrede intet — **den måling er ugyldig, vinduet blev aldrig mindre (fælde

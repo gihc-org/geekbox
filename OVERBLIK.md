@@ -107,6 +107,19 @@ strøm-cyklus — det er ikke driver-tilstand. Merprisen sidder i WebGL-canvas'e
 vej til kompositoren (`GFX1: RemoteTexture ready timeout`), ikke i spillets JS
 (`rafwork` ~8 ms/frame, `drawms` ~9 ms/frame). Næste skridt: **S2 profilering**.
 
+**Opdateret 25. sep 2026 ~23:05 (netværksfejl + play-test):** boksen fik efter
+genstarten en forkert default-rute (myinit's statiske nødnet `192.168.1.50` +
+`default via 192.168.1.254`, mens DHCP-adressen var `192.168.0.171`) → ingen DNS
+og ingen internet, spillet svarede "Game failed to load due to network
+problems", og uret blev stående på 2013. Rettet i drift og i `myinit.sh`
+(fallback-ruten får nu `metric 100`), og den rettede fil er lagt på boksen.
+Netværket var dog **ikke** fps-årsagen: med fungerende net måler spillet stadig
+~0,9 fps, og en play-test med brugeren midt i kørslen gav et helt fladt
+rAF-forløb (8-10/10s før og efter). GPU/readback er også uændret
+(`readback_probe`: 33,5 ms @836x470, 171,7 ms @1080p). Tilbage som
+hovedmistanke: canvas→kompositor-overdragelsen, bl.a. fordi spillets canvas i
+dag er 1031x580 mod 836x470 i 8. sep-referencen. Næste: **S3 + S2**.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

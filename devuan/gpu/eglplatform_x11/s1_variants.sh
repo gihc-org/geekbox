@@ -5,7 +5,7 @@
 #   bash s1_variants.sh backup                 # backup af user.js (tidsstempel)
 #   bash s1_variants.sh prefs V2               # læg variantens prefs i user.js
 #   bash s1_variants.sh restore <ts>           # genskab backup
-#   bash s1_variants.sh run <tag> V2 110 [url] [win]   # start måling afkoblet
+#   bash s1_variants.sh run <tag> V2 110 [url] [win] [settle] [fbsec]
 #   bash s1_variants.sh wait <tag> [maxmin]    # vent til kørslen er færdig
 #   bash s1_variants.sh result <tag>           # vis måltallene
 #
@@ -22,6 +22,10 @@ PROFILE=/home/kristian/ffprof
 # linjer), så kompositor-vejen aflæses i stedet af proces-snapshottet
 # (s1_snapshot.sh: GPU-proces + hybris-libEGL + probe.log-GL-aktivitet).
 MOZLOG=${MOZLOG:-}
+# FBSEC/SETTLE kan sættes udefra (fx SETTLE=90 for at give brugeren tid til at
+# trykke play i spillet før målingen starter).
+FBSEC=${FBSEC:-40}
+SETTLE=${SETTLE:-40}
 
 cmd=${1:-help}; shift || true
 
@@ -49,10 +53,12 @@ run)
     SECS=${3:-110}
     URL=${4:-https://poki.com/en/g/subway-surfers}
     WIN=${5:-}
-    echo "=== run $TAG ($V, $SECS s, url=$URL win='$WIN') $(date +%H:%M:%S)"
+    SETTLE=${6:-$SETTLE}
+    FBSEC=${7:-$FBSEC}
+    echo "=== run $TAG ($V, $SECS s, settle=$SETTLE fbsec=$FBSEC, url=$URL win='$WIN') $(date +%H:%M:%S)"
     bash "$REPO/devuan/box.sh" --put "$(dirname "$0")/s1_snapshot.sh" /root/s1_snapshot.sh
     $BOX "setsid nohup env ${MOZLOG:+MOZ_LOG='$MOZLOG' }\
-        SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 \
+        SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=$FBSEC SETTLE=$SETTLE POLL=20 \
         ${WIN:+WIN=\"$WIN\" }bash /root/cyan_ab_run.sh $TAG $SECS \"\" \"\" '$URL' \
         > /tmp/$TAG.out 2>&1 < /dev/null & \
         setsid nohup bash /root/s1_snapshot.sh $TAG 75 >/dev/null 2>&1 < /dev/null & \
