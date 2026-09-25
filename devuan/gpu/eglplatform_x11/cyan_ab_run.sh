@@ -178,6 +178,15 @@ for _ in $(seq 1 90); do
     sleep 5
 done
 
+# Canvas-/vinduesgeometri (25. sep 2026): naar BiDi-klienten er faerdig, er
+# websocket'en fri (faelde 42: kun ÉN BiDi-session), og Firefox lever endnu.
+# domcheck dumper canvas.width/height, CSS-rect, innerWidth og iframe-rect —
+# det er canvas-arealet (ikke vinduets) der ser ud til at saette spillets
+# fps-loft, og de to foelger ikke hinanden (maalt 25. sep: 1080p-vindue
+# 2,4/s, 1280x720-vindue 1,9/s, 640x360-vindue 4,2/s).
+python3 /root/bidi_cyan.py domcheck >> "$D/dom.log" 2>&1 \
+    || echo "domcheck fejlede (se $D/dom.log)" | tee -a "$D/guard.log"
+
 pkill -TERM -x firefox-esr 2>/dev/null
 sleep 4
 cp /tmp/cyan_draw_probe.log "$D/probe.log" 2>/dev/null
@@ -199,5 +208,9 @@ if [ -s "$D/win.log" ]; then
     echo "--- $TAG vinduesgeometri (hovedvinduer) ---"
     grep -E '^--- |1920x1080|1000x600|1280x720|640x360|Firefox|raf-test|urfers' \
         "$D/win.log" | head -25
+fi
+if [ -s "$D/dom.log" ]; then
+    echo "--- $TAG canvas (domcheck) ---"
+    grep -a "DOMCHECK" "$D/dom.log" | head -2
 fi
 echo "=== $TAG faerdig $(date +%H:%M:%S) — data i $D ==="
