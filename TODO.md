@@ -155,6 +155,16 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   er målt til at give ~2x uden at røre driver eller display. Fuld analyse med
   spor S1-S6 og 4.4-kernens revurdering:
   `docs/grafik/fps-analysen-2026-09-25.md`.
+  **Strøm-cyklus + ren baseline (25. sep ~22:26, aftalt med brugeren):** boksen
+  blev lukket pænt ned og strøm-cyklet. Bring-up gik rent (nyt script
+  `devuan/gpu/eglplatform_x11/bringup_after_power.sh`; `GL_VERSION = OpenGL ES
+  3.1 build 1.5@3830101`, bindapi-lap aktiv, værktøjer md5 = repoet, X nu på
+  **tty7**). Ren baseline: kontrolside **2,3/s** (rAF 20-22/10s), spil
+  **0,5/s på skærmen / rAF 7-9/10s (~0,85 fps)**, canvas 1031x580. Dvs.
+  spillets fald fra 2,4-2,6 fps (19.-20. sep) **overlever en fuld strøm-cyklus**
+  — det er ikke driver-/SoC-tilstand efter V3/V5. Kontrolsiden er uændret
+  (2,3 vs 2,4/s), så merprisen sidder i WebGL-canvas'ets vej til kompositoren
+  (`RemoteTexture ready timeout`), ikke i spillets JS (rafwork ~8 ms/frame).
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
   ændrede intet — **den måling er ugyldig, vinduet blev aldrig mindre (fælde
@@ -185,6 +195,12 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   i dag** — lavere end de 2,4-2,6 målt 19.-20. sep, og faldet er *ikke*
   forklaret (kontrolsiden faldt samtidig kun 2,6 -> 2,0/s, og
   `service nodm restart` gav ikke ydelsen tilbage).
+  **Opdateret ~22:35 (strøm-cyklus + ren baseline):** boksen er strøm-cyklet, og
+  den rene baseline er kontrolside **2,3/s** (uændret mod 2,4/s 20. sep) og spil
+  **~0,85 fps** (uændret lavere end 19.-20. sep). Faldet er altså **ikke**
+  driver-/SoC-tilstand efter V3/V5 — det sidder i WebGL-canvas'ets vej til
+  kompositoren (`RemoteTexture ready timeout`), ikke i spillets JS
+  (`rafwork` ~8 ms/frame). S2 er dermed det rigtige næste skridt.
   **S1 (kompositor-vejen) er KØRT og er et negativt resultat:** SWGL (V2) og
   software uden GPU-proces (V4) ligger inden for støj omkring baselinen (V1);
   WebRender på GPU (V3) og samme uden GPU-proces (V5) dræber kompositor-laget
@@ -216,10 +232,14 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   billedet skal ses (46); `pkill -f` dræber din egen ssh (41); BiDi = én
   session (42); testsider i /tmp ryddes ved genstart (43); ssh `'cat > fil && …
   &'` giver en tom fil (52).
-  BOKS-TILSTAND efter S1: `user.js` = originalen (md5 `0ac16be8`), ingen
+  BOKS-TILSTAND efter S1 + strøm-cyklus (~22:35): boksen er **frisk bootet**
+  22:22 og bragt op med `devuan/gpu/eglplatform_x11/bringup_after_power.sh`
+  (GPU 1.5@3830101 verificeret, bindapi-lap aktiv, kontrolsider i `/tmp`,
+  værktøjer md5 = repoet). `user.js` = originalen (md5 `0ac16be8`), ingen
   Firefox, ingen BiDi-klient, proxy vnext12 `dcc0a68f`, HDMI `1920x1080p-60`,
-  **X på tty9** (genstartet 21:51), ingen kørende scripts. Alle S1-data ligger
-  i `/tmp/ab_S1_*` og `/tmp/ab_G_S1_*`."*
+  **X på tty7**, ingen kørende scripts. S1-data er sikret til
+  `/root/s1_20260925/` (+ `.tgz` hentet til laptoppens `/tmp`), den friske
+  baseline ligger i `/tmp/ab_B1_*`."*
 
 - **God start i en ny session (FPS-sporet, 25. sep 2026) — HISTORISK
   (brugt 25. sep 2026 aften; S1 blev kørt, resultatet står i session-notatet):**

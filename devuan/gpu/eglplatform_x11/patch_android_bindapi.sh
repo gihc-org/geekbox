@@ -44,7 +44,11 @@
 # scriptet igen efter reboot).
 set -uo pipefail
 
-BOX=root@192.168.0.188
+# IP'en skifter ved hver boot (boksen har ingen MAC i IDB'en): brug BOXIP hvis
+# den er sat, ellers find_box.sh, ellers den gamle faste adresse.
+IP="${BOXIP:-$(bash "$(dirname "$0")/../../find_box.sh" 2>/dev/null | awk '/GEEKBOX/{print $2; exit}')}"
+IP="${IP:-192.168.0.188}"
+BOX="root@$IP"
 KEY=/home/kristian/.ssh/geekbox_key
 SRC=/system/lib/libEGL.so
 DST=/root/egl_patch/libEGL.so

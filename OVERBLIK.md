@@ -96,6 +96,17 @@ er ikke målt, og `service nodm restart` hjalp ikke); `MOZ_LOG`-modulerne
 Compositor/LayerManager/WebRender er tavse i denne build, så vælg vej efter
 proces-snapshot i stedet. Fælder: `docs/faeller.md` 53-56.
 
+**Opdateret 25. sep 2026 ~22:35 (strøm-cyklus + ren baseline):** boksen blev
+lukket pænt ned og strøm-cyklet for at udelukke driver-/SoC-tilstand efter
+S1's GPU-forsøg. Bring-up gik rent med det nye
+`devuan/gpu/eglplatform_x11/bringup_after_power.sh` (GPU 1.5@3830101,
+bindapi-lap, kontrolsider, værktøjer md5 = repoet; X nu på tty7). **Ren
+baseline: kontrolside 2,3/s (uændret mod 2,4/s 20. sep), spil ~0,85 fps.**
+Faldet i spillets fps (fra 2,4-2,6 19.-20. sep) overlever altså en fuld
+strøm-cyklus — det er ikke driver-tilstand. Merprisen sidder i WebGL-canvas'ets
+vej til kompositoren (`GFX1: RemoteTexture ready timeout`), ikke i spillets JS
+(`rafwork` ~8 ms/frame, `drawms` ~9 ms/frame). Næste skridt: **S2 profilering**.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
