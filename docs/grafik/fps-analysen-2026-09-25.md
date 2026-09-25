@@ -66,6 +66,13 @@ To ting står ud:
    1920x1054-vindue) -> 2,5/s. Hverken vindues- eller canvas-areal forklarer
    rækkefølgen. Det er et *åbent* spørgsmål (se §6).
 
+**Følge for det gamle "720p gjort rigtigt"-forsøg (punkt 2 fra 20. sep):** et
+maksimeret 720p-vindue på 1280x720 giver efter alt at dømme *samme*
+canvas-konfiguration som dagens 1280x720-vindue (836x470) — nemlig den der
+måler 1,8-1,9/s. Forsøget forventes derfor at give nul gevinst og rører
+samtidig displayet (HDMI-mode + `fbset`/genstart, fælde 48). Det bør vente til
+S1-S3 er prøvet.
+
 ## 3. Den nuværende Firefox-opsætning (læst af profilen)
 
 | Pref | Værdi | Betydning |
@@ -215,3 +222,117 @@ canvas-størrelsen af proxyens log (`texImage2D`/`fboTex`, den største tekstur)
 4. **S4. systemhåndtag** som billig topping.
 5. **Spor B (4.4 + DDK 1.8)** kun hvis S1-S3 viser at vi har brug for en bedre
    GL-driver — og med åbne øjne om at det er uger og kræver seriel konsol.
+
+## 9. Konkrete kommandoer til de tre første spor (klar til næste session)
+
+### 9.0 Fælles
+
+```bash
+bash devuan/find_box.sh                 # IP (.171 og .188 er SAMME boks)
+IP=192.168.0.171
+run() { ssh -i ~/.ssh/geekbox_key root@$IP "$@"; }
+
+# Én målekørsel af spillet (fuldt vindue):
+run 'setsid nohup env SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 \
+      SETTLE=40 POLL=20 bash /root/cyan_ab_run.sh S1_V2 110 "" "" \
+      > /tmp/S1_V2.out 2>&1 < /dev/null & echo startet'
+
+# Kontrolside (fuldt gentegnet, til at normalisere mod fælles referenceramme):
+run 'setsid nohup env SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 \
+      SETTLE=40 POLL=20 bash /root/cyan_ab_run.sh K_ctl 80 "" "" \
+      file:///tmp/raf_test_full.html > /tmp/K_ctl.out 2>&1 < /dev/null & echo startet'
+
+# Resultatet (~2,5 min senere):
+run 'grep -a "mest aktive" /tmp/ab_S1_V2/fb.log; \
+     grep -a "FPS tr=" /tmp/ab_S1_V2/game.log | tail -3; \
+     grep -a DOMCHECK /tmp/ab_S1_V2/dom.log | head -1'
+```
+
+**Regel fra fælde 52:** kopiér filer til boksen i ÉN ssh-kommando **uden** `&`,
+verificér med `md5sum` mod den lokale fil, og start målingen i en *separat*
+kommando. Test-siderne i `/tmp` forsvinder ved genstart og skal lægges ind igen
+(fælde 43).
+
+### 9.1 S1 — kompositor-varianter (V1-V4)
+
+Prefs sættes i `/home/kristian/ffprof/user.js` (den læses ved start og
+overtrumfer `prefs.js`). **Tag altid backup først, og genskab bagefter.**
+
+```bash
+run 'cp -f /home/kristian/ffprof/user.js /root/user.js.orig.$(date +%s)'
+```
+
+| Variant | Prefs der lægges i `user.js` |
+|---|---|
+| V1 (baseline, i dag) | uændret: `webrender.enabled=false`, `force-disabled=true`, `webrender.software=false`, `layers.acceleration.disabled=true` |
+| V2 (SWGL) | `gfx.webrender.enabled=true`, `gfx.webrender.force-disabled=false`, `gfx.webrender.software=true`, `layers.acceleration.disabled=true` |
+| V3 (WebRender på GPU) | `gfx.webrender.enabled=true`, `gfx.webrender.force-disabled=false`, `gfx.webrender.software=false`, `layers.acceleration.disabled=false` |
+| V4 (software uden GPU-proces) | `layers.gpu-process.enabled=false`, `layers.omtp.enabled=false` (resten som V1) |
+
+```bash
+# eksempel: V2
+run 'printf "%s\n" \
+  "user_pref(\"gfx.webrender.enabled\", true);" \
+  "user_pref(\"gfx.webrender.force-disabled\", false);" \
+  "user_pref(\"gfx.webrender.software\", true);" \
+  >> /home/kristian/ffprof/user.js'
+
+# kør målingen MED log, så vi kan se hvilken vej Firefox faktisk valgte:
+run 'setsid nohup env MOZ_LOG=Compositor:5,LayerManager:5 \
+      SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 \
+      bash /root/cyan_ab_run.sh S1_V2 110 "" "" > /tmp/S1_V2.out 2>&1 < /dev/null & echo startet'
+run 'grep -a "WebRender\|Basic compositor\|Compositor:" /tmp/ab_S1_V2/game.log | head -5'
+
+# genskab profilen bagefter (brug tidsstemplet fra backup-kommandoen):
+run 'cp -f /root/user.js.orig.<ts> /home/kristian/ffprof/user.js'
+```
+
+**Livline hvis skærmen bliver sort eller fryser** (kendt fra V3-forsøg 17. sep):
+`run 'service nodm restart'` — og genskab `user.js` med det samme. `xulstore.json`
+genskabes af `cyan_ab_run.sh` selv. En variant er kun en succes hvis **både**
+rAF og `fb_fps` stiger; 0 opdateringer/s eller sorte frames = rul tilbage.
+
+### 9.2 S2 — profilering af kompositoren
+
+`MOZ_LOG`-linjerne lander i `/root/cyan_game.log`, som kørslen kopierer til
+`$D/game.log`. Tråd-profilen dumpes ved Firefox' afslutning.
+
+```bash
+run 'setsid nohup env MOZ_LOG="Compositor:5,LayerManager:5,Paint:5,nsRefreshDriver:5" \
+      SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 \
+      bash /root/cyan_ab_run.sh S2_log 110 "" "" > /tmp/S2_log.out 2>&1 < /dev/null & echo startet'
+
+run 'setsid nohup env MOZ_PROFILER_STARTUP=1 MOZ_PROFILER_SHUTDOWN=/tmp/prof.json \
+      SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 \
+      bash /root/cyan_ab_run.sh S2_prof 110 "" "" > /tmp/S2_prof.out 2>&1 < /dev/null & echo startet'
+ssh -i ~/.ssh/geekbox_key root@$IP 'cat /tmp/prof.json' > /tmp/prof.json   # hent hjem
+```
+
+De to linjer vi leder efter i `game.log`: hvor lang tid kompositoren bruger pr.
+frame, og hvilken tråd/funktion der dominerer (rasterisering, skalering, kopi
+mellem processer eller selve X-presenten).
+
+### 9.3 S3 — canvas-nedskalering via preload
+
+`bidi_cyan.py` ligger nu både på boksen (`/root`, md5 `50c3aa46`) og i repoet
+(`devuan/gpu/eglplatform_x11/bidi_cyan.py`). Ændringer skal kopieres til boksen
+i én ssh-kommando uden `&` (fælde 52) og verificeres med `md5sum`.
+
+Idéen: lad Unity rendere i den halve opløsning, mens CSS-størrelsen bevares, så
+browseren skalerer op. I preload-scriptet (samme sted hvor `getContext` wraps):
+
+```js
+['width','height'].forEach(function(k){
+  var d=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,k);
+  if(!d||!d.set) return;
+  Object.defineProperty(HTMLCanvasElement.prototype,k,{
+    get:d.get,
+    set:function(v){ d.set.call(this, Math.max(64, Math.round(v/2))); }
+  });
+});
+```
+
+Mål med `WIN="1280 720"`: uden tricket giver den konfiguration 1,8-1,9/s
+(canvas 836x470) — med tricket håber vi på 4-5/s (canvas ~418x235) *uden* at
+formindske vinduet. Efterprøv til sidst om spillet stadig kan spilles (Unity
+regner musekoordinater ud fra canvas-størrelsen).

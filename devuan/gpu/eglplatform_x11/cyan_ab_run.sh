@@ -184,8 +184,16 @@ done
 # det er canvas-arealet (ikke vinduets) der ser ud til at saette spillets
 # fps-loft, og de to foelger ikke hinanden (maalt 25. sep: 1080p-vindue
 # 2,4/s, 1280x720-vindue 1,9/s, 640x360-vindue 4,2/s).
-python3 /root/bidi_cyan.py domcheck >> "$D/dom.log" 2>&1 \
-    || echo "domcheck fejlede (se $D/dom.log)" | tee -a "$D/guard.log"
+# NB (25. sep 2026): Firefox frigiver foerst BiDi-sessionen et stykke tid efter
+# at preload-klienten er afsluttet, saa foerste forsoeg kan svare "Maximum
+# number of active sessions". Derfor op til 10 forsoeg med 3 s imellem.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    python3 /root/bidi_cyan.py domcheck > "$D/dom.log" 2>&1
+    grep -aq "DOMCHECK" "$D/dom.log" && break
+    sleep 3
+done
+grep -aq "DOMCHECK" "$D/dom.log" \
+    || echo "domcheck gav intet svar (se $D/dom.log)" | tee -a "$D/guard.log"
 
 pkill -TERM -x firefox-esr 2>/dev/null
 sleep 4

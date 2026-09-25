@@ -161,7 +161,82 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 20. sep 2026 sen aften) — NUVÆRENDE:**
+- **God start i en ny session (FPS-sporet, 25. sep 2026) — NUVÆRENDE:**
+  *"Læs `docs/grafik/fps-analysen-2026-09-25.md` (HELE — målinger, afviste
+  hypoteser, spor S1-S6 og §9 med de konkrete kommandoer),
+  `docs/log/2026-09-25-cyan-fps.md` (status + aftaler) og `OVERBLIK.md`.
+  STATUS 25. sep 2026 ~20:15: **FPS-loftet ligger inde i Firefox' kompositor —
+  ikke i X, framebufferen eller CPU'en.** Målt samme dag: `memcpy` til
+  `/dev/fb0` = **3,1 ms** for et helt 1080p-frame (1.285 MB/s); X'ens egen
+  `XPutImage`-vej = **11,4 ms/frame** ved 1920x1054 (87,8 fps); CPU ramper
+  312 → 1200/1296 MHz under last; Firefox' vindue er **depth 16** (matcher
+  roden) og der kører **ingen** compositing manager. Alligevel leverer Firefox
+  kun **2,4 skærm-opdateringer/s** ved 1920x1054 og logger gentagne gange
+  `Over max pending transaction limit when trying to paint, skipping` — altså
+  backpressure fra browserens kompositor, ~30-40x langsommere end platformen
+  under den. Firefox kører den ældste vej: `gfx.webrender.enabled=false`,
+  `gfx.webrender.force-disabled=true`, `layers.acceleration.disabled=true`.
+  **Spillet 25. sep:** 1920x1054 = tab-crash under kørslen
+  (`Bad mode in Synchronous Abort`, `PC=0x2`, ingen PVR-MMU-fault; 19.-20. sep
+  gav samme størrelse 2,4-2,6/s); 1280x720-vindue = **1,8-1,9/s** (2 kørsler,
+  canvas 836x470); 640x360-vindue = **4,2-4,8/s** (canvas 640x360).
+  Kontrolsiden `raf_test_full.html` i et 1280x720-vindue gav 6,0/s — areal-
+  modellen holder for grundfladen, men ikke for spillet (det er ikke monotont i
+  vindues- eller canvas-areal; åbent spørgsmål §6 i analysen).
+  **4.4-kernel-sporet (Spor B) er revurderet:** KMS/page-flip løser IKKE dette
+  loft (fb/X-vejen er allerede hurtig); den reelle grund til Spor B er
+  **DDK 1.8** — og kun hvis S1-S3 viser, at vi har brug for en bedre GL-driver.
+  PLAN (brugeren har godkendt rækkefølgen): (1) **S1** skift Firefox'
+  kompositor-vej — V2 SWGL, V3 WebRender på GPU, V4 software uden GPU-proces,
+  hver i et profilkopi-lignende optræk med `user.js`-backup og
+  `service nodm restart` som livline; (2) **S2** profilér kompositoren
+  (`MOZ_LOG=Compositor:5,LayerManager:5,Paint:5,nsRefreshDriver:5` +
+  Gecko-profiler via `MOZ_PROFILER_STARTUP=1`/`MOZ_PROFILER_SHUTDOWN`);
+  (3) **S3** canvas-nedskalering via BiDi-preload (spillet renderer småt,
+  browseren skalerer op); (4) **S4** systemhåndtag (governor/ddr/swap);
+  (5) Spor B først derefter og kun ved behov.
+  MÅL MED: `cyan_ab_run.sh` (én kørsel: fokus som root, VT-vagt, oprydning) +
+  `fb_fps` med **POLL=20** (fælde 49) + rAF-linjen (`FPS tr=` med
+  `rafwork=`/`drawms=`/`focus=`) + `domcheck`-linjen i `dom.log` (canvas-geometri;
+  fejler den, så læs canvas af proxyens `texImage2D`/`fboTex` i `probe.log`).
+  KØR SÅDAN (find IP med `bash devuan/find_box.sh` — **.171 og .188 er SAMME
+  boks**; ssh kan hænge i et forsøg uden at nå frem, prøv igen):
+  `ssh -i ~/.ssh/geekbox_key root@<ip> 'setsid nohup env SHIM_NO_DISPLAY_DANCE=1
+  SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 bash /root/cyan_ab_run.sh <tag> 110
+  "" "" > /tmp/<tag>.out 2>&1 < /dev/null & echo startet'`
+  (afkoblet, så et ssh-drop ikke afbryder målingen — se fælde 52: kopiér filer
+  i ÉN ssh-kommando uden `&`, og start kørslen i en separat kommando).
+  PRÆF-VARIANTER (S1): prefs sættes i `/home/kristian/ffprof/user.js` (læses
+  ved start og overtrumfer `prefs.js`); **tag backup først**
+  (`cp user.js /root/user.js.orig.$(date +%s)`), og genskab bagefter. Verificér
+  hvilken vej Firefox faktisk valgte (`MOZ_LOG=Compositor:5,LayerManager:5` og
+  grep i `game.log`), ellers måler du blindt.
+  Boks-tilstand 25. sep ~20:15: vnext12 `dcc0a68f` (spillbar) i
+  `/opt/hybris/libEGL.so.1.0.0`, HDMI 1920x1080p-60, X på tty8, **ingen
+  Firefox**, `xulstore.json` = maximized. Boksens `/root`-værktøjer er
+  md5-identiske med repoet: `cyan_ab_run.sh` `82a13c27` (nu med retry omkring
+  domcheck), `start_cyan_probe.sh` `9e4b8291` (sender `MOZ_LOG`/`MOZ_PROFILER_*`
+  videre gennem `env -i`), `bidi_cyan.py` `50c3aa46` (**nu også i repoet** —
+  den var kun på boksen før), `x_focus.c` `61c13078`, `x_resize.c` `daf26139`.
+  Nye værktøjer i repoet: `fb_bench.c` (fb-skrivehastighed),
+  `xput_bench.c` (X'ens presentvej), `bidi_cyan.py`.
+  BRING-UP efter strøm: `bash devuan/find_box.sh` → ur-sync,
+  `insmod /root/pvrsrvkm_leddaz.ko` + `sh /root/gpu_up.sh`, bindapi-lap,
+  `/dev/sw_sync` 0666, proxy ind:
+  `cp /root/egl_proxy_dcc0a68f.so.bak /opt/hybris/libEGL.so.1.0.0` (vnext12,
+  spillbar); kontrolsiderne `raf_test.html` + `raf_test_full.html` skal lægges i
+  /tmp igen efter genstart (ryddes ved boot).
+  FÆLDER (kort): brug `POLL=20` og en fuldt gentegnet kontrolside, ellers måler
+  du ikke en rate (49); brug ikke `CYAN_LIGHT` når billedet skal ses (46);
+  shim-ventilerne ved måling (47); `pkill -f` dræber din ssh-session — brug
+  `kill_bidi.sh`/`-x` (41); BiDi = én session (42); testsider i /tmp (43);
+  0 opdateringer/s på et stille skrivebord er normalt (48); ssh
+  `'cat > fil && … &'` giver en TOM fil (52). CPU'en står i 312 MHz i tomgang og
+  ramper først under last — mål altid efter nogle sekunders last."*
+
+- **God start i en ny session (FPS-sporet, 20. sep 2026 sen aften) — HISTORISK
+  (brugt 25. sep 2026; resultatet står i `docs/log/2026-09-25-cyan-fps.md` og
+  analysen `docs/grafik/fps-analysen-2026-09-25.md`):**
   *"Læs `docs/log/2026-09-20-cyan-fps.md` (status + "Målinger 20. sep" +
   "Aftaler og beslutninger"), `docs/faeller.md` fælde 49-51 (og 44-48) og
   `OVERBLIK.md`. STATUS 20. sep ~23:00: **areal-testen er kørt — loftet er
