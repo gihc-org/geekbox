@@ -1160,6 +1160,41 @@ boksen (`/root/myinit.sh`) — ellers gentager fejlen ved næste strøm-cyklus.
 *netværksproblem i boksen*, ikke grafik. Tjek altid `ip route` + `getent hosts
 <navn>` + `date` (et ur der står på 2013 betyder næsten altid ingen vej ud).
 
+### Fælde 58: Gecko-profileren dumper KUN ved pæn lukning — og MOZ_LOG må ikke køre samtidig
+Målt 25. sep 2026 (S2). Tre ting kostede hver sin kørselsrunde:
+
+1. **`MOZ_PROFILER_SHUTDOWN` skriver kun ved en ordentlig afslutning.**
+   Med `MOZ_PROFILER_STARTUP=1` så man at profileren kørte (en `SamplerThread`
+   i Firefox-processen, `MOZ_PROFILER_STARTUP_SHUTDOWN`-env i `/proc/<pid>/environ`),
+   men `/tmp/prof.json` blev **aldrig** skrevet — heller ikke efter 90 s — fordi
+   `cyan_ab_run.sh`s oprydning sender `pkill -TERM`/`-9`. Løsning: luk browseren
+   pænt med BiDi: `python3 /root/bidi_cyan.py close` (ny mode, sender
+   `browser.close`). Så kom dumpet (66 MB for ~150 s ved 1 ms sampling; skrivningen
+   tager ~1 min på eMMC'en, så vent på at filstørrelsen holder op med at vokse).
+2. **Kør ikke `MOZ_LOG=nsRefreshDriver:5` samtidig.** 18.467 linjer på én kørsel
+   udsulter main-tråden, og spillets loader melder så
+   "Sorry, game did not load properly" / `Game failed to load due to network
+   problems` — en **falsk positiv**. Det er samme besked som ved den ægte
+   netværksfejl (fælde 57), så tjek `ip route`/`getent` *før* du tror på den.
+3. **Profil-format v31 (Firefox 140) har ingen `funcTable`.** `frameTable`s
+   `location`-kolonne indekserer direkte i trådens `stringTable` (ældre
+   versioner: `func` → `funcTable` → `stringArray`). `prof_top.py` i repoet
+   håndterer begge. Adresse-frames (`0x…`) mappes til bibliotek via profilens
+   `libs`, fordi Debian stripper `libxul`/`libc`.
+
+### Fælde 59: BiDi-sessionen fra preload-klienten blokerer `browser.close`
+Målt 25. sep 2026 (S2). Efter at have kørt `bidi_cyan.py preload …` (som spillet
+har brug for til alpha-shim'en) kan man **ikke** lukke browseren pænt:
+`browser.close` afvises med `session not created: Maximum number of active
+sessions` — også når preload-klienten selv er afsluttet (og selv om scriptet
+sender `session.end`), og også når klienten blev dræbt. Det er fælde 42:
+sessionen frigives reelt først ved en Firefox-genstart. Målt i praksis: 8
+forsøg over ~5 minutter, alle afvist.
+
+**Konsekvens/regel:** skal du have en **pæn** afslutning (profil-dump, sidste
+målinger), så kør uden preload-klient, eller accepter at profilen ikke kan
+skrives. Alternativet er at genstarte Firefox og køre profilen uden klienten.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

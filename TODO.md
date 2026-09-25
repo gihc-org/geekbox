@@ -181,6 +181,21 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   fordi spillets canvas i dag er 1031x580 (0,60 Mpx) mod 836x470 (0,39 Mpx) i
   8. sep-referencen i samme maksimerede vindue. Derfor: **S3 (tving canvas
   mindre via preload) og S2 (profilering) er de næste skridt.**
+  **S2 kørt 25. sep 23:33-23:41 (profileren virker nu):** Gecko-profileren
+  kørte med spillet i ~150 s (66 MB profil, `/root/prof_S2_20260925.json` på
+  boksen, hentet til `/tmp/prof_S2_20260925.json` på laptoppen). **Resultat:
+  alle Firefox-tråde venter** — indholdsprocessens `GeckoMain` 86,7 % i
+  `PollWrapper`, parent-`GeckoMain` 64,7 % i `PollWrapper`, `Compositor` 98,2 %
+  i `ThreadEventQueue::GetEvent::Wait`, `CanvasRenderer` 68,9 % samme vent.
+  Kun ~145 ms main-tråds-CPU pr. frame, derefter ~950 ms i `poll()`.
+  ⇒ **Loftet er frame-planlægningen (~1 Hz), ikke CPU- eller GL-arbejde.**
+  Hypotesen er refresh-driver-throttling / transaction-confirmation (samme
+  `Over max pending transaction limit … skipping` som før). WebGL-arbejdet
+  kører i parent-processen. Nye værktøjer: `prof_top.py` (læser profilen) og
+  `bidi_cyan.py close` (pæn lukning — SIGTERM springer profil-dumpet over).
+  Fælder: 58-59. Næste: hvorfor kører refresh-driveren ~1 Hz? Og overvej en
+  `-dbgsym`-libxul (Debian stripper libxul, så frames vises som
+  `libxul.so+0x…`).
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
   ændrede intet — **den måling er ugyldig, vinduet blev aldrig mindre (fælde

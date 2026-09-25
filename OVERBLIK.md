@@ -120,6 +120,18 @@ rAF-forløb (8-10/10s før og efter). GPU/readback er også uændret
 hovedmistanke: canvas→kompositor-overdragelsen, bl.a. fordi spillets canvas i
 dag er 1031x580 mod 836x470 i 8. sep-referencen. Næste: **S3 + S2**.
 
+**Opdateret 25. sep 2026 ~23:50 (S2 kørt — loftet er frame-planlægningen):**
+Gecko-profileren kom til at virke (den dumper kun ved en *pæn* lukning, og den
+BiDi-session preload-klienten holder blokerer den — se fælder 58-59). Profil
+over ~150 s med spillet: **alle Firefox-tråde venter** — indholdsprocessens
+`GeckoMain` 86,7 % i `PollWrapper`, parent-`GeckoMain` 64,7 % i `PollWrapper`,
+`Compositor` 98,2 % i `ThreadEventQueue::GetEvent::Wait`, `CanvasRenderer`
+68,9 % samme vent; kun ~145 ms main-tråds-CPU pr. frame. **Loftet er altså
+frame-planlægningen (~1 Hz), ikke CPU, GPU eller compositing-arbejde.**
+Profilen ligger på boksen (`/root/prof_S2_20260925.json`) og på laptoppen
+(`/tmp/prof_S2_20260925.json`); værktøj: `prof_top.py`. Næste: hvorfor kører
+refresh-driveren ~1 Hz (throttling/transaction-confirmation)?
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

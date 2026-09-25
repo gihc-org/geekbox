@@ -73,7 +73,11 @@ winlog() {
 # og en Firefox der holder profilen laast.
 cleanup() {
     pkill -TERM -x firefox-esr 2>/dev/null
-    sleep 3
+    # 15 s i stedet for 3 (25. sep 2026): med Gecko-profileren slået til
+    # (MOZ_PROFILER_SHUTDOWN) skrives en stor JSON ved afslutningen, og et
+    # SIGKILL efter 3 s dræbte Firefox FØR dumpen landede (/tmp/prof.json
+    # manglede). Se S2-sporet i docs/log/2026-09-25-cyan-fps.md.
+    sleep 15
     pkill -9 -x firefox-esr 2>/dev/null
     bash /root/kill_bidi.sh >/dev/null 2>&1
     # genskab profilens oprindelige vinduesstorrelse

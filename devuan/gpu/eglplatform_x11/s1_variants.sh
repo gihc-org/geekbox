@@ -5,7 +5,9 @@
 #   bash s1_variants.sh backup                 # backup af user.js (tidsstempel)
 #   bash s1_variants.sh prefs V2               # læg variantens prefs i user.js
 #   bash s1_variants.sh restore <ts>           # genskab backup
-#   bash s1_variants.sh run <tag> V2 110 [url] [win] [settle] [fbsec]
+#   bash s1_variants.sh run <tag> V2 110 [url] [win] [settle] [fbsec] [prof]
+#     "prof" som 8. argument taender Gecko-profileren (MOZ_PROFILER_STARTUP=1,
+#     dump til /tmp/prof.json ved Firefox-afslutning) + MOZ_LOG=nsRefreshDriver:5
 #   bash s1_variants.sh wait <tag> [maxmin]    # vent til kørslen er færdig
 #   bash s1_variants.sh result <tag>           # vis måltallene
 #
@@ -55,9 +57,19 @@ run)
     WIN=${5:-}
     SETTLE=${6:-$SETTLE}
     FBSEC=${7:-$FBSEC}
+    PROF=${8:-}
+    PROFENV=""
+    if [ "$PROF" = "prof" ]; then
+        # 5 ms sampling: 1 ms giver en alt for stor JSON til at blive skrevet
+        # færdig på eMMC'en, og MOZ_LOG holdes HELT ude — nsRefreshDriver:5
+        # udsulter main-tråden (18.000 linjer/kørsel) og får spillets loader til
+        # at melde "network problems" (målt 25. sep).
+        PROFENV="MOZ_PROFILER_STARTUP=1 MOZ_PROFILER_SHUTDOWN=/tmp/prof.json MOZ_PROFILER_STARTUP_INTERVAL=5"
+        echo "--- S2: profiler TIL (dump: /tmp/prof.json)"
+    fi
     echo "=== run $TAG ($V, $SECS s, settle=$SETTLE fbsec=$FBSEC, url=$URL win='$WIN') $(date +%H:%M:%S)"
     bash "$REPO/devuan/box.sh" --put "$(dirname "$0")/s1_snapshot.sh" /root/s1_snapshot.sh
-    $BOX "setsid nohup env ${MOZLOG:+MOZ_LOG='$MOZLOG' }\
+    $BOX "setsid nohup env ${MOZLOG:+MOZ_LOG='$MOZLOG' }$PROFENV \
         SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=$FBSEC SETTLE=$SETTLE POLL=20 \
         ${WIN:+WIN=\"$WIN\" }bash /root/cyan_ab_run.sh $TAG $SECS \"\" \"\" '$URL' \
         > /tmp/$TAG.out 2>&1 < /dev/null & \

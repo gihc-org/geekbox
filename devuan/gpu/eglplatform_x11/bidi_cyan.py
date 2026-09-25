@@ -150,6 +150,15 @@ def main():
         print("session.new FEJLEDE:", json.dumps(r)[:250])
         sys.exit(1)
 
+    if mode == "close":
+        # Pæn lukning af Firefox (25. sep 2026). Brugt til S2: med
+        # MOZ_PROFILER_SHUTDOWN skrives profilen KUN hvis browseren lukker
+        # ordentligt — et SIGTERM springer dumpet over (målt: SamplerThread
+        # kørte, men /tmp/prof.json blev aldrig skrevet).
+        r = call("browser.close", {}, timeout=30)
+        print("browser.close ->", json.dumps(r)[:200])
+        return
+
     tree = call("browsingContext.getTree", {})
     contexts = []
     def walk(items):
