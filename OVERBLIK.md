@@ -2,7 +2,7 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
-> `docs/log/2026-09-17-cyan-fps.md` (seneste),
+> `docs/log/2026-09-25-cyan-fps.md` (seneste, 25. sep S1),
 > `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
 > `docs/log/2026-08-26-gralloc-lock-spor.md` (beslutningslog).
 
@@ -72,6 +72,29 @@ WebRender/GPU-vejen). Prioriterede nye spor (S1 skift Firefox' kompositor-vej,
 S2 profilér kompositoren, S3 canvas-nedskalering via preload, S4 systemhåndtag)
 står i **`docs/grafik/fps-analysen-2026-09-25.md`**; dagens målinger i
 `docs/log/2026-09-25-cyan-fps.md`.
+
+**Opdateret 25. sep 2026 ~22:10 (S1 kørt — kompositor-vejen er en blindgyde):**
+de fire/fem kompositor-varianter blev målt samme aften (kontrolside + spil,
+1080p, `POLL=20`) med `devuan/gpu/eglplatform_x11/s1_variants.sh` og
+`s1_prefs/V1-V5.user.js`:
+
+| Vej | Kontrolside | Spil (1080p) |
+|---|---|---|
+| V1 baseline (WebRender fra, software) | 2,6/s | 0,8-1,0 fps |
+| V2 SWGL (`webrender.software=true`) | 2,2/s | 0,8-0,9 fps |
+| V3 WebRender på GPU | 0,9/s + dødt GPU-barn | ikke kørt |
+| V4 software uden GPU-proces | 2,0/s | 0,6-0,9 fps |
+| V5 som V3 uden GPU-proces | 1,0/s + sort chrome | ikke kørt |
+
+**Ingen gevinst:** software-vejene ligger inden for støj omkring baselinen, og
+WebRender-på-GPU (V3/V5) dør med `DeviceReset DRIVER_ERROR ::WR_POST_UPDATE`
+hvorefter browserens chrome aldrig bliver malet (sort skærm med et farvet
+felt); livlinen er `service nodm restart`. Dermed er kompositor-vejen udelukket,
+og sporet går videre til **S2 (profilering)** og **S3 (canvas-nedskalering)**.
+NB: dagens 1080p-spilkørsler ligger på ~1 fps mod 2,4-2,6 19.-20. sep (årsagen
+er ikke målt, og `service nodm restart` hjalp ikke); `MOZ_LOG`-modulerne
+Compositor/LayerManager/WebRender er tavse i denne build, så vælg vej efter
+proces-snapshot i stedet. Fælder: `docs/faeller.md` 53-56.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster

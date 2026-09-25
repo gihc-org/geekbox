@@ -1055,6 +1055,73 @@ den lokale fil, og start kørslen i en *separat* ssh-kommando. Brug
 `setsid nohup … < /dev/null &` til selve kørslen, så et ssh-drop ikke afbryder
 den (jf. fælde 41 om `pkill -f`).
 
+### Fælde 53: `MOZ_LOG=Compositor/LayerManager/WebRender` er TAVSE på denne ESR-build
+Målt 25. sep 2026 på `/usr/lib/firefox-esr` 140 (build 20260609153453). En
+`about:blank`-kørsel med `MOZ_LOG=gfxPlatform:5,gfxConfig:5,WebRender:5,
+Compositor:5,LayerManager:5,Widget:5,GLContext:5` gav **kun** `D/Widget`
+(108-112 linjer) — `Compositor`, `LayerManager`, `WebRender`, `gfxPlatform`,
+`gfxConfig` og `GLContext` skrev **nul** linjer. `LayerManager` og `GLContext`
+findes ikke engang som strenge i `libxul.so` (`strings | grep -x`), så
+modulnavnene er væk i denne build. `nsRefreshDriver:5` virker, men druknede
+loggen med 18.547 linjer på én kørsel — det er ikke et gratis måleværktøj.
+
+**Regel:** vil du vide *hvilken* kompositor-vej Firefox valgte, kan MOZ_LOG ikke
+bruges her. Brug proces-snapshottet i stedet: er der et barn med `-isForGPUProcess`,
+hvilken proces har hybris-libEGL indlæst (`grep libEGL /proc/<pid>/maps`), og
+`[GFX1-]`-linjerne på stderr (`DeviceReset`, `WaitFlushedEvent`, `RemoteTexture`).
+Værktøj: `devuan/gpu/eglplatform_x11/s1_snapshot.sh`.
+
+### Fælde 54: `service nodm restart` flytter X til en NY VT (tty8 → tty9)
+Målt 25. sep 2026: efter `service nodm restart` startede X som
+`/usr/lib/xorg/Xorg :0 -nolisten tcp vt9`, og aktiv VT var `tty9` — ikke tty8
+som før genstarten. Alt virkede (lxpanel, pcmanfm, nodm-sessionen), men
+**scripts og noter må ikke hardcode tty8**. Læs VT'en af processen:
+
+```bash
+XVTOPT=$(pgrep -ax Xorg | grep -o 'vt[0-9]*' | head -1)
+ACTIVE=$(cat /sys/class/tty/tty0/active)
+```
+
+Det gør `cyan_ab_run.sh` (VT-vagten). Ved gentagne genstarter stiger nummeret
+igen, så en notat-linje med "X kører på tty8" er kun sand indtil næste genstart.
+
+### Fælde 55: WebRender på GPU'en (V3/V5) giver sort chrome og ~3x lavere rate
+Målt 25. sep 2026 (S1, kontrolside ved 1080p). At slå WebRender på og lade den
+køre på hybris-EGL giver **ikke** mere fart på denne stak — det giver et dødt
+kompositor-lag:
+
+* **V3** (`gfx.webrender.software=false`, `layers.acceleration.disabled=false`):
+  Firefox starter en GPU-proces (barn med `… 9 gpu` og hybris-libEGL=14
+  mappings). Den dør efter få sekunder:
+  `[GFX1-]: Detect DeviceReset DeviceResetReason::DRIVER_ERROR
+  DeviceResetDetectPlace::WR_POST_UPDATE in GPU process` efterfulgt af
+  `CompositorBridgeChild receives IPC close with reason=AbnormalShutdown` og et
+  data abort i EL0 (`PC is at 0x0`). Resultat: 0,9 skærm-opdateringer/s (mod
+  2,6 ved baseline) og **browserens chrome bliver aldrig malet** — skærmen ser
+  sort ud med et farvet felt, hvor siden er.
+* **V5** (samme, men `layers.gpu-process.enabled=false`): ingen GPU-proces,
+  kompositoren kører i *hovedprocessen* (samme libEGL=14/hybris=36), og fejler
+  på samme måde — `Calling WaitFlushedEvent::Run: is delayed: 2636`, 1,0/s og
+  sort chrome.
+
+**Regel:** WebRender/hardware-kompositing er en blindgyde på DDK 1.5 + hybris
+(bekræfter 17. sep og 25.-26. aug). Bliv på software-vejen, og behandl ethvert
+forslag om "GPU-kompositing" som et forsøg der skal have `service nodm restart`
+som livline.
+
+### Fælde 56: ydelsen driver i løbet af en måleaften — mål altid en fersk baseline
+Målt 25. sep 2026: den *samme* kontrolside (samme `user.js`, samme 1080p-vindue,
+`POLL=20`) gav **2,6/s** kl. 21:18 og **1,9-2,0/s** kl. 21:48-21:53 — et fald på
+~25 % uden at noget var ændret, efter at V3/V5 havde kørt GPU-forsøg med
+DeviceReset imellem. `service nodm restart` gav **ikke** ydelsen tilbage, så det
+er ikke X-klientens tilstand (kernedriver/system-formodet). Der er ingen
+termiske zoner (`/sys/class/thermal` er tom) og ingen throttle-linjer i dmesg,
+så årsagen er ikke målt.
+
+**Regel:** mål en baseline i *samme* session som forsøgene, og sammenlign
+varianter der ligger tæt på hinanden i tid. Et tal fra en tidligere aften (eller
+en tidligere time) kan være 25 % forkert.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

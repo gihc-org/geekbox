@@ -58,7 +58,7 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] **Automatisk udvidelse af rodfilsystemet (19. aug 2026)** — `myinit.sh` sammenligner nu filsystemets størrelse med partitionens og kalder `resize2fs` hvis der mangler over 5 %. Stateless (ingen markør-fil), og kører som PID 1 før init, hvor ingen andre skriver på disken. Baggrund: imaget har et 1,4 GB filsystem, browser-cache fyldte det på en aften, og en **fuld disk dræber X-sessionen TAVST** — tom `.xsession-errors`, ingen logs, ser ud som en helt anden fejl. Fælde fundet undervejs: `/proc/mounts` har to poster for `/` (initramfs' `rootfs` først, den rigtige `/dev/mmcblk0p6` bagefter) — tag den SIDSTE `/dev`-post, ellers springer guarden alt over. `emmc_first_boot.sh` beholdes til swapfilen. **`df` hører i de første tre kommandoer man kører, når noget uforklarligt går i stå**
 - [x] **syslog-daemon i imaget (19. aug 2026)** — `sysklogd` i `extra_packages.sh` + vagt i 09. Uden den gik nodms fejlbeskeder i ingenting, og både den fulde disk og det døde udev var usynlige
 - [x] **Hele kæden verificeret på en frisk flash (19. aug 2026, boks 6)** — ved FØRSTE boot, uden manuelle efter-trin: `resize2fs` kørte selv (`/root/resize.log`: "now 3799552 (4k) blocks long", 15 GB), præcis én udevd med 204 poster i databasen (mus + tastatur virker), rsyslog kører, tapet, overscan-kompensation, `sudo`, dansk locale og ur via chrony. Lyden manglede først, fordi PA's Exec-patch kun lå i `07`, som ikke var genkørt — **en rettelse i et script der ikke bliver kørt igen, er ikke en rettelse**. Derfor ligger den nu også i `09` med vagter, ligesom tapet-symlinket og `video`-gruppen. Regel fremover: alt hvad 07 sætter op, og som en boks ikke kan undvære, skal have et sikkerhedsnet i 09, fordi 09 altid kører før en flash
-- [ ] Nye scripts fra aug 2026 der bør nævnes i `docs/boksen/vaerktoejer.md`: `testflash.sh` (byg+flash med pause til loader-tilstand), `find_box.sh` (find boksen på nettet), `rollback.sh` (sæt uboot-logo-flaget tilbage og flash), `fb_overscan.py`, `patch_uboot_logo.py`
+- [x] Nye scripts fra aug 2026 nævnt i `docs/boksen/vaerktoejer.md`: `testflash.sh`, `find_box.sh`, `rollback.sh`, `fb_overscan.py`, `patch_uboot_logo.py` (25. sep 2026 udvidet med §6.1: FPS-/cyan-måleværktøjerne, herunder `devuan/box.sh`, `s1_variants.sh`, `s1_snapshot.sh`)
 - [x] **Swapfil laves automatisk (19. aug 2026)** — `myinit.sh` laver en 2 GB swapfil ved første boot hvis der ikke er nogen, efter dropbear så ssh virker imens (dd'en tager 1-2 min). Baggrund: firefox med YouTube dør uden swap på 2 GB RAM — men **maskinen bliver ved at køre**, det er firefox' egen proces der lukkes, og der er INGEN "Killed process" i kernens log. Beviset ligger i `~/.mozilla/firefox/*/minidumps/*.dmp`. Fælde i fælden: test ikke med `[ -s /proc/swaps ]` — procfs rapporterer altid størrelse 0, så testen er altid sand. **`emmc_first_boot.sh` er dermed kun til ældre bokse**; nye får både resize og swap af sig selv
 - [x] **rsyslog druknede i syscall-403-floden (19. aug 2026)** — 3.10 dumper alle registre ved hvert `clock_gettime64`-kald, hvilket blev ~30 MB/time skrevet til eMMC'en (syslog + kern.log) så snart rsyslog var installeret. Dumpet er KERN_WARNING, så prioritet kan ikke bruges. `09` lægger nu et indholdsfilter i `/etc/rsyslog.d/`. Målt: fra ~950 linjer/45 s til 0, mens `logger` stadig kommer igennem. NB: rsyslogs `regex` er POSIX BRE (`+` er et almindeligt tegn, `(a|b)` virker ikke) — brug `ereregex`
 - [x] **Grafisk wifi (19. aug 2026)** — `network-manager` + `network-manager-gnome` i pakkelisten (16 MiB inkl. 16 afhængigheder). Den ikke-oplagte del er polkit: standardreglerne kræver en "aktiv session", og nodm laver ikke en, så uden en gruppebaseret regel kan man SE netværkene men ikke tilslutte sig. `09` sætter `netdev`-gruppen + `/etc/polkit-1/rules.d/50-nm-netdev.rules`. eth0 bliver bevidst `unmanaged` (ssh-vejen skal ikke afhænge af NM); wlan0 må ikke stå i `/etc/network/interfaces`, ellers lader NM den være. Verificeret: nm-applet i bakken, wifi-liste, tilsluttet. NB: er både boks og laptop på wifi, kan routerens client isolation blokere ssh mellem dem — brug kablet
@@ -137,10 +137,23 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   trying to paint, skipping` — altså backpressure fra browserens kompositor.
   Firefox kører den ældste vej: `gfx.webrender.enabled=false`,
   `gfx.webrender.force-disabled=true`, `layers.acceleration.disabled=true`.
-  **Næste (afventer brugerens valg):** S1 skift kompositor-vej (SWGL /
-  WebRender-GPU / uden GPU-proces), S2 profilér kompositoren
-  (`MOZ_LOG=Compositor:5,…` + Gecko-profiler), S3 canvas-nedskalering via
-  BiDi-preload. Fuld analyse med spor S1-S6 og 4.4-kernens revurdering:
+  **S1 er KØRT 25. sep 2026 sen aften — NEGATIVT RESULTAT:** de tre nye
+  kompositor-veje blev målt på både kontrolside og spil ved 1080p (se
+  `docs/log/2026-09-25-cyan-fps.md`, afsnittet om S1-sessionen). Kort:
+  V1 baseline 2,6/s (kontrolside) og 0,8-1,0 fps (spil);
+  V2 SWGL 2,2/s og 0,8-0,9 fps (ingen gevinst, første 10-15/10s var
+  scenevariation); V4 (uden GPU-proces) 2,0/s og 0,6-0,9 fps;
+  **V3 (WebRender på GPU) og V5 (samme uden GPU-proces) FEJLER** — GPU-processen
+  (hhv. hovedprocessen) dør med `DeviceReset DRIVER_ERROR ::WR_POST_UPDATE` /
+  `WaitFlushedEvent … is delayed`, giver 0,9-1,0/s og maler ikke chrome (sort
+  skærm med et farvet felt). Alle software-veje ligger inden for støj omkring
+  baselinen, så **kompositor-vejen er ikke vejen frem**; WebRender på GPU er en
+  blindgyde på DDK 1.5 + hybris (fælde 55).
+  **Næste (ikke aftalt):** S2 profilér kompositoren (Gecko-profiler;
+  `MOZ_LOG=Compositor/LayerManager/WebRender` er tavse i denne build, fælde 53)
+  og S3 canvas-nedskalering via BiDi-preload — S3 er den eneste vej der hidtil
+  er målt til at give ~2x uden at røre driver eller display. Fuld analyse med
+  spor S1-S6 og 4.4-kernens revurdering:
   `docs/grafik/fps-analysen-2026-09-25.md`.
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
@@ -161,7 +174,55 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 25. sep 2026) — NUVÆRENDE:**
+- **God start i en ny session (FPS-sporet, 25. sep 2026 SEN AFTEN, efter S1) —
+  NUVÆRENDE:**
+  *"Læs `docs/log/2026-09-25-cyan-fps.md` (afsnittet "S1-session (samme dag,
+  ~21:15 og frem)" — resultater, aftaler og fælder; HELE notatet),
+  `docs/grafik/fps-analysen-2026-09-25.md` (§5 spor S1-S6, §8 rækkefølge, §9
+  kommandoer) og `OVERBLIK.md`.
+  STATUS 25. sep 2026 ~22:10: spillet er spilbart (proxy vnext12 `dcc0a68f` +
+  alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`), men **fps er ~1 ved 1080p
+  i dag** — lavere end de 2,4-2,6 målt 19.-20. sep, og faldet er *ikke*
+  forklaret (kontrolsiden faldt samtidig kun 2,6 -> 2,0/s, og
+  `service nodm restart` gav ikke ydelsen tilbage).
+  **S1 (kompositor-vejen) er KØRT og er et negativt resultat:** SWGL (V2) og
+  software uden GPU-proces (V4) ligger inden for støj omkring baselinen (V1);
+  WebRender på GPU (V3) og samme uden GPU-proces (V5) dræber kompositor-laget
+  (`DeviceReset DRIVER_ERROR ::WR_POST_UPDATE`, `WaitFlushedEvent … is
+  delayed`), giver ~1/s og maler ikke browserens chrome (sort skærm med et
+  farvet felt). Kompositor-vejen er dermed udelukket — bliv på software-vejen.
+  NÆSTE (foreslået rækkefølge, ikke aftalt): (1) **S2** profilér kompositoren —
+  Gecko-profiler (`MOZ_PROFILER_STARTUP=1` +
+  `MOZ_PROFILER_SHUTDOWN=/tmp/prof.json`) og de `MOZ_LOG`-moduler der VIRKER
+  (`nsRefreshDriver:5`, `Widget:5`); Compositor/LayerManager/WebRender er tavse
+  i denne build (fælde 53). (2) **S3** canvas-nedskalering via BiDi-preload
+  (snippet i analysens §9.3) — eneste vej hidtil målt til ~2x uden at røre
+  driver eller display. (3) S4 systemhåndtag (governor/DDR/swap). (4) Spor B
+  (4.4 + DDK 1.8) kun hvis S2/S3 viser behov for en bedre GL-driver.
+  MÅLEOPSTILLING der virker (25. sep): `bash devuan/box.sh '<kommando>'` som
+  ssh-wrapper og `bash devuan/gpu/eglplatform_x11/s1_variants.sh
+  {backup | prefs Vn | restore <ts> | run <tag> <Vn> <sek> [url] [win] | wait |
+  result}` — varianterne ligger i `s1_prefs/V1-V5.user.js`, og
+  `s1_snapshot.sh` tager proces-snapshottet 75 s inde i kørslen (GPU-proces?
+  hybris-libEGL i hvilken proces? GL-aktivitet i probe.log). Brug `POLL=20` og
+  `FBSEC=40`; spillets egen rate læses af `FPS tr=`-linjen med `gdn.poki`-href,
+  ikke af den summerede `tail`. Genskab altid `user.js` bagefter
+  (`s1_variants.sh restore <ts>`).
+  FÆLDER (kort): MOZ_LOG-Compositor/LayerManager/WebRender er tavse (53); X
+  skifter VT ved `service nodm restart` — læs VT'en, hardcode ikke tty8 (54);
+  WebRender på GPU = sort chrome + ~3x langsommere, livline
+  `service nodm restart` (55); ydelsen driver ~25 % i løbet af en aften — mål
+  en fersk baseline i samme session (56); `POLL=20` (49); ikke `CYAN_LIGHT` når
+  billedet skal ses (46); `pkill -f` dræber din egen ssh (41); BiDi = én
+  session (42); testsider i /tmp ryddes ved genstart (43); ssh `'cat > fil && …
+  &'` giver en tom fil (52).
+  BOKS-TILSTAND efter S1: `user.js` = originalen (md5 `0ac16be8`), ingen
+  Firefox, ingen BiDi-klient, proxy vnext12 `dcc0a68f`, HDMI `1920x1080p-60`,
+  **X på tty9** (genstartet 21:51), ingen kørende scripts. Alle S1-data ligger
+  i `/tmp/ab_S1_*` og `/tmp/ab_G_S1_*`."*
+
+- **God start i en ny session (FPS-sporet, 25. sep 2026) — HISTORISK
+  (brugt 25. sep 2026 aften; S1 blev kørt, resultatet står i session-notatet):**
   *"Læs `docs/grafik/fps-analysen-2026-09-25.md` (HELE — målinger, afviste
   hypoteser, spor S1-S6 og §9 med de konkrete kommandoer),
   `docs/log/2026-09-25-cyan-fps.md` (status + aftaler) og `OVERBLIK.md`.
