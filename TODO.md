@@ -215,8 +215,79 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (FPS-sporet, 25. sep 2026 SEN AFTEN, efter S1) —
+- **God start i en ny session (FPS-sporet, 26. sep 2026, efter S1+S2) —
   NUVÆRENDE:**
+  *"Læs `docs/log/2026-09-25-cyan-fps.md` (HELE notatet — S1-sessionen, den
+  rene baseline efter strøm-cyklus, netværksfejlen og S2-profileringsafsnittet
+  med "Status ved sessionsslut"), `docs/grafik/fps-analysen-2026-09-25.md`
+  (afsnit 0 = resultatet, §5 spor, §9 kommandoer) og `OVERBLIK.md`.
+  STATUS 26. sep 2026 ~00:20: spillet er spilbart (proxy vnext12 `dcc0a68f` +
+  alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`), men kører **~0,9 fps ved
+  1080p** (canvas 1031x580). Det er ikke spiltilstand (målt med brugeren
+  trykkende play midt i en kørsel: helt fladt rAF-forløb), ikke netværk
+  (fungerende net giver samme tal), ikke driver-/SoC-tilstand (overlever fuld
+  strøm-cyklus med verificeret GPU-stak og 1,6 GB fri RAM) og ikke GPU-/
+  readback-prisen (`readback_probe`: 33,5 ms @836x470, 171,7 ms @1080p = som
+  17./19. sep). Kontrolsiden uden WebGL er uændret (2,3/s mod 2,4/s 20. sep).
+  **S1 (kompositor-vejen) er kørt og negativ:** V2 SWGL 2,2/s og V4 uden
+  GPU-proces 2,0/s (inden for støj omkring V1 2,6/s); V3 (WebRender på GPU) og
+  V5 (samme uden GPU-proces) dræber kompositor-laget — `DeviceReset
+  DRIVER_ERROR ::WR_POST_UPDATE` / `WaitFlushedEvent … is delayed` — giver ~1/s
+  og maler ikke browserens chrome. Bliv på software-vejen.
+  **S2 (profilering) er kørt og peger på frame-planlægningen:** Gecko-profilen
+  (66 MB, ~174 s, på boksen `/root/prof_S2_20260925.json`, også hentet til
+  `/tmp/prof_S2_20260925.json`) viser at ALLE tråde venter — indholdsprocessens
+  `GeckoMain` 86,7 % i `PollWrapper`, parent-`GeckoMain` 64,7 % i `PollWrapper`,
+  `Compositor` 98,2 % i `ThreadEventQueue::GetEvent::Wait`, `CanvasRenderer`
+  68,9 % samme vent (6 % i `WebGLParent::RecvDispatchCommands`, 0,3 % i vores
+  `libEGL`-proxy). Kun ~145 ms main-tråds-CPU pr. frame. Profilens egne markers:
+  vsync ~12/s, `RefreshDriverTick` ~2,5/s, `SkippedComposite` ~0,7/s — men
+  spillets rAF ~0,9/s. Dvs. loftet ligger i **planlægningen fra tick til
+  færdig paint/transaction**, samme sted som `Over max pending transaction
+  limit when trying to paint, skipping`.
+  NÆSTE (aftalt med brugeren 26. sep ~00:10 — de tre første, i denne rækkefølge):
+  (1) **`layout.frame_rate` fastsat** (fx 30) i `/home/kristian/ffprof/user.js`.
+  Springer spillets rAF op, sad loftet i vsync-/tick-planlægningen; sker der
+  intet, sidder det i transaction-confirmation. Genskab `user.js` bagefter.
+  (2) **Kort kørsel med `MOZ_LOG=nsRefreshDriver:5`** (fx 40 s) og tidsstempler:
+  mål hvor lang tid der går fra "ticking drivers" til "Completed transaction id
+  N". NB: loggen er tung — den udsulter main-tråden og kan selv udløse spillets
+  "Game failed to load due to network problems" (fælde 58); brug den KUN til
+  timing, ikke til fps-tal.
+  (3) **S3-canvas-halvering** via BiDi-preload (snippet i analysens §9.3):
+  skalerer transaction-tiden med canvas-arealet, er canvas→kompositor-vejen
+  synderen. Efterprøv til sidst at spillet stadig kan spilles.
+  (4) Kun hvis 1-3 peger ind i libxul uden forklaring: `-dbgsym`-symboler til
+  `libxul.so` (Debian stripper den, så frames vises som `libxul.so+0x…`).
+  MÅLEOPSTILLING der virker (25./26. sep): `bash devuan/box.sh '<kommando>'`
+  som ssh-wrapper; `bash devuan/gpu/eglplatform_x11/s1_variants.sh
+  {backup | prefs Vn | restore <ts> | run <tag> <Vn> <sek> [url] [win] [settle]
+  [fbsec] [prof] | wait | result}`; `s1_prefs/V1-V5.user.js`; proces-snapshot
+  med `s1_snapshot.sh`; `prof_top.py` læser en profil-JSON (S2);
+  `bidi_cyan.py close` lukker Firefox pænt (nødvendigt for profil-dumpet).
+  FÆLDER (kort, alle i `docs/faeller.md`): MOZ_LOG-Compositor/LayerManager/
+  WebRender er tavse (53); X skifter VT ved `service nodm restart` (54);
+  WebRender på GPU = sort chrome + ~3x langsommere (55); ydelsen driver ~25 % i
+  løbet af en aften — mål baseline i samme session (56); myinit's statiske
+  nødnet kan give forkert default-rute → ingen internet/DNS og "Game failed to
+  load due to network problems" (57); Gecko-profileren dumper kun ved pæn
+  lukning, og `MOZ_LOG=nsRefreshDriver:5` må ikke køre samtidig (58);
+  BiDi-sessionen fra preload-klienten blokerer `browser.close` (59); desuden
+  49 (`POLL=20`), 46 (ikke `CYAN_LIGHT` når billedet skal ses), 41 (`pkill -f`
+  dræber din ssh), 42 (BiDi = én session), 43 (testsider i /tmp), 52.
+  BOKS-TILSTAND (~00:20): frisk boot efter strøm-cyklus, netværk korrekt
+  (`default via 192.168.0.1`, DNS virker), X på **tty7**, ingen Firefox,
+  GPU-stak verificeret (1.5@3830101), bindapi-lap aktiv, proxy vnext12
+  `dcc0a68f`, kontrolsider i `/tmp`. På boksen ligger desuden de rettede
+  filer: `/root/myinit.sh` `db668d2d` (fallback-rute-fixet), `cyan_ab_run.sh`
+  `3a69cce4`, `bidi_cyan.py` `89edf3e5`, `prof_top.py` `ad9d41e6` — alle
+  md5-identiske med repoet. Er boksen blevet strøm-cyklet siden: kør
+  `bash devuan/gpu/eglplatform_x11/bringup_after_power.sh` (venter selv på
+  ssh) og tjek `ip route` (fælde 57)."*
+
+- **God start i en ny session (FPS-sporet, 25. sep 2026 SEN AFTEN, efter S1) —
+  HISTORISK (brugt 25.-26. sep; S1 og S2 er kørt, resultaterne står i
+  session-notatet):**
   *"Læs `docs/log/2026-09-25-cyan-fps.md` (afsnittet "S1-session (samme dag,
   ~21:15 og frem)" — resultater, aftaler og fælder; HELE notatet),
   `docs/grafik/fps-analysen-2026-09-25.md` (§5 spor S1-S6, §8 rækkefølge, §9

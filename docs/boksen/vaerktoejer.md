@@ -24,14 +24,17 @@ Alt her ligger i `devuan/gpu/eglplatform_x11/` (og kopieres til boksens
 | Værktøj | Hvad det gør |
 |---|---|
 | `devuan/box.sh` | tynd ssh/scp-wrapper til boksen (`<kommando>`, `--put`, `--get`); finder IP'en selv |
+| `devuan/gpu/eglplatform_x11/bringup_after_power.sh` | idempotent bring-up efter strøm-cyklus: venter på ssh, ur, `insmod` + `gpu_up.sh`, `/dev/sw_sync`, proxy vnext12, bindapi-lap + VT tilbage til X, kontrolsider til `/tmp`, GL-verifikation og md5 mod repoet |
 | `fb_fps.c` | skærmens faktiske opdateringsrate (følger ypan/blok-ændringer). **Brug `POLL=20`** — med 200 ms poll kan den ikke måle over ~2-5/s (fælde 49) |
 | `fb_bench.c` | rå skrivehastighed til `/dev/fb0` (helt frame, rektangler, memset) |
 | `xput_bench.c` | X-serverens egen presentvej (`XPutImage`, XSync pr. frame) |
 | `x_focus.c`, `x_resize.c` | sætter fokus på hovedvinduet / skalerer det (`-big` = største Firefox-vindue) |
 | `cyan_ab_run.sh` | én A/B-målekørsel: ren profil, Firefox med proxy-opskriften, BiDi-preload, fokus, `fb_fps`, rAF- og GL-tælling, canvas-geometri |
 | `s1_variants.sh` | S1-værktøjskæden: `backup`, `prefs V1-V5`, `restore <ts>`, `run`, `wait`, `result` — lægger `s1_prefs/*.user.js` ind i profilen og starter målingen afkoblet |
+| `s1_prefs/V1-V5.user.js` | de fem kompositor-varianter fra S1 (V1 baseline, V2 SWGL, V3 WebRender/GPU, V4 uden GPU-proces, V5 WR/GPU uden GPU-proces) |
 | `s1_snapshot.sh` | kører PÅ boksen: proces-snapshot 75 s inde i kørslen (GPU-proces? hvem har hybris-libEGL? GL-aktivitet i probe.log). Nødvendigt fordi `MOZ_LOG`-modulerne Compositor/LayerManager/WebRender er tavse i ESR-140 (fælde 53) |
-| `bidi_cyan.py` | BiDi-klient: `preload` (alpha-shim + rAF-logning), `goto`, `domcheck` (canvas-geometri) |
+| `prof_top.py` | læser en Gecko-profiler-JSON (S2) og viser top-funktioner pr. tråd; håndterer profil-format v31 og mapper rå adresser til bibliotek via profilens `libs` |
+| `bidi_cyan.py` | BiDi-klient: `preload` (alpha-shim + rAF-logning), `goto`, `domcheck` (canvas-geometri), **`close`** (pæn lukning — nødvendig for at få `MOZ_PROFILER_SHUTDOWN` til at skrive profilen, fælde 58) |
 | `raf_test.html`, `raf_test_full.html` | kontrolsider: flyt-boks (uofficiel til rate-måling) og fuldt gentegnet baggrund (bruges som referenceramme) |
 | `kill_bidi.sh` | lukker en hængt BiDi-klient (fælde 42) |
 

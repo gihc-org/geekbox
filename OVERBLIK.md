@@ -132,6 +132,16 @@ Profilen ligger på boksen (`/root/prof_S2_20260925.json`) og på laptoppen
 (`/tmp/prof_S2_20260925.json`); værktøj: `prof_top.py`. Næste: hvorfor kører
 refresh-driveren ~1 Hz (throttling/transaction-confirmation)?
 
+**Opdateret 26. sep 2026 ~00:20 (markers + handover):** profilen indeholder
+Firefox' egne målepunkter, og de indsnævrer spørgsmålet: **vsync ~12/s,
+`RefreshDriverTick` ~2,5/s, `SkippedComposite` ~0,7/s — men spillets rAF kun
+~0,9/s.** Altså ligger tabet mellem tick og færdig paint/transaction, ikke i
+vsync og ikke i CPU. De tre aftalte næste forsøg er (1) `layout.frame_rate`
+fastsat, (2) kort `MOZ_LOG=nsRefreshDriver:5`-kørsel med tidsstempler
+(tick → "Completed transaction id N"), (3) S3-canvas-halvering. De står med
+kommandoer i handover-prompten i `TODO.md`, og hele sessionen er dokumenteret i
+`docs/log/2026-09-25-cyan-fps.md` (fælder 53-59).
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

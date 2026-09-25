@@ -7,6 +7,37 @@
 > 44-51, `docs/grafik/driver-portering.md` og
 > `docs/log/2026-08-26-ddk-handover.md` (4.4-kernel-sporet).
 
+## 0. Resultat pr. 26. sep 2026 (læs dette først)
+
+Analysen nedenfor er skrevet 25. sep om aftenen. **S1 og S2 er siden kørt**,
+og de flytter konklusionen. Kort:
+
+* **S1 (skift Firefox' kompositor-vej) er et negativt resultat.** SWGL (V2) og
+  software uden GPU-proces (V4) ligger inden for støj omkring baselinen (V1);
+  WebRender på GPU (V3) og samme uden GPU-proces (V5) dræber kompositor-laget
+  (`DeviceReset DRIVER_ERROR ::WR_POST_UPDATE` / `WaitFlushedEvent … is
+  delayed`), giver ~1/s og maler ikke browserens chrome. Målinger og data:
+  `docs/log/2026-09-25-cyan-fps.md` (S1-sessionen), fælder 53-55.
+* **S2 (profilering) peger et helt andet sted hen: frame-planlægningen.** Med
+  Gecko-profileren (66 MB over ~174 s) står *alle* Firefox-tråde og venter —
+  indholdsprocessens `GeckoMain` 86,7 % i `PollWrapper`, parent-`GeckoMain`
+  64,7 %, `Compositor` 98,2 % i `ThreadEventQueue::GetEvent::Wait`. Der bruges
+  kun ~145 ms main-tråds-CPU pr. frame. Profilens egne markers: vsync ~12/s,
+  `RefreshDriverTick` ~2,5/s, `SkippedComposite` ~0,7/s — men spillets rAF kun
+  **~0,9/s**. Altså: **loftet er ikke CPU, GPU eller compositing-prisen, men
+  planlægningen fra tick til færdig paint/transaction** (samme sted som
+  `Over max pending transaction limit when trying to paint, skipping`).
+  Værktøj: `prof_top.py`; fælder 58-59.
+* **Næste tre forsøg** (aftalt 26. sep, skrevet ind i handover-prompten i
+  `TODO.md`): (1) `layout.frame_rate` fastsat, (2) kort kørsel med
+  `MOZ_LOG=nsRefreshDriver:5` og tidsstempler for tick → "Completed transaction
+  id N", (3) S3-canvas-halvering. Først derefter er `-dbgsym`-symboler i libxul
+  relevante.
+* Sidefund: spillets "Game failed to load due to network problems" var
+  **myinit's fallback-rute uden metric** (fælde 57, rettet i kode og på boksen),
+  og `MOZ_LOG=nsRefreshDriver:5` kan selv udløse samme besked ved at udsulte
+  main-tråden (fælde 58).
+
 ## 1. Konklusion (kort)
 
 **Loftet ligger inde i Firefox' kompositor/present-sti — ikke i X, ikke i
