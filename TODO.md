@@ -115,9 +115,33 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   maksimeret vindue kan ikke skaleres med `XMoveResizeWindow` (brug
   `xulstore.json`). Se `docs/faeller.md` fælde 49-51 og
   `docs/log/2026-09-20-cyan-fps.md`.
-  **Næste (afventer brugerens valg):** spillet i et mindre vindue
-  (`WIN="1280 720"`) for at bekræfte gevinsten end-to-end, eller 720p "gjort
-  rigtigt" (HDMI-mode + `fbset`/genstart).
+  **KØRT 25. sep 2026 (brugerens valg: spillet i mindre vindue): areal-modellen
+  holder for kontrolsiden, men ikke for spillet.** Kontrolsiden i et
+  1280x720-vindue gav 6,0/s (som forudsagt) — spillet gav **1,8-1,9/s** i
+  samme vindue (2 kørsler) og **4,2-4,8/s** i et 640x360-vindue. Spillets
+  canvas (læst af proxyens log) var 836x470 i 720p-vinduet og 640x360 i
+  640x360-vinduet, så hverken vindues- eller canvas-arealet forklarer
+  rækkefølgen. Under 1080p-kørslen crashede Firefox' indholdsproces
+  (`Bad mode in Synchronous Abort`, `PC=0x2`, ingen PVR-MMU-fault).
+  Se `docs/log/2026-09-25-cyan-fps.md`.
+  **Vigtigt (25. sep):** "720p gjort rigtigt" forventes IKKE at hjælpe — et
+  maksimeret 720p-vindue ser ud til at give præcis den canvas-konfiguration
+  (836x470) der måler 1,8-1,9/s i dag.
+
+- [ ] **FPS-loftet er inde i Firefox' kompositor (målt 25. sep 2026).**
+  `memcpy` til `/dev/fb0` = **3,1 ms** for et helt 1080p-frame (1.285 MB/s);
+  X'ens egen `XPutImage`-vej = **11,4 ms/frame** ved 1920x1054 (87,8 fps);
+  CPU ramper 312 -> 1200/1296 MHz under last; Firefox' vindue er depth 16
+  (matcher roden) og der kører ingen compositing manager. Alligevel leverer
+  Firefox kun **2,4/s** og logger `Over max pending transaction limit when
+  trying to paint, skipping` — altså backpressure fra browserens kompositor.
+  Firefox kører den ældste vej: `gfx.webrender.enabled=false`,
+  `gfx.webrender.force-disabled=true`, `layers.acceleration.disabled=true`.
+  **Næste (afventer brugerens valg):** S1 skift kompositor-vej (SWGL /
+  WebRender-GPU / uden GPU-proces), S2 profilér kompositoren
+  (`MOZ_LOG=Compositor:5,…` + Gecko-profiler), S3 canvas-nedskalering via
+  BiDi-preload. Fuld analyse med spor S1-S6 og 4.4-kernens revurdering:
+  `docs/grafik/fps-analysen-2026-09-25.md`.
   `CYAN_LIGHT=1` (al måle-instrumentering fra) måler identisk med den tunge
   udgave (1,5 fps, ~380-400 GL-draws/s), og et mindre vindue (1010x610)
   ændrede intet — **den måling er ugyldig, vinduet blev aldrig mindre (fælde

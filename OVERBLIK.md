@@ -51,6 +51,28 @@ skaleres med `XMoveResizeWindow` — størrelsen skal sættes i profilens
 `xulstore.json` før start. **17. sep-konklusionen "et mindre vindue hjalp
 ikke" er derfor ugyldig.** Detaljer: `docs/log/2026-09-20-cyan-fps.md`.
 
+**Opdateret 25. sep 2026 (bredere analyse: loftet ligger i Firefox'
+kompositor):** spillet er målt i tre vinduesstørrelser samme dag — 1920x1054
+(tab-crash under kørslen; 19.-20. sep 2,4-2,6/s), 1280x720 (**1,8-1,9/s**,
+2 kørsler) og 640x360 (**4,2-4,8/s**). En kontrolside i 1280x720-vinduet gav
+6,0/s, så areal-modellen holder for browserens grundflade — men ikke for
+spillet, hvis canvas (836x470 i 720p-vinduet, 640x360 i det lille) ikke følger
+vinduet monotont. **De nederste lag er målt og er hurtige:** `memcpy` til
+`/dev/fb0` tager 3,1 ms for et helt 1080p-frame (1.285 MB/s), X's egen
+`XPutImage`-vej 11,4 ms/frame (87,8 fps), og CPU'en ramper 312 -> 1200/1296
+MHz under last. Firefox leverer alligevel kun 2,4/s og logger `Over max
+pending transaction limit when trying to paint, skipping` — altså er
+**browserens kompositor (Basic/software; WebRender er slået fra) flaskehalsen**,
+~30-40x langsommere end platformen under den. Afvist ved måling: manglende
+write-combining/uncached fb, langsom X-fbdev-vej, compositing manager,
+ARGB-konvertering (vinduet er depth 16) og DVFS. 4.4-kernel-sporet er
+revurderet: KMS/page-flip løser ikke dette loft (fb/X-vejen er allerede
+hurtig); den reelle grund til Spor B er DDK 1.8 (bedre GL-driver til
+WebRender/GPU-vejen). Prioriterede nye spor (S1 skift Firefox' kompositor-vej,
+S2 profilér kompositoren, S3 canvas-nedskalering via preload, S4 systemhåndtag)
+står i **`docs/grafik/fps-analysen-2026-09-25.md`**; dagens målinger i
+`docs/log/2026-09-25-cyan-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

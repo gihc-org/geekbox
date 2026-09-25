@@ -494,6 +494,7 @@ apt-get --purge autoremove  # rydder de pakker chromium trak med
 
 ---
 
+### Fælde 49: `fb_fps` med 200 ms poll kan ikke måle over ~2-5/s — og en flyt-boks måler det forkerte
 ### Fælde 18: Daemonen dør med kode 42 — et tomt hul i hybris' funktionstabel
 
 **Symptom:** `gles_daemon` svarer på `ping`/`fb`, men dør på den første `render`.
@@ -1033,6 +1034,26 @@ Følge: **17. sep-konklusionen "et mindre vindue hjalp ikke" er ugyldig** — de
 blev målt på et vindue der aldrig blev mindre. Med `WIN=1000 600` +
 `raf_test_full.html` måltes 20. sep 10,3 skærm-opdateringer/s mod 2,4/s på
 fuld flade (samme side, samme opsætning).
+
+### Fælde 52: `ssh ... 'cat > fil && …'` med `&` i samme kommando giver en TOM fil
+Målt 25. sep 2026 (to gange på samme aften). Skal en fil kopieres til boksen og
+der bagefter startes noget i baggrunden, er denne form fristende:
+
+```bash
+ssh -i ~/.ssh/geekbox_key root@<ip> 'cat > /root/fil.sh && chmod +x /root/fil.sh \
+  && setsid nohup /root/fil.sh > /tmp/out 2>&1 & sleep 4; echo launched' < fil.sh
+```
+
+`&` deler fjernshellens kommandolinje: alt før `&` (også `cat > /root/fil.sh`)
+bliver en baggrundsjobb, og den kører samtidig med resten. Resultatet blev en
+**tom** `/root/fil.sh` (`md5 d41d8cd98f00b204e9800998ecf8427e` = den tomme fils
+md5), og den efterfølgende kørsel startede uden at gøre noget — i det ene
+tilfælde med et halvt startet målescript som følge.
+
+**Regel:** kopiér filen i én ssh-kommando (uden `&`), verificér med `md5sum` mod
+den lokale fil, og start kørslen i en *separat* ssh-kommando. Brug
+`setsid nohup … < /dev/null &` til selve kørslen, så et ssh-drop ikke afbryder
+den (jf. fælde 41 om `pkill -f`).
 
 ---
 
