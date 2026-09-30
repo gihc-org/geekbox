@@ -1195,6 +1195,34 @@ forsøg over ~5 minutter, alle afvist.
 målinger), så kør uden preload-klient, eller accepter at profilen ikke kan
 skrives. Alternativet er at genstarte Firefox og køre profilen uden klienten.
 
+### Fælde 60: Chromium 150 på 3.10/hybris — `--use-gl=egl`, MV2 og SwiftShader
+Målt 30. sep 2026 i `chromium-fps`-branchen. Tre separate fælder:
+
+1. **`--use-gl=egl` findes ikke længere som EGL-tvang.** Chromium 150 svarer
+   `Requested GL implementation (gl=egl-gles2,angle=none) not found in allowed
+   implementations: [(gl=egl-angle,angle=default)]`. Brug `--use-gl=angle` og
+   vælg backend med `--use-angle=...`. Den foreslåede `chromium --kiosk
+   --use-gl=egl`-kommando ender derfor uden GPU.
+2. **Hardware-ANGLE mod hybris fejler på config/visual-match.** Med
+   `--use-angle=gles-egl` loades `/opt/hybris`-proxyen, men Chromium logger
+   `No suitable EGL configs found for initialization`; med `gl-egl` kommer
+   `eglInitialize OpenGLEGL failed with error EGL_NOT_INITIALIZED`. WebGL går
+   derefter `lost` (37442). Det er ikke fordi hybris mangler configs —
+   `es3_config_probe` viser både RGB565 og RGBA8888 med ES2/ES3.
+3. **SwiftShader virker kun for simple sider.** Med
+   `--use-angle=swiftshader --enable-unsafe-swiftshader` får en triviel
+   WebGL-side `WebGL 2.0`; spillet får canvas og lyd, men mister konteksten,
+   GPU-processen falder tilbage til `--use-gl=disabled`, og skærmen opdaterer
+   kun ~5,7 gange/s. Spillet kræver desuden at
+   `failIfMajorPerformanceCaveat` fjernes, ellers melder det “This browser does
+   not support WebGL.”
+
+**Bonus:** uBlock Origin 1.67 i Devuan-arkivet er Manifest V2 og afvises af
+Chromium 150 (`unsupported manifest version`); `ExtensionManifestV2Availability`
+hjalp ikke. Brug en MV3-adblocker eller CDP-blokering i testøjemed. Undgå
+Debian-wrapperens automatiske MV2-load til målinger: start
+`/usr/lib/chromium/chromium` direkte.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

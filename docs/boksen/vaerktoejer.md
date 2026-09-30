@@ -19,7 +19,8 @@
 ## 6.1 FPS- og cyan-scene-måleværktøjer
 
 Alt her ligger i `devuan/gpu/eglplatform_x11/` (og kopieres til boksens
-`/root`). De nyeste er tilføjet 25. sep 2026 (S1-sessionen).
+`/root`). De nyeste er tilføjet 25. sep 2026 (S1-sessionen); Chromium-sporet
+kom til 30. sep 2026.
 
 | Værktøj | Hvad det gør |
 |---|---|
@@ -37,6 +38,8 @@ Alt her ligger i `devuan/gpu/eglplatform_x11/` (og kopieres til boksens
 | `bidi_cyan.py` | BiDi-klient: `preload` (alpha-shim + rAF-logning), `goto`, `domcheck` (canvas-geometri), **`close`** (pæn lukning — nødvendig for at få `MOZ_PROFILER_SHUTDOWN` til at skrive profilen, fælde 58) |
 | `raf_test.html`, `raf_test_full.html` | kontrolsider: flyt-boks (uofficiel til rate-måling) og fuldt gentegnet baggrund (bruges som referenceramme) |
 | `kill_bidi.sh` | lukker en hængt BiDi-klient (fælde 42) |
+| `start_chromium_probe.sh` | starter Chromium 150 mod hybris-miljøet med valgfri `--use-gl`/`--use-angle`, egen profil og log; brug `/usr/lib/chromium/chromium` for at undgå Debian-wrapperens MV2-extension-load |
+| `chromium_cdp.py` | lille CDP-klient til Chromium (`list`, `eval`, `goto`, `game`); `game` blokerer reklamedomæner og fjerner `failIfMajorPerformanceCaveat` for SwiftShader-testen. Kræver en ssh-tunnel til port 9223 |
 
 **Regel fra 25. sep 2026:** mål altid en baseline i *samme* session som
 forsøgene — ydelsen på boksen drev ~25 % i løbet af en aften (fælde 56).

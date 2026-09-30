@@ -21,6 +21,25 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
 - [x] Boot-hæng løst: 14.04-initramfs flytter ikke /proc,/sys,/dev ind i nyt root → sysvinit hænger i rcS. Løsning: **`myinit.sh` som PID1-shim** (init=/root/myinit.sh) der mounter selv, starter netværk+dropbear, logger til kortet, og exec'er /sbin/init
 - [x] **Ren uovervåget boot til runlevel 2 med ssh verificeret** (aug 2026)
 
+### Chromium-sporet (aktivt 30. sep 2026)
+
+- [x] **Branch `chromium-fps` oprettet fra `cyan-polish`** (`17d0bc9`) —
+  Chromium prøves som alternativ browser-vej. Alle FPS-/hybris-værktøjer følger
+  med fra `cyan-polish`; `trunk` er ancestor og mangler dem.
+- [x] **Chromium 150.0.7871.181 installeret på boksen** sammen med
+  `start_chromium_probe.sh` og `chromium_cdp.py`. Den foreslåede
+  `--use-gl=egl`-kommando er forkert for Chromium 150: buildet tillader kun
+  `--use-gl=angle` med en ANGLE-backend.
+- [x] **Første målinger:** hardware-ANGLE (`gles-egl`) fejler med
+  `No suitable EGL configs found`; `gl-egl` fejler med
+  `EGL_NOT_INITIALIZED`. SwiftShader giver WebGL 2.0 på en simpel testside, men
+  spillets kontekst går tabt (`CONTEXT_LOST_WEBGL`, 37442), mens lyden kører.
+  uBlock Origin 1.67 er MV2 og kan ikke indlæses i Chromium 150.
+- [ ] **Næste (afventer beslutning):** enten målrettet EGL-config-/visual-probe
+  og en Chromium-ANGLE-lap, eller luk Chromium-sporet og vend tilbage til
+  Firefox S3. Detaljer, kommandoer og fælder:
+  `docs/log/2026-09-30-chromium-fps.md`.
+
 Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [ ] **Kernel-rebuild-regression: WiFi mangler (26. aug 2026)** — vores genbyggede
   3.10-kerner (marts-defconfig) har `RTL8188EU=y`/`RKWIFI=y` men INGEN `bcmdhd` →

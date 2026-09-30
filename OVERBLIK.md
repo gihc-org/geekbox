@@ -142,6 +142,20 @@ fastsat, (2) kort `MOZ_LOG=nsRefreshDriver:5`-kørsel med tidsstempler
 kommandoer i handover-prompten i `TODO.md`, og hele sessionen er dokumenteret i
 `docs/log/2026-09-25-cyan-fps.md` (fælder 53-59).
 
+**Opdateret 30. sep 2026 ~02:10 (Chromium-sporet prøvet, branch
+`chromium-fps`):** Chromium 150 er installeret og prøvet som alternativ til
+Firefox. Den foreslåede `--use-gl=egl`-kommando er en blindgyde — Chromium 150
+tillader kun `--use-gl=angle`. Hardware-ANGLE mod hybris-EGL fejler på
+`No suitable EGL configs found` (`gles-egl`) eller `EGL_NOT_INITIALIZED`
+(`gl-egl`), og WebGL-konteksten bliver derefter `lost` (37442). SwiftShader
+giver WebGL 2.0 på en simpel testside, og spillets motor kører (lyd, rAF ~45/s
+efter klik), men spil-canvas'ets kontekst går tabt, GPU-processen falder tilbage
+til `--use-gl=disabled`, og skærmen opdaterer kun ~5,7 gange/s. uBlock Origin
+1.67 er MV2 og kan ikke indlæses i Chromium 150; en MV3-adblocker er nødvendig
+for en fair sammenligning. Næste valg står i `TODO.md` og
+`docs/log/2026-09-30-chromium-fps.md`: enten målrettet EGL-config-/visual-lap
+eller tilbage til Firefox S3.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
