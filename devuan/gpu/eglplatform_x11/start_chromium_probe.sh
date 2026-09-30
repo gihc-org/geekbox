@@ -19,6 +19,7 @@ PORT=${CHROMIUM_DEBUG_PORT:-9223}
 USE_GL=${CHROMIUM_USE_GL:-angle}
 USE_ANGLE=${CHROMIUM_USE_ANGLE:-gles-egl}
 UNSAFE_SWIFTSHADER=${CHROMIUM_UNSAFE_SWIFTSHADER:-0}
+IN_PROCESS_GPU=${CHROMIUM_IN_PROCESS_GPU:-0}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
 
@@ -40,6 +41,7 @@ DBUS=$(tr '\0' '\n' < "/proc/$LXPID/environ" 2>/dev/null \
 GLFLAGS=(--use-gl="$USE_GL")
 [ -n "$USE_ANGLE" ] && GLFLAGS+=(--use-angle="$USE_ANGLE")
 [ "$UNSAFE_SWIFTSHADER" = 1 ] && GLFLAGS+=(--enable-unsafe-swiftshader)
+[ "$IN_PROCESS_GPU" = 1 ] && GLFLAGS+=(--in-process-gpu)
 
 runuser -u kristian -- env -i \
   HOME=/home/kristian USER=kristian LOGNAME=kristian SHELL=/bin/bash \
@@ -50,6 +52,9 @@ runuser -u kristian -- env -i \
   XDG_CURRENT_DESKTOP=LXDE XDG_SESSION_TYPE=x11 \
   LD_PRELOAD="$LD_PRELOAD_V" \
   LD_LIBRARY_PATH="$LD_LIBRARY_PATH_V" \
+  EGL_PROXY_TRACE="${EGL_PROXY_TRACE:-}" \
+  EGL_PROXY_CONFIG_FIX="${EGL_PROXY_CONFIG_FIX:-}" \
+  EGL_PROXY_FAKE_VISUAL="${EGL_PROXY_FAKE_VISUAL:-}" \
   EGL_PLATFORM=x11 \
   "$CHROME" \
     --kiosk \

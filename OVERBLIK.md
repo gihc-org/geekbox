@@ -152,9 +152,13 @@ giver WebGL 2.0 på en simpel testside, og spillets motor kører (lyd, rAF ~45/s
 efter klik), men spil-canvas'ets kontekst går tabt, GPU-processen falder tilbage
 til `--use-gl=disabled`, og skærmen opdaterer kun ~5,7 gange/s. uBlock Origin
 1.67 er MV2 og kan ikke indlæses i Chromium 150; en MV3-adblocker er nødvendig
-for en fair sammenligning. Næste valg står i `TODO.md` og
-`docs/log/2026-09-30-chromium-fps.md`: enten målrettet EGL-config-/visual-lap
-eller tilbage til Firefox S3.
+for en fair sammenligning. **Gennembrud ~02:40:** EGL-proxyen filtrerer nu
+configs, matcher/aliaser `EGL_CONFIG_ID` og rapporterer X-visual `0x21`;
+Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
+WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
+`GPU process exited`. Næste skridt er fps-måling i spillet og integration af
+lappen i bring-up; detaljer og kommandoer i `TODO.md` og
+`docs/log/2026-09-30-chromium-fps.md`.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster

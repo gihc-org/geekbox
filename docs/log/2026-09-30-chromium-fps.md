@@ -55,10 +55,19 @@
   Chromium-start med hybris-miljø, valgfri ANGLE-backend, profil og log) og
   `chromium_cdp.py` (liste/eval/goto/game via DevTools, adblock-lister og
   `failIfMajorPerformanceCaveat`-lap).
-- **Næste skridt er ikke aftalt:** enten (A) målrettet EGL-config-/visual-probe
-  og en Chromium-ANGLE-lap, eller (B) luk Chromium-sporet og gå tilbage til
-  Firefox S3. Firefox-sporet er fortsat det eneste der har et kørende spil med
-  lyd og billede.
+- **GENNEMBRUD (30. sep ~02:40): hardware-EGL-vejen virker nu for Chromium.**
+  Efter sporing af `eglChooseConfig` blev tre fejl fundet og lappet i
+  `egl_proxy.c`: (1) hybris returnerer RGB565-config først selv når Chromium
+  beder om RGBA8888/depth16/stencil8, (2) hybris ignorerer `EGL_CONFIG_ID`, og
+  (3) Chromium kræver X-visual `0x21`, mens hybris-configs rapporterer
+  1/4/5/0x101. Med `EGL_PROXY_CONFIG_FIX=1` og `EGL_PROXY_FAKE_VISUAL=0x21`
+  holder GPU-processen (`--use-gl=angle --use-angle=gles-egl`), WebGL-testen
+  svarer `OK WebKit WebGL WebGL 2.0 (OpenGL ES 3.0 Chromium)`, og der er nul
+  `GPU process exited` i loggen. Poki/Subway Surfers-siden loades også, men
+  CDP-timeout under load og `fb_fps` ~0,9/s i den kørsel betyder at selve fps
+  endnu ikke er målt færdig. Firefox-vejen er verificeret uændret med
+  `gl_version_probe` (ES 3.1, 1.5@3830101), når config-lappen ikke er slået
+  til.
 
 ## Aftaler og beslutninger
 
@@ -79,6 +88,62 @@
   Chromium 150. (~01:56)
 - [afventer] Beslutning: forfølge hardware-EGL-config-lappen (A) eller lukke
   Chromium-sporet og vende tilbage til Firefox S3 (B). (~02:10)
+- [aftalt] Brugeren valgte A: hardware-EGL-config-lappen forfølges. (~02:15)
+- [udført] EGL-config-trace og tre lapper i `egl_proxy.c`: config-filter,
+  config-id-alias og native-visual-override. (~02:40)
+- [udført] WebGL 2.0 verificeret på hardware-EGL-vejen; Poki-spillet loades
+  uden GPU-process-exits. (~02:40)
+- [afventer] Fps-måling i selve spillet på hardware-vejen; CDP skal have
+  længere timeout eller køre uden `--v=1`-spam. (~02:42)
+
+## Hardware-EGL-lappen (30. sep 2026)
+
+Tre konkrete hybris-fejl blev fundet ved at trace `eglChooseConfig` og
+`eglGetConfigAttrib`:
+
+1. **Config-rækkefølgen.** Chromium bad om `EGL_SURFACE_TYPE=WINDOW|PBUFFER`,
+   RGBA 8/8/8/8, depth 16, stencil 8 og ES3. Hybris returnerede 16 configs,
+   men lagde RGB565-config'en `0x1e` først. Chromium bad om én config og
+   forkastede den. Lappen filtrerer/sorterer de configs der faktisk opfylder
+   minimumskravene, så `0x11` (RGBA8888, depth 24, stencil 8) kommer først.
+2. **`EGL_CONFIG_ID` ignoreres.** Chromium spurgte senere efter
+   `EGL_CONFIG_ID=0x1a`, men hybris returnerede `0x1e`. Lappen matcher
+   config-id eksakt; derefter aliaseres id-forespørgslen til den foretrukne
+   config (`0x11`), mens Chromium fortsat ser id `0x1a` via
+   `eglGetConfigAttrib`. Det undgår kontekst/surface-mismatch.
+3. **X-visual.** Chromiums X-vindue er depth 16 med visual `0x21`, men
+   hybris-configs rapporterer visual 1/4/5/0x101. Med
+   `EGL_PROXY_FAKE_VISUAL=0x21` rapporteres det visual Chromium faktisk har.
+
+Derudover kaldes `fix_egl_table_once()` nu også fra `eglCreateWindowSurface`,
+`eglCreatePbufferSurface`, `eglQuerySurface`, `eglDestroySurface` og
+`eglSwapInterval`, så hybris’ tomme funktionstabel udfyldes før de første
+surface-kald.
+
+Byg på boksen (bemærk `--no-as-needed`, ellers falder `libEGL_r.so` ud af
+`NEEDED`, og `dlsym("eglGetDisplay")` giver NULL):
+
+```bash
+gcc -shared -fPIC -O2 -Wl,-soname,libEGL.so.1 -Wl,--no-as-needed \
+  -o /root/egl_proxy_trace.so /root/egl_proxy_trace.c \
+  -I/usr/local/include -L/opt/hybris -l:libEGL_r.so -ldl
+cp -f /root/egl_proxy_trace.so /opt/hybris/libEGL.so.1.0.0
+```
+
+Chromium-start på hardware-vejen:
+
+```bash
+CHROME=/usr/lib/chromium/chromium \
+CHROMIUM_LD_PRELOAD= CHROMIUM_LD_LIBRARY_PATH=/opt/hybris \
+CHROMIUM_USE_GL=angle CHROMIUM_USE_ANGLE=gles-egl \
+EGL_PROXY_CONFIG_FIX=1 EGL_PROXY_FAKE_VISUAL=0x21 \
+CHROMIUM_URL=file:///usr/local/lib/firefox-webgl/webgl_test_dump.html \
+nohup /root/start_chromium_probe.sh > /root/chromium_launch.log 2>&1 &
+```
+
+`EGL_PROXY_TRACE=1` kan tilføjes for config-trace i
+`/tmp/egl_proxy_trace.log`. Trace er kun diagnostik og skal være slået fra i
+fps-målinger.
 
 ## Kommandoer der virker
 

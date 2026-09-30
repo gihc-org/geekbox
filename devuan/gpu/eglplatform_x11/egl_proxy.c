@@ -38,6 +38,17 @@ typedef EGLBoolean (*real_eglMakeCurrent_t)(EGLDisplay, EGLSurface, EGLSurface,
                                             EGLContext);
 typedef EGLBoolean (*real_eglSwapBuffers_t)(EGLDisplay, EGLSurface);
 typedef EGLint (*real_eglGetError_t)(void);
+typedef EGLSurface (*real_eglCreateWindowSurface_t)(EGLDisplay, EGLConfig,
+                                                    EGLNativeWindowType,
+                                                    const EGLint *);
+typedef EGLSurface (*real_eglCreatePbufferSurface_t)(EGLDisplay, EGLConfig,
+                                                     const EGLint *);
+typedef EGLBoolean (*real_eglQuerySurface_t)(EGLDisplay, EGLSurface, EGLint,
+                                             EGLint *);
+typedef EGLBoolean (*real_eglDestroySurface_t)(EGLDisplay, EGLSurface);
+typedef EGLBoolean (*real_eglSwapInterval_t)(EGLDisplay, EGLint);
+
+static int egl_trace_on(void);
 
 static int g_force_clear_pending = 1;
 
@@ -151,7 +162,13 @@ EGLContext eglCreateContext(EGLDisplay dpy, EGLConfig cfg, EGLContext share,
         fprintf(f, "eglCreateContext version=%d\n", ver);
         fclose(f);
     }
-    return real(dpy, cfg, share, attr);
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreateContext enter dpy=%p cfg=%p ver=%d\n",
+                (void *)dpy, (void *)cfg, ver);
+    EGLContext ctx = real(dpy, cfg, share, attr);
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreateContext exit ctx=%p\n", (void *)ctx);
+    return ctx;
 }
 
 EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
@@ -164,7 +181,12 @@ EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
         real = (real_eglMakeCurrent_t)dlsym(RTLD_NEXT, "eglMakeCurrent");
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
     }
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: MakeCurrent enter dpy=%p draw=%p read=%p ctx=%p\n",
+                (void *)dpy, (void *)draw, (void *)read, (void *)ctx);
     EGLBoolean rc = real(dpy, draw, read, ctx);
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: MakeCurrent exit rc=%d\n", (int)rc);
     EGLint e = err ? err() : EGL_SUCCESS;
     n++;
     if (!cyan_light() && (n <= 5 || n % 100 == 0)) {
@@ -174,6 +196,420 @@ EGLBoolean eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
                     n, (void *)dpy, (void *)draw, (void *)read, (void *)ctx, (int)rc,
                     (unsigned)e);
             fclose(f);
+        }
+    }
+    return rc;
+}
+
+EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig cfg,
+                                  EGLNativeWindowType win,
+                                  const EGLint *attrs)
+{
+    static real_eglCreateWindowSurface_t real;
+    if (!real)
+        real = (real_eglCreateWindowSurface_t)
+            dlsym(RTLD_NEXT, "eglCreateWindowSurface");
+    fix_egl_table_once();
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreateWindowSurface enter dpy=%p cfg=%p win=%p\n",
+                (void *)dpy, (void *)cfg, (void *)win);
+    EGLSurface surf = real ? real(dpy, cfg, win, attrs) : EGL_NO_SURFACE;
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreateWindowSurface exit surf=%p\n",
+                (void *)surf);
+    return surf;
+}
+
+EGLSurface eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig cfg,
+                                   const EGLint *attrs)
+{
+    static real_eglCreatePbufferSurface_t real;
+    if (!real)
+        real = (real_eglCreatePbufferSurface_t)
+            dlsym(RTLD_NEXT, "eglCreatePbufferSurface");
+    fix_egl_table_once();
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreatePbufferSurface enter dpy=%p cfg=%p\n",
+                (void *)dpy, (void *)cfg);
+    EGLSurface surf = real ? real(dpy, cfg, attrs) : EGL_NO_SURFACE;
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: CreatePbufferSurface exit surf=%p\n",
+                (void *)surf);
+    return surf;
+}
+
+EGLBoolean eglQuerySurface(EGLDisplay dpy, EGLSurface surf, EGLint attr,
+                           EGLint *value)
+{
+    static real_eglQuerySurface_t real;
+    if (!real)
+        real = (real_eglQuerySurface_t)dlsym(RTLD_NEXT, "eglQuerySurface");
+    fix_egl_table_once();
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: QuerySurface enter dpy=%p surf=%p attr=0x%x\n",
+                (void *)dpy, (void *)surf, (unsigned)attr);
+    EGLBoolean rc = real ? real(dpy, surf, attr, value) : EGL_FALSE;
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: QuerySurface exit rc=%d val=0x%x\n",
+                (int)rc, value ? (unsigned)*value : 0);
+    return rc;
+}
+
+EGLBoolean eglDestroySurface(EGLDisplay dpy, EGLSurface surf)
+{
+    static real_eglDestroySurface_t real;
+    if (!real)
+        real = (real_eglDestroySurface_t)dlsym(RTLD_NEXT, "eglDestroySurface");
+    fix_egl_table_once();
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: DestroySurface enter dpy=%p surf=%p\n",
+                (void *)dpy, (void *)surf);
+    EGLBoolean rc = real ? real(dpy, surf) : EGL_FALSE;
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: DestroySurface exit rc=%d\n", (int)rc);
+    return rc;
+}
+
+EGLBoolean eglSwapInterval(EGLDisplay dpy, EGLint interval)
+{
+    static real_eglSwapInterval_t real;
+    if (!real)
+        real = (real_eglSwapInterval_t)dlsym(RTLD_NEXT, "eglSwapInterval");
+    fix_egl_table_once();
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: SwapInterval enter dpy=%p interval=%d\n",
+                (void *)dpy, (int)interval);
+    EGLBoolean rc = real ? real(dpy, interval) : EGL_FALSE;
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: SwapInterval exit rc=%d\n", (int)rc);
+    return rc;
+}
+
+/* ---- EGL-config-trace (bruges kun når EGL_PROXY_TRACE=1) ---- */
+
+static int egl_trace_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("EGL_PROXY_TRACE");
+        v = (e && *e && strcmp(e, "0")) ? 1 : 0;
+    }
+    return v;
+}
+
+static FILE *tlog(void)
+{
+    static FILE *f;
+    static int tried;
+    if (!tried) {
+        tried = 1;
+        f = fopen("/tmp/egl_proxy_trace.log", "a");
+    }
+    return f;
+}
+
+static void trace_attrs(FILE *f, const EGLint *a)
+{
+    if (!a) {
+        fprintf(f, "  attrs=NULL\n");
+        return;
+    }
+    for (int i = 0; i < 64 && a[i] != EGL_NONE; i += 2)
+        fprintf(f, "  attr[0x%x]=0x%x\n", (unsigned)a[i], (unsigned)a[i + 1]);
+}
+
+static void *real_egl_handle(void)
+{
+    static void *h;
+#ifndef RTLD_DEEPBIND
+#define RTLD_DEEPBIND 0
+#endif
+    if (!h)
+        h = dlopen("/opt/hybris/libEGL_r.so",
+                   RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND);
+    return h;
+}
+
+static void *real_egl_sym(const char *name)
+{
+    void *h = real_egl_handle();
+    void *p = h ? dlsym(h, name) : NULL;
+    if (!p && egl_trace_on()) {
+        FILE *f = tlog();
+        if (f) {
+            fprintf(f, "real_egl_sym(%s) FAILED: %s\n", name, dlerror());
+            fflush(f);
+        }
+    }
+    return p;
+}
+
+typedef EGLBoolean (*real_eglChooseConfig_t)(EGLDisplay, const EGLint *,
+                                             EGLConfig *, EGLint, EGLint *);
+typedef EGLBoolean (*real_eglGetConfigs_t)(EGLDisplay, EGLConfig *, EGLint,
+                                           EGLint *);
+typedef EGLBoolean (*real_eglGetConfigAttrib_t)(EGLDisplay, EGLConfig,
+                                                EGLint, EGLint *);
+
+static int config_fix_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("EGL_PROXY_CONFIG_FIX");
+        v = (e && *e && strcmp(e, "0")) ? 1 : 0;
+    }
+    return v;
+}
+
+#ifndef EGL_NATIVE_VISUAL_ID
+#define EGL_NATIVE_VISUAL_ID 0x302e
+#endif
+
+static EGLConfig g_preferred_cfg;
+static EGLint g_preferred_visual;
+static EGLConfig g_alias_cfg;
+static EGLint g_alias_id;
+
+static EGLint fake_visual(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("EGL_PROXY_FAKE_VISUAL");
+        v = e ? (int)strtol(e, NULL, 0) : 0;
+    }
+    return v;
+}
+
+static int config_matches(real_eglGetConfigAttrib_t get_attrib, EGLDisplay dpy,
+                          EGLConfig cfg, const EGLint *attrs)
+{
+    if (!attrs)
+        return 1;
+    for (int i = 0; i < 64 && attrs[i] != EGL_NONE; i += 2) {
+        EGLint got = 0;
+        if (!get_attrib || !get_attrib(dpy, cfg, attrs[i], &got))
+            return 0;
+        switch (attrs[i]) {
+        case EGL_SURFACE_TYPE:
+        case EGL_RENDERABLE_TYPE:
+            if ((got & attrs[i + 1]) != attrs[i + 1])
+                return 0;
+            break;
+        case EGL_NATIVE_VISUAL_ID:
+            if (got != attrs[i + 1])
+                return 0;
+            break;
+        case EGL_CONFIG_ID:
+            if (got != attrs[i + 1])
+                return 0;
+            break;
+        default:
+            if (got < attrs[i + 1])
+                return 0;
+            break;
+        }
+    }
+    return 1;
+}
+
+static EGLConfig find_default_config(real_eglGetConfigAttrib_t get_attrib,
+                                     EGLDisplay dpy, const EGLConfig *cfgs,
+                                     EGLint n)
+{
+    if (!get_attrib)
+        return 0;
+    for (int i = 0; i < n && i < 64; i++) {
+        EGLint r = 0, g = 0, b = 0, a = 0, depth = 0, stencil = 0;
+        if (!get_attrib(dpy, cfgs[i], EGL_RED_SIZE, &r) ||
+            !get_attrib(dpy, cfgs[i], EGL_GREEN_SIZE, &g) ||
+            !get_attrib(dpy, cfgs[i], EGL_BLUE_SIZE, &b) ||
+            !get_attrib(dpy, cfgs[i], EGL_ALPHA_SIZE, &a) ||
+            !get_attrib(dpy, cfgs[i], EGL_DEPTH_SIZE, &depth) ||
+            !get_attrib(dpy, cfgs[i], EGL_STENCIL_SIZE, &stencil))
+            continue;
+        if (r >= 8 && g >= 8 && b >= 8 && a >= 8 &&
+            depth >= 24 && stencil >= 8)
+            return cfgs[i];
+    }
+    return 0;
+}
+
+EGLBoolean eglChooseConfig(EGLDisplay dpy, const EGLint *attrs,
+                           EGLConfig *configs, EGLint config_size,
+                           EGLint *num_config)
+{
+    static real_eglChooseConfig_t real;
+    if (!real)
+        real = (real_eglChooseConfig_t)real_egl_sym("eglChooseConfig");
+    if (!real)
+        return EGL_FALSE;
+    EGLBoolean rc;
+    EGLint n_out = 0;
+    if (config_fix_on() && attrs && config_size <= 64) {
+        EGLint wanted_visual = 0;
+        EGLint wanted_config_id = 0;
+        int has_real_attrs = 0;
+        for (int i = 0; i < 64 && attrs[i] != EGL_NONE; i += 2) {
+            if (attrs[i] == EGL_NATIVE_VISUAL_ID)
+                wanted_visual = attrs[i + 1];
+            else if (attrs[i] == EGL_CONFIG_ID)
+                wanted_config_id = attrs[i + 1];
+            else
+                has_real_attrs = 1;
+        }
+        if (wanted_config_id && g_preferred_cfg) {
+            g_alias_cfg = g_preferred_cfg;
+            g_alias_id = wanted_config_id;
+            if (configs && config_size > 0) {
+                configs[0] = g_preferred_cfg;
+                n_out = 1;
+            } else {
+                n_out = 1;
+            }
+            if (num_config)
+                *num_config = n_out;
+            rc = EGL_TRUE;
+            goto trace_result;
+        }
+        if (wanted_visual && !has_real_attrs) {
+            EGLConfig tmp[64];
+            EGLint n_tmp = 0;
+            real_eglGetConfigs_t get_configs =
+                (real_eglGetConfigs_t)real_egl_sym("eglGetConfigs");
+            rc = get_configs ? get_configs(dpy, tmp, 64, &n_tmp) : EGL_FALSE;
+            if (rc && n_tmp > 0) {
+                real_eglGetConfigAttrib_t get_attrib =
+                    (real_eglGetConfigAttrib_t)real_egl_sym("eglGetConfigAttrib");
+                if (!g_preferred_cfg)
+                    g_preferred_cfg =
+                        find_default_config(get_attrib, dpy, tmp, n_tmp);
+                if (g_preferred_cfg) {
+                    g_preferred_visual = wanted_visual;
+                    if (configs && config_size > 0) {
+                        configs[0] = g_preferred_cfg;
+                        n_out = 1;
+                    } else {
+                        n_out = 1;
+                    }
+                    if (num_config)
+                        *num_config = n_out;
+                    rc = EGL_TRUE;
+                    goto trace_result;
+                }
+            }
+        }
+        EGLConfig tmp[64];
+        EGLint n_tmp = 0;
+        rc = real(dpy, attrs, tmp, 64, &n_tmp);
+        if (rc && n_tmp > 0) {
+            real_eglGetConfigAttrib_t get_attrib =
+                (real_eglGetConfigAttrib_t)real_egl_sym("eglGetConfigAttrib");
+            if (wanted_visual && !g_preferred_cfg)
+                g_preferred_cfg =
+                    find_default_config(get_attrib, dpy, tmp, n_tmp);
+            EGLConfig ordered[64];
+            EGLint n_ordered = 0;
+            for (int i = 0; i < n_tmp && i < 64; i++) {
+                int matches = config_matches(get_attrib, dpy, tmp[i], attrs);
+                int preferred_for_visual =
+                    (wanted_visual && g_preferred_cfg &&
+                     tmp[i] == g_preferred_cfg);
+                if (matches || preferred_for_visual)
+                    ordered[n_ordered++] = tmp[i];
+            }
+            for (int i = 0; i < n_tmp && i < 64; i++) {
+                int matches = config_matches(get_attrib, dpy, tmp[i], attrs);
+                int preferred_for_visual =
+                    (wanted_visual && g_preferred_cfg &&
+                     tmp[i] == g_preferred_cfg);
+                if (!(matches || preferred_for_visual))
+                    ordered[n_ordered++] = tmp[i];
+            }
+            if (has_real_attrs && n_ordered > 0 &&
+                config_matches(get_attrib, dpy, ordered[0], attrs)) {
+                g_preferred_cfg = ordered[0];
+                g_preferred_visual = 0;
+            }
+            if (wanted_visual && g_preferred_cfg &&
+                ordered[0] == g_preferred_cfg)
+                g_preferred_visual = wanted_visual;
+            if (configs && config_size > 0) {
+                int copy = n_ordered < config_size ? n_ordered : config_size;
+                memcpy(configs, ordered, (size_t)copy * sizeof(*configs));
+                n_out = copy;
+            } else {
+                n_out = n_ordered;
+            }
+            if (num_config)
+                *num_config = n_out;
+            rc = EGL_TRUE;
+        } else {
+            rc = real(dpy, attrs, configs, config_size, num_config);
+        }
+    } else {
+        rc = real(dpy, attrs, configs, config_size, num_config);
+    }
+trace_result:
+    if (egl_trace_on()) {
+        FILE *f = tlog();
+        if (f) {
+            fprintf(f, "eglChooseConfig dpy=%p size=%d rc=%d n=%d first=%p\n",
+                    (void *)dpy, (int)config_size, (int)rc,
+                    num_config ? (int)*num_config : -1,
+                    (configs && num_config && *num_config > 0)
+                        ? (void *)configs[0] : NULL);
+            trace_attrs(f, attrs);
+            fflush(f);
+        }
+    }
+    return rc;
+}
+
+EGLBoolean eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, EGLint config_size,
+                         EGLint *num_config)
+{
+    static real_eglGetConfigs_t real;
+    if (!real)
+        real = (real_eglGetConfigs_t)real_egl_sym("eglGetConfigs");
+    if (!real)
+        return EGL_FALSE;
+    EGLBoolean rc = real(dpy, configs, config_size, num_config);
+    if (egl_trace_on()) {
+        FILE *f = tlog();
+        if (f) {
+            fprintf(f, "eglGetConfigs dpy=%p size=%d rc=%d n=%d\n",
+                    (void *)dpy, (int)config_size, (int)rc,
+                    num_config ? (int)*num_config : -1);
+            fflush(f);
+        }
+    }
+    return rc;
+}
+
+EGLBoolean eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint name,
+                              EGLint *value)
+{
+    static real_eglGetConfigAttrib_t real;
+    if (!real)
+        real = (real_eglGetConfigAttrib_t)real_egl_sym("eglGetConfigAttrib");
+    if (!real)
+        return EGL_FALSE;
+    EGLBoolean rc = real(dpy, config, name, value);
+    if (rc && value && config == g_alias_cfg && name == EGL_CONFIG_ID &&
+        g_alias_id)
+        *value = g_alias_id;
+    if (rc && value && name == EGL_NATIVE_VISUAL_ID &&
+        g_preferred_visual && config == g_preferred_cfg)
+        *value = g_preferred_visual;
+    if (rc && value && name == EGL_NATIVE_VISUAL_ID && fake_visual())
+        *value = fake_visual();
+    if (egl_trace_on()) {
+        FILE *f = tlog();
+        if (f) {
+            fprintf(f, "eglGetConfigAttrib cfg=%p name=0x%x rc=%d val=0x%x\n",
+                    (void *)config, (unsigned)name, (int)rc,
+                    value ? (unsigned)*value : 0);
+            fflush(f);
         }
     }
     return rc;
@@ -189,9 +625,14 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         real = (real_eglSwapBuffers_t)dlsym(RTLD_NEXT, "eglSwapBuffers");
         err = (real_eglGetError_t)dlsym(RTLD_NEXT, "eglGetError");
     }
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: SwapBuffers enter dpy=%p surf=%p\n",
+                (void *)dpy, (void *)surface);
     cyan_swap_sample();
     cyan_frame_tick();
     EGLBoolean rc = real(dpy, surface);
+    if (egl_trace_on())
+        fprintf(stderr, "egl_proxy: SwapBuffers exit rc=%d\n", (int)rc);
     EGLint e = err ? err() : EGL_SUCCESS;
     n++;
     if (!cyan_light() && (n <= 5 || n % 100 == 0)) {
@@ -2256,6 +2697,14 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *name)
         real_eglGetProcAddress_fn =
             (__eglMustCastToProperFunctionPointerType (*)(const char *))
             dlsym(RTLD_NEXT, "eglGetProcAddress");
+    if (egl_trace_on() && name) {
+        if (!strcmp(name, "eglChooseConfig"))
+            return (__eglMustCastToProperFunctionPointerType)eglChooseConfig;
+        if (!strcmp(name, "eglGetConfigs"))
+            return (__eglMustCastToProperFunctionPointerType)eglGetConfigs;
+        if (!strcmp(name, "eglGetConfigAttrib"))
+            return (__eglMustCastToProperFunctionPointerType)eglGetConfigAttrib;
+    }
     if (name && !strcmp(name, "glShaderSource"))
         return (__eglMustCastToProperFunctionPointerType)hook_glShaderSource;
     if (name && !strcmp(name, "glCompileShader"))

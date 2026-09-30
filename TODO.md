@@ -35,9 +35,15 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   `EGL_NOT_INITIALIZED`. SwiftShader giver WebGL 2.0 på en simpel testside, men
   spillets kontekst går tabt (`CONTEXT_LOST_WEBGL`, 37442), mens lyden kører.
   uBlock Origin 1.67 er MV2 og kan ikke indlæses i Chromium 150.
-- [ ] **Næste (afventer beslutning):** enten målrettet EGL-config-/visual-probe
-  og en Chromium-ANGLE-lap, eller luk Chromium-sporet og vend tilbage til
-  Firefox S3. Detaljer, kommandoer og fælder:
+- [x] **Hardware-EGL-lappen virker (30. sep ~02:40):** EGL-proxyen filtrerer
+  configs, matcher/aliaser `EGL_CONFIG_ID` og rapporterer X-visual `0x21`.
+  Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
+  WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
+  `GPU process exited`.
+- [ ] **Næste:** mål fps i selve Subway Surfers på hardware-EGL-vejen med
+  `EGL_PROXY_TRACE=0`, længere CDP-timeout og sammenlign med Firefox-sporet.
+  Integrér derefter EGL-lappen i bring-up, så den ikke forsvinder ved næste
+  strøm-cyklus. Detaljer, kommandoer og fælder:
   `docs/log/2026-09-30-chromium-fps.md`.
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
