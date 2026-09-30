@@ -40,10 +40,13 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
   WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
   `GPU process exited`.
-- [ ] **Næste:** mål fps i selve Subway Surfers på hardware-EGL-vejen med
-  `EGL_PROXY_TRACE=0`, længere CDP-timeout og sammenlign med Firefox-sporet.
-  Integrér derefter EGL-lappen i bring-up, så den ikke forsvinder ved næste
-  strøm-cyklus. Detaljer, kommandoer og fælder:
+- [ ] **Næste:** brugeren skal vurdere billedet efter software-compositing-
+  varianten (`--disable-gpu-compositing --disable-gpu-rasterization
+  --disable-accelerated-2d-canvas`): er regnbuen væk, og kan spillet ses?
+  Hvis nej: sammenlign Chromium-screenshot med fb0 og instrumentér
+  `x11ws`-presentens format/depth. Hvis ja: mål fps i spillet og sammenlign
+  med Firefox. Integrér derefter EGL-lappen i bring-up, så den ikke forsvinder
+  ved næste strøm-cyklus. Detaljer, kommandoer og fælder:
   `docs/log/2026-09-30-chromium-fps.md`.
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):

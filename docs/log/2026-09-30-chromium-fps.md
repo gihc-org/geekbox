@@ -68,6 +68,17 @@
   endnu ikke er målt færdig. Firefox-vejen er verificeret uændret med
   `gl_version_probe` (ES 3.1, 1.5@3830101), når config-lappen ikke er slået
   til.
+- **Bruger-rapport (30. sep ~02:45): spilleren er synlig, men resten af
+  skærmen er regnbue, og spillet er IKKE spilbart.** Hardware-EGL-lappen skal
+  derfor foreløbig beskrives som "EGL-init og WebGL-kontekst virker", ikke som
+  "browseren renderer korrekt".
+- **Isolationsforsøg (30. sep ~02:50): hardware-EGL + software-compositing.**
+  Med `--disable-gpu-compositing --disable-gpu-rasterization
+  --disable-accelerated-2d-canvas` holder GPU-processen på `angle/gles-egl`,
+  der er 0 `GPU process exited`, og `fb_fps` stiger til **~10,4
+  skærmopdateringer/s** fra ~0,9/s. Et CDP-screenshot viser et mørkt/grønt
+  spilagtigt billede uden den tidligere fuldstændige regnbue, men brugeren
+  skal bekræfte om farverne nu er korrekte og spillet faktisk kan ses.
 
 ## Aftaler og beslutninger
 
@@ -95,6 +106,10 @@
   uden GPU-process-exits. (~02:40)
 - [afventer] Fps-måling i selve spillet på hardware-vejen; CDP skal have
   længere timeout eller køre uden `--v=1`-spam. (~02:42)
+- [udført] Brugeren observerede regnbue/ikke-spilbart; sporet er derfor ikke
+  lukket. (~02:45)
+- [udført] Software-compositing/raster-varianten prøvet: 0 GPU-exits,
+  `fb_fps` ~10,4/s; afventer brugerens vurdering af billedet. (~02:50)
 
 ## Hardware-EGL-lappen (30. sep 2026)
 

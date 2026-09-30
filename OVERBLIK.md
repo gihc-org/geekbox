@@ -156,9 +156,13 @@ for en fair sammenligning. **Gennembrud ~02:40:** EGL-proxyen filtrerer nu
 configs, matcher/aliaser `EGL_CONFIG_ID` og rapporterer X-visual `0x21`;
 Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
 WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
-`GPU process exited`. Næste skridt er fps-måling i spillet og integration af
-lappen i bring-up; detaljer og kommandoer i `TODO.md` og
-`docs/log/2026-09-30-chromium-fps.md`.
+`GPU process exited`. **Brugeren ser dog stadig regnbue og ikke et spilbart
+spil.** En software-compositing-variant (`--disable-gpu-compositing
+--disable-gpu-rasterization --disable-accelerated-2d-canvas`) giver 0
+GPU-exits og `fb_fps` ~10,4/s; brugeren skal vurdere om billedet nu er
+korrekt. Næste skridt er billeddiagnose (Chromium-screenshot vs. fb0 og
+`x11ws`-format) og derefter fps-måling og integration af lappen i bring-up;
+detaljer og kommandoer i `TODO.md` og `docs/log/2026-09-30-chromium-fps.md`.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster

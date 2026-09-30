@@ -20,6 +20,10 @@ USE_GL=${CHROMIUM_USE_GL:-angle}
 USE_ANGLE=${CHROMIUM_USE_ANGLE:-gles-egl}
 UNSAFE_SWIFTSHADER=${CHROMIUM_UNSAFE_SWIFTSHADER:-0}
 IN_PROCESS_GPU=${CHROMIUM_IN_PROCESS_GPU:-0}
+DISABLE_GPU_RASTER=${CHROMIUM_DISABLE_GPU_RASTER:-0}
+DISABLE_GPU_COMPOSITING=${CHROMIUM_DISABLE_GPU_COMPOSITING:-0}
+DISABLE_ACCEL_2D=${CHROMIUM_DISABLE_ACCEL_2D:-0}
+VERBOSE=${CHROMIUM_VERBOSE:-1}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
 
@@ -42,6 +46,11 @@ GLFLAGS=(--use-gl="$USE_GL")
 [ -n "$USE_ANGLE" ] && GLFLAGS+=(--use-angle="$USE_ANGLE")
 [ "$UNSAFE_SWIFTSHADER" = 1 ] && GLFLAGS+=(--enable-unsafe-swiftshader)
 [ "$IN_PROCESS_GPU" = 1 ] && GLFLAGS+=(--in-process-gpu)
+[ "$DISABLE_GPU_RASTER" = 1 ] && GLFLAGS+=(--disable-gpu-rasterization)
+[ "$DISABLE_GPU_COMPOSITING" = 1 ] && GLFLAGS+=(--disable-gpu-compositing)
+[ "$DISABLE_ACCEL_2D" = 1 ] && GLFLAGS+=(--disable-accelerated-2d-canvas)
+LOGFLAGS=(--enable-logging=stderr)
+[ "$VERBOSE" = 1 ] && LOGFLAGS+=(--v=1)
 
 runuser -u kristian -- env -i \
   HOME=/home/kristian USER=kristian LOGNAME=kristian SHELL=/bin/bash \
@@ -67,8 +76,7 @@ runuser -u kristian -- env -i \
     --no-first-run \
     --no-default-browser-check \
     --disable-dev-shm-usage \
-    --enable-logging=stderr \
-    --v=1 \
+    "${LOGFLAGS[@]}" \
     --remote-debugging-port="$PORT" \
     "$URL" \
   > "$LOG" 2>&1 &
