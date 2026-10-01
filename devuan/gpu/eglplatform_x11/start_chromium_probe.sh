@@ -10,7 +10,7 @@
 # giver den nødvendige sandbox-støtte. De øvrige flags er brugerens forslag.
 set -uo pipefail
 
-CHROME=${CHROME:-/usr/bin/chromium}
+CHROME=${CHROME:-/usr/lib/chromium/chromium}
 WEBGL=/usr/local/lib/firefox-webgl
 PROFILE=${CHROMIUM_PROFILE:-/home/kristian/.config/chromium-fps}
 URL=${CHROMIUM_URL:-https://poki.com}
@@ -20,10 +20,11 @@ USE_GL=${CHROMIUM_USE_GL:-angle}
 USE_ANGLE=${CHROMIUM_USE_ANGLE:-gles-egl}
 UNSAFE_SWIFTSHADER=${CHROMIUM_UNSAFE_SWIFTSHADER:-0}
 IN_PROCESS_GPU=${CHROMIUM_IN_PROCESS_GPU:-0}
-DISABLE_GPU_RASTER=${CHROMIUM_DISABLE_GPU_RASTER:-0}
-DISABLE_GPU_COMPOSITING=${CHROMIUM_DISABLE_GPU_COMPOSITING:-0}
-DISABLE_ACCEL_2D=${CHROMIUM_DISABLE_ACCEL_2D:-0}
-VERBOSE=${CHROMIUM_VERBOSE:-1}
+DISABLE_GPU_RASTER=${CHROMIUM_DISABLE_GPU_RASTER:-1}
+DISABLE_GPU_COMPOSITING=${CHROMIUM_DISABLE_GPU_COMPOSITING:-1}
+DISABLE_ACCEL_2D=${CHROMIUM_DISABLE_ACCEL_2D:-1}
+DISABLE_GPU_WATCHDOG=${CHROMIUM_DISABLE_GPU_WATCHDOG:-1}
+VERBOSE=${CHROMIUM_VERBOSE:-0}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
 
@@ -33,9 +34,9 @@ rm -f "$LOG"
 
 # Firefox kan køre samtidig uden at dele denne profil, men vi lukker Chromium
 # pænt først, så gamle processer ikke holder X eller GPU-stakken.
-pkill -TERM -x chromium 2>/dev/null
+pkill -TERM -f /usr/lib/chromium/chromium 2>/dev/null
 sleep 2
-pkill -9 -x chromium 2>/dev/null
+pkill -9 -f /usr/lib/chromium/chromium 2>/dev/null
 sleep 1
 
 LXPID=$(pidof lxpanel | tr ' ' '\n' | head -1)
@@ -49,6 +50,7 @@ GLFLAGS=(--use-gl="$USE_GL")
 [ "$DISABLE_GPU_RASTER" = 1 ] && GLFLAGS+=(--disable-gpu-rasterization)
 [ "$DISABLE_GPU_COMPOSITING" = 1 ] && GLFLAGS+=(--disable-gpu-compositing)
 [ "$DISABLE_ACCEL_2D" = 1 ] && GLFLAGS+=(--disable-accelerated-2d-canvas)
+[ "$DISABLE_GPU_WATCHDOG" = 1 ] && GLFLAGS+=(--disable-gpu-watchdog)
 LOGFLAGS=(--enable-logging=stderr)
 [ "$VERBOSE" = 1 ] && LOGFLAGS+=(--v=1)
 
@@ -62,8 +64,8 @@ runuser -u kristian -- env -i \
   LD_PRELOAD="$LD_PRELOAD_V" \
   LD_LIBRARY_PATH="$LD_LIBRARY_PATH_V" \
   EGL_PROXY_TRACE="${EGL_PROXY_TRACE:-}" \
-  EGL_PROXY_CONFIG_FIX="${EGL_PROXY_CONFIG_FIX:-}" \
-  EGL_PROXY_FAKE_VISUAL="${EGL_PROXY_FAKE_VISUAL:-}" \
+  EGL_PROXY_CONFIG_FIX="${EGL_PROXY_CONFIG_FIX:-1}" \
+  EGL_PROXY_FAKE_VISUAL="${EGL_PROXY_FAKE_VISUAL:-0x21}" \
   EGL_PLATFORM=x11 \
   "$CHROME" \
     --kiosk \
@@ -78,6 +80,7 @@ runuser -u kristian -- env -i \
     --disable-dev-shm-usage \
     "${LOGFLAGS[@]}" \
     --remote-debugging-port="$PORT" \
+    --remote-allow-origins=* \
     "$URL" \
   > "$LOG" 2>&1 &
 PID=$!

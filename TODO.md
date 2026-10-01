@@ -23,7 +23,9 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
 
 ### Chromium-sporet (aktivt 30. sep 2026)
 
-- **God start i en ny session (Chromium-sporet, 1. okt 2026) — NUVÆRENDE:**
+- **God start i en ny session (Chromium-sporet, 1. okt 2026) — AFLØST 2. okt:**
+  (prompten nedenfor blev kørt; se "Ren kørsel med `--disable-gpu-watchdog`"
+  længere nede og `docs/log/2026-10-01-chromium-fps.md` for den aktuelle status)
   *"Læs `docs/log/2026-09-30-chromium-fps.md` (HELE notatet, især
   "Status i ét blik", "Aftaler og beslutninger", "Gennembrud" og
   "Bruger-rapport"), Chromium-afsnittet i `TODO.md` og `OVERBLIK.md`.
@@ -66,11 +68,22 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   Årsag til fastfrysning/manglende gameplay fundet: Chromiums GPU-watchdog
   dræbte GPU-processen under tung load (`gpu-watchdog-crashed-in-gpu-init`, exit
   512), hvorefter WebGL gik tabt og Chromium faldt tilbage til `--use-gl=disabled`.
-- [ ] **Næste (1. okt):** Genstart Chromium rent med `--disable-gpu-watchdog`,
-  uden `--v=1`/trace og med hardware-EGL + software-compositing. Sammenlign
-  CDP-screenshot med fb0, verificér om spillet loader forbi intro/splash til
-  gameplay, og mål fps (rAF + `fb_fps`). Integrér derefter EGL-lappen i bring-up.
-  Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
+- [x] **Ren kørsel med `--disable-gpu-watchdog` (2. okt 2026 ~00:00):** boksen var
+  genstartet (ny IP 192.168.0.103, ur 2013, `pvrsrvkm` ikke indlæst, bindapi-lap
+  væk, en efterladt SwiftShader-Chromium på 310 % CPU). EGL-lappen var intakt
+  (`2d66a43c`), og `bringup_after_power.sh` blev IKKE kørt; ur + `pvrsrvkm` +
+  `gpu_up.sh` + bindapi-lap blev lagt på i hånden. Ren Chromium-kørsel uden
+  `--v=1`/trace på `--use-gl=angle --use-angle=gles-egl` + software-compositing:
+  **0 `GPU process exited`, 0 watchdog, 0 `CONTEXT_LOST`**, spillet loadet med
+  WebGL 2.0 på `ANGLE (…, PowerVR Rogue G6110, OpenGL ES 3.1)`, rAF 3,0-3,6/s,
+  skærmen 5,2 opdateringer/s. Farvetest mod fb0 afkræfter format-/stride-fejl i
+  presenten. Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
+- [ ] **Næste (2. okt):** få brugerens øjne på skærmen — er spillet nu spilbart
+  efter klik (titel-/startskærm vs. intro/loading)? Derefter: (a) angrib fps-loftet
+  (~3,6 rAF/s mod 5,2 skærm-opdateringer/s) med 720p eller mindre vindue, (b) sæt
+  en MV3-adblocker ind (uBlock Origin Lite) for fair sammenligning med Firefox,
+  (c) integrér EGL-lappen + hardware-EGL-starten i `bringup_after_power.sh`
+  (i dag overskriver den EGL-lappen med vnext12).
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [ ] **Kernel-rebuild-regression: WiFi mangler (26. aug 2026)** — vores genbyggede

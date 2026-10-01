@@ -161,9 +161,20 @@ regnbuen — billedet er 100 % skarpt, og Subway Surfers-intrologoet vises
 korrekt. Årsagen til at spillet frøs på intrografikken er fundet: Chromiums
 GPU-watchdog dræbte GPU-processen under tung load (`gpu-watchdog-crashed-in-gpu-init`,
 exit 512), hvorefter WebGL gik tabt og Chromium faldt tilbage til `--use-gl=disabled`.
-Næste skridt: ren start med `--disable-gpu-watchdog` uden `--v=1`/trace, CDP-screenshot
-vs. fb0, kontrol af overgang til gameplay og fps-måling. Detaljer:
-`docs/log/2026-10-01-chromium-fps.md`.
+**Status 2. okt 2026 ~00:30 (ren kørsel, Codex):** boksen var genstartet (ny IP
+192.168.0.103, ur 2013, `pvrsrvkm` ikke indlæst, bindapi-lap væk, efterladt
+SwiftShader-Chromium på 310 % CPU), men EGL-lappen i `/opt/hybris` (`2d66a43c`) var
+intakt, så `bringup_after_power.sh` blev IKKE kørt; ur, `pvrsrvkm`, `gpu_up.sh` og
+bindapi-lappen blev lagt på i hånden. Ren Chromium-kørsel uden `--v=1`/trace på
+`--use-gl=angle --use-angle=gles-egl` + software-compositing + `--disable-gpu-watchdog`:
+**0 `GPU process exited`, 0 watchdog, 0 `CONTEXT_LOST`**, spillet ("Subway Surfers
+Web") loadet med WebGL 2.0 på `ANGLE (…, PowerVR Rogue G6110, OpenGL ES 3.1)`, rAF
+3,0-3,6/s og skærmen 5,2 opdateringer/s. En farvetest (CSS-bånd + statisk
+WebGL-canvas) læst tilbage fra fb0 afkræfter format-/stride-fejl i presenten —
+"regnbuen" var en anden frame af en animeret testside. Næste skridt: brugerens
+visuelle bekræftelse af om spillet er spilbart efter klik, derefter fps-loftet
+(720p/mindre vindue), MV3-adblocker og integration af EGL-lappen i
+`bringup_after_power.sh`. Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster

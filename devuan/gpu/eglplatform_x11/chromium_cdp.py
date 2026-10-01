@@ -8,11 +8,16 @@ findes på laptop'en.
 Kommandoer:
   chromium_cdp.py list
   chromium_cdp.py eval '<javascript>'
+  chromium_cdp.py probe [sekunder]
+  chromium_cdp.py click <x> <y>
   chromium_cdp.py goto <url> [sekunder]
   chromium_cdp.py game [url] [sekunder]
 
-`game` blokerer de kendte reklame-/trackerdomæner gennem Network.setBlockedURLs,
-åbner spillet, klikker på game-iframen og rapporterer canvas- og rAF-status.
+`probe` inspicerer den side der ALLEREDE kører (ingen navigering): frame-træ,
+canvas/WebGL-status og rAF-raten i spil-iframe'en hvis den findes, ellers i
+topdokumentet. `game` blokerer de kendte reklame-/trackerdomæner gennem
+Network.setBlockedURLs, åbner spillet, klikker på game-iframen og rapporterer
+canvas- og rAF-status.
 Blockeringen er kun aktiv i denne CDP-session; den skriver intet på boksen.
 """
 import json
@@ -133,6 +138,16 @@ def game_summary(cdp, frame_id):
     return cdp.value(expr, context_id), context_id
 
 
+def raf_rate(cdp, context_id, seconds):
+    cdp.value("window.__codex_raf=0;(function loop(){"
+              "window.__codex_raf++;requestAnimationFrame(loop)})()",
+              context_id)
+    end = time.time() + seconds
+    while time.time() < end:
+        time.sleep(min(2.0, end - time.time()))
+    return cdp.value("window.__codex_raf || 0", context_id)
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -146,6 +161,24 @@ def main():
                 print(p.get("type"), p.get("title"), p.get("url", "")[:140])
         elif cmd == "eval":
             print(json.dumps(cdp.value(sys.argv[2]), indent=2)[:8000])
+        elif cmd == "probe":
+            seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 10
+            cdp.call("Page.enable")
+            frames = flatten_frames(frame_tree(cdp))
+            target = find_game_frame(cdp) or frames[0]
+            summary, context_id = game_summary(cdp, target["id"])
+            summary["probe_frame"] = target.get("url", "")[:120]
+            summary["frames"] = [f.get("url", "")[:120] for f in frames]
+            summary["raf_per_s"] = raf_rate(cdp, context_id, seconds) / seconds
+            print(json.dumps(summary, indent=2)[:8000])
+        elif cmd == "click":
+            x = float(sys.argv[2])
+            y = float(sys.argv[3])
+            for typ in ("mousePressed", "mouseReleased"):
+                cdp.call("Input.dispatchMouseEvent", {
+                    "type": typ, "x": x, "y": y,
+                    "button": "left", "clickCount": 1})
+            print(json.dumps({"clicked": [x, y]}))
         elif cmd == "goto":
             url = sys.argv[2]
             wait = float(sys.argv[3]) if len(sys.argv) > 3 else 15
@@ -213,6 +246,14 @@ def main():
             summary["raf_per_s"] = raf / 10.0
             summary["clicked"] = bool(rect)
             print(json.dumps(summary, indent=2)[:8000])
+        elif cmd == "screenshot":
+            cdp.call("Page.enable")
+            res = cdp.call("Page.captureScreenshot")
+            import base64
+            out_file = sys.argv[2] if len(sys.argv) > 2 else "screenshot.png"
+            with open(out_file, "wb") as f:
+                f.write(base64.b64decode(res["result"]["data"]))
+            print(f"Saved screenshot to {out_file}")
         else:
             print(__doc__)
             return 2
