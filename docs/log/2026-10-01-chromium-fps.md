@@ -59,8 +59,37 @@
 - [afventer] Brugeren skal bekræfte visuelt om spillet nu er spilbart; derefter
   afgøres om fps-loftet (~3,6 rAF/s mod 5,2 skærm-opdateringer/s) skal angribes
   (720p / mindre vindue). (~00:30)
+- [udført] `CYAN_DEPTHCLEAR=1` lagt ind i `start_chromium_probe.sh` (samme
+  depth-clear-opskrift som Firefox-vejen); proxyen logger force-depth-clear pr.
+  frame i spillets fbo. (~00:25)
+- [udført] HDMI-faldet diagnosticeret og afhjulpet i drift
+  (`echo 1 > /sys/class/display/HDMI/enable`); `restore_display` lagt i
+  start-scriptet, så udgangene tændes igen efter nedlukning og 8 s efter start. (~00:35)
+- [afventer] Brugeren bekræfter, om figuren/skinnerne er tilbage med
+  depth-clear-lappen. (~00:35)
 
 ## Kommandoer der virker (Codex-session, 2. okt 2026)
+
+### Opfølgning ~00:35: depth-clear-lappen og HDMI-faldet
+
+- **Bruger-rapport (00:20):** spillet renderer til dels, men er ikke spilbart —
+  figuren (drengen) vises ikke, vand står i forgrunden, skinner/rails mangler,
+  skygger ses. Det er præcis det gamle cyan-scene-symptom fra Firefox-sporet.
+- **Årsag:** proxyen på boksen ER vnext15-kilden (md5 `54133609` = repoets
+  `egl_proxy.c`) og indeholder depthmask-lappen + tvungen depth-clear, men den
+  sidste er gated på `CYAN_DEPTHCLEAR`, og `start_chromium_probe.sh` satte den
+  ikke. Efter tilføjelsen (`CHROMIUM_DEPTHCLEAR=1` som standard) logger proxyen
+  `force-depth-clear fbo=23 1031x580 count=5964 att-col=0x1702 att-depth=0x8d41
+  depthfunc=0x203 (kald=1..)`, altså én rydning pr. frame i spillets fbo.
+- **HDMI-fald:** mens den nye kørsel blev startet, slog kernen HDMI-udgangen fra
+  (`hdmi remove from lcdc0`, `switch:en=0`, `/sys/class/display/HDMI/enable=0`)
+  uden efterfølgende connect — TV'et blev sort. Det sker, når en
+  Chromium-instans med hardware-EGL river sin hybris/gralloc-flade ned.
+  `echo 1 > /sys/class/display/HDMI/enable` giver billedet tilbage med det
+  samme, og `start_chromium_probe.sh` tænder nu udgangene igen både efter
+  nedlukningen og 8 s efter starten (`restore_display`).
+- Efter HDMI-genoptagelsen opdaterer fb0 igen (tre forskellige md5 over 8 s) med
+  rigeligt indhold, så præsentationen kører videre uændret.
 
 Gendan boksen efter genstart UDEN at røre EGL-lappen:
 
@@ -93,6 +122,14 @@ Fælder (nye, 2. okt):
 - Et fb0-dump kan være en ANDEN frame af en animeret side end det CDP-screenshot
   man sammenligner med. Sammenlign inden for samme par sekunder, eller brug en
   statisk farvetest som her.
+- `CYAN_DEPTHCLEAR=1` skal sættes i Chromium-starten. Uden den er depth-clear-
+  lappen i proxyen slået fra, og spillet viser vand i forgrunden, manglende
+  figur og manglende skinner (samme symptom som Firefox-sporet før vnext12).
+- En hardware-EGL-Chromium kan slukke HDMI-udgangen, når den river sin
+  hybris/gralloc-flade ned: kernens `hdmi remove from lcdc0` uden efterfølgende
+  connect, og TV'et bliver sort selv om X kører fint. `echo 1 >
+  /sys/class/display/HDMI/enable` giver billedet tilbage; start-scriptet gør det
+  nu selv.
 
 ## Status i et blik (Antigravity-session, 1. okt 2026 ~18:55)
 

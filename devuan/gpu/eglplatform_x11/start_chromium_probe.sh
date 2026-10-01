@@ -24,6 +24,7 @@ DISABLE_GPU_RASTER=${CHROMIUM_DISABLE_GPU_RASTER:-1}
 DISABLE_GPU_COMPOSITING=${CHROMIUM_DISABLE_GPU_COMPOSITING:-1}
 DISABLE_ACCEL_2D=${CHROMIUM_DISABLE_ACCEL_2D:-1}
 DISABLE_GPU_WATCHDOG=${CHROMIUM_DISABLE_GPU_WATCHDOG:-1}
+DEPTHCLEAR=${CHROMIUM_DEPTHCLEAR:-1}
 VERBOSE=${CHROMIUM_VERBOSE:-0}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
@@ -32,12 +33,26 @@ mkdir -p "$PROFILE"
 chown -R kristian:kristian "$PROFILE"
 rm -f "$LOG"
 
+# HDMI-udgangen kan blive slået fra, når en Chromium-instans med hardware-EGL
+# river sin hybris/gralloc-flade ned (målt 2. okt 2026: kernens "hdmi remove
+# from lcdc0" uden efterfølgende connect → sort skærm indtil enable sættes
+# igen). Tænd derfor udgangene både efter nedlukningen og efter starten.
+restore_display() {
+    for f in /sys/class/display/*/enable; do
+        [ -e "$f" ] || continue
+        if [ "$(cat "$f" 2>/dev/null)" != 1 ]; then
+            echo 1 > "$f" 2>/dev/null && echo "display re-enabled: $f"
+        fi
+    done
+}
+
 # Firefox kan køre samtidig uden at dele denne profil, men vi lukker Chromium
 # pænt først, så gamle processer ikke holder X eller GPU-stakken.
 pkill -TERM -f /usr/lib/chromium/chromium 2>/dev/null
 sleep 2
 pkill -9 -f /usr/lib/chromium/chromium 2>/dev/null
 sleep 1
+restore_display
 
 LXPID=$(pidof lxpanel | tr ' ' '\n' | head -1)
 DBUS=$(tr '\0' '\n' < "/proc/$LXPID/environ" 2>/dev/null \
@@ -66,6 +81,8 @@ runuser -u kristian -- env -i \
   EGL_PROXY_TRACE="${EGL_PROXY_TRACE:-}" \
   EGL_PROXY_CONFIG_FIX="${EGL_PROXY_CONFIG_FIX:-1}" \
   EGL_PROXY_FAKE_VISUAL="${EGL_PROXY_FAKE_VISUAL:-0x21}" \
+  CYAN_DEPTHCLEAR="$DEPTHCLEAR" \
+  CYAN_LIGHT="${CHROMIUM_CYAN_LIGHT:-}" \
   EGL_PLATFORM=x11 \
   "$CHROME" \
     --kiosk \
@@ -84,6 +101,8 @@ runuser -u kristian -- env -i \
     "$URL" \
   > "$LOG" 2>&1 &
 PID=$!
+
+( sleep 8; restore_display ) &
 
 echo "start_chromium_probe: PID=$PID profile=$PROFILE url=$URL $(date +%H:%M:%S)"
 wait "$PID"
