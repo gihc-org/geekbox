@@ -60,14 +60,17 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
   WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
   `GPU process exited`.
-- [ ] **Næste:** brugeren skal vurdere billedet efter software-compositing-
-  varianten (`--disable-gpu-compositing --disable-gpu-rasterization
-  --disable-accelerated-2d-canvas`): er regnbuen væk, og kan spillet ses?
-  Hvis nej: sammenlign Chromium-screenshot med fb0 og instrumentér
-  `x11ws`-presentens format/depth. Hvis ja: mål fps i spillet og sammenlign
-  med Firefox. Integrér derefter EGL-lappen i bring-up, så den ikke forsvinder
-  ved næste strøm-cyklus. Detaljer, kommandoer og fælder:
-  `docs/log/2026-09-30-chromium-fps.md`.
+- [x] **Regnbue-fejl afkræftet og skærm verificeret (1. okt 2026):** Rå mmap-dump
+  af fb0 (`fb_full.png`) viser 100 % skarpt billede uden farveforvrængning.
+  Subway Surfers-intrologoet vises korrekt centreret i Poki-rammen.
+  Årsag til fastfrysning/manglende gameplay fundet: Chromiums GPU-watchdog
+  dræbte GPU-processen under tung load (`gpu-watchdog-crashed-in-gpu-init`, exit
+  512), hvorefter WebGL gik tabt og Chromium faldt tilbage til `--use-gl=disabled`.
+- [ ] **Næste (1. okt):** Genstart Chromium rent med `--disable-gpu-watchdog`,
+  uden `--v=1`/trace og med hardware-EGL + software-compositing. Sammenlign
+  CDP-screenshot med fb0, verificér om spillet loader forbi intro/splash til
+  gameplay, og mål fps (rAF + `fb_fps`). Integrér derefter EGL-lappen i bring-up.
+  Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [ ] **Kernel-rebuild-regression: WiFi mangler (26. aug 2026)** — vores genbyggede

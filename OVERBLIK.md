@@ -156,13 +156,14 @@ for en fair sammenligning. **Gennembrud ~02:40:** EGL-proxyen filtrerer nu
 configs, matcher/aliaser `EGL_CONFIG_ID` og rapporterer X-visual `0x21`;
 Chromium holder GPU-processen på `--use-gl=angle --use-angle=gles-egl`,
 WebGL-testen giver `WebGL 2.0`, og Poki-spillet loades uden
-`GPU process exited`. **Brugeren ser dog stadig regnbue og ikke et spilbart
-spil.** En software-compositing-variant (`--disable-gpu-compositing
---disable-gpu-rasterization --disable-accelerated-2d-canvas`) giver 0
-GPU-exits og `fb_fps` ~10,4/s; brugeren skal vurdere om billedet nu er
-korrekt. Næste skridt er billeddiagnose (Chromium-screenshot vs. fb0 og
-`x11ws`-format) og derefter fps-måling og integration af lappen i bring-up;
-detaljer og kommandoer i `TODO.md` og `docs/log/2026-09-30-chromium-fps.md`.
+`GPU process exited`. **Status 1. okt 2026:** rå mmap-dump af fb0 afkræfter
+regnbuen — billedet er 100 % skarpt, og Subway Surfers-intrologoet vises
+korrekt. Årsagen til at spillet frøs på intrografikken er fundet: Chromiums
+GPU-watchdog dræbte GPU-processen under tung load (`gpu-watchdog-crashed-in-gpu-init`,
+exit 512), hvorefter WebGL gik tabt og Chromium faldt tilbage til `--use-gl=disabled`.
+Næste skridt: ren start med `--disable-gpu-watchdog` uden `--v=1`/trace, CDP-screenshot
+vs. fb0, kontrol af overgang til gameplay og fps-måling. Detaljer:
+`docs/log/2026-10-01-chromium-fps.md`.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
