@@ -11,6 +11,9 @@
 
 ## Status i ét blik (Codex-session, 2. okt 2026 ~00:30)
 
+- **Sluttilstand 00:50:** brugeren slukkede boksen (en anden maskine skulle
+  testes). Den sidste kørsel på boksen var UDEN `--enable-zero-copy`, hvor
+  spil-canvas' område på fb0 opdaterede sig igen; gameplay er ikke bekræftet.
 - **Boksen var genstartet** (ny IP **192.168.0.103**, oppetid 2 t): uret stod på
   2013 (`/root/clock-sync.log`: "Temporary failure in name resolution" ved boot),
   `pvrsrvkm` var IKKE indlæst, og bindapi-lappen var væk. En Chromium-start
@@ -40,6 +43,8 @@
   PowerVR Rogue G6110, OpenGL ES 3.1)`** — hardware, ikke SwiftShader.
 - **Rater:** spillets rAF 3,0-3,6/s; skærmen (`/root/fb_fps /dev/fb0 20 100`) mest
   aktive blok **5,2 skærm-opdateringer/s** (Firefox-vejen ligger på 2,4-2,6/s).
+  NB: tallet er målt MED `--enable-zero-copy`, altså på den forældede
+  canvas-buffer — det skal tages om uden flaget.
 - **Afventer brugerens øjne:** om skærmen efter klikket viser spillets
   titel-/startskærm eller stadig intro/loading. Spil-framens DOM har kun
   HTML/BODY/CANVAS (ren canvas), så tilstanden kan ikke læses ud af DOM'en.
@@ -67,8 +72,12 @@
   start-scriptet, så udgangene tændes igen efter nedlukning og 8 s efter start. (~00:35)
 - [afventer] Brugeren bekræfter, om figuren/skinnerne er tilbage med
   depth-clear-lappen. (~00:35)
-
-## Kommandoer der virker (Codex-session, 2. okt 2026)
+- [udført] Årsagen til det "frosne" spilbillede fundet: `--enable-zero-copy`
+  gav en forældet canvas-buffer i compositoren (fb0's canvas-rektangel stod
+  stille, mens CDP-skærmbilledet ændrede sig). (~00:45)
+- [aftalt] Zero-copy slås fra som standard i `start_chromium_probe.sh`. (~00:45)
+- [afventer] Boksen er slukket af brugeren (en anden maskine skulle testes);
+  gameplay efter zero-copy-fravalget er derfor IKKE bekræftet. (~00:50)
 
 ### Opfølgning ~00:35: depth-clear-lappen og HDMI-faldet
 
@@ -91,6 +100,37 @@
 - Efter HDMI-genoptagelsen opdaterer fb0 igen (tre forskellige md5 over 8 s) med
   rigeligt indhold, så præsentationen kører videre uændret.
 
+### Opfølgning 2 (~00:25-00:45): det frosne spilbillede skyldtes zero-copy
+
+- **Symptom:** brugeren ser kun intro-logoet (og tidligere: vand i forgrunden,
+  ingen dreng, ingen skinner, men skygger af elementer). Spillets
+  tilstandsmaskine stod på `[SM] from: disabled to: intro` +
+  `[IntroSystem] play step1` fra klikket 00:14:54 og gik aldrig videre. Ingen
+  JS-fejl i loggen, ingen netværksfejl, GPU-processen kørte videre (~118 % CPU),
+  og HDMI var tændt.
+- **Bevis for at det er præsentationen og ikke spillet:** spil-canvas' rektangel
+  (444,250)-(1475,830) på fb0 havde SAMME md5 hen over 12 s (`f6d5231a57`),
+  mens Chromiums egen gengivelse af præcis samme rektangel ændrede sig ved
+  hvert CDP-screenshot (`fe2820d1ae`, `becf71e676`, `9f5060c0c4`) — med samme
+  dominerende farve `(11,49,107)`. Altså: spillet tegner nye frames, men
+  compositoren viser en gammel buffer.
+- **Årsag:** `--enable-zero-copy` (flaget kom med den oprindelige flag-liste).
+  Med det læser compositoren canvas-laget direkte fra GPU-/gralloc-bufferen, og
+  på denne 3.10 + hybris-stak giver det en forældet buffer. Uden flaget
+  kopieres laget i stedet.
+- **Måling efter fravalg af zero-copy:** fb0's canvas-rektangel skiftede hash
+  ved hver måling på 12 s (`22fe78d908`, `d2b1ca5a6f`, `b48292bfeb`,
+  `2c07e4ace1`), 0 `GPU process exited`, og HDMI stod stadig på 1
+  (sikkerhedsnettet virkede).
+- **Ikke bekræftet:** om spillet nu kommer forbi intro til gameplay, og om
+  dreng/skinner/tog er synlige. Klik-testen blev afbrudt, fordi brugeren måtte
+  slukke boksen for at teste en anden maskine — **boksen er slukket**, så næste
+  session skal tænde den og gentage kørslen.
+- Zero-copy er nu slået FRA som standard i `start_chromium_probe.sh`
+  (`CHROMIUM_ZERO_COPY=1` slår den til igen).
+
+## Kommandoer der virker (Codex-session, 2. okt 2026)
+
 Gendan boksen efter genstart UDEN at røre EGL-lappen:
 
 ```bash
@@ -98,7 +138,13 @@ bash devuan/find_box.sh
 NOW=$(date +%s); bash devuan/box.sh "date -s @$NOW"
 bash devuan/box.sh 'lsmod | grep -q "^pvrsrvkm" || insmod /root/pvrsrvkm_leddaz.ko; sh /root/gpu_up.sh; chmod 666 /dev/sw_sync'
 BOXIP=<ip> bash devuan/gpu/eglplatform_x11/patch_android_bindapi.sh
+bash devuan/box.sh --put devuan/gpu/eglplatform_x11/start_chromium_probe.sh /root/start_chromium_probe.sh
 ```
+
+Er `bringup_after_power.sh` alligevel blevet kørt (den lægger vnext12 tilbage),
+genskab Chromium-lappen med byggekommandoen "Byg på boksen" i
+`docs/log/2026-09-30-chromium-fps.md` — kilden `/root/egl_proxy_trace.c` er
+identisk med repoets `egl_proxy.c` (md5 `54133609`).
 
 Ren Chromium-kørsel (hardware-EGL + software-compositing, ingen trace):
 
@@ -130,6 +176,12 @@ Fælder (nye, 2. okt):
   connect, og TV'et bliver sort selv om X kører fint. `echo 1 >
   /sys/class/display/HDMI/enable` giver billedet tilbage; start-scriptet gør det
   nu selv.
+- **`--enable-zero-copy` må IKKE bruges på denne stak.** Med flaget viser
+  compositoren en forældet canvas-buffer: spil-canvas' område på fb0 står
+  stille, mens Chromiums egen gengivelse ændrer sig. Symptomerne er vildledende
+  (logo der "hænger", vand i forgrunden, figur og skinner væk), fordi man ser en
+  gammel/midt-i-frame buffer. Test altid med to fb0-dumps af canvas-rektanglet:
+  de skal give FORSKELLIGE hashes.
 
 ## Status i et blik (Antigravity-session, 1. okt 2026 ~18:55)
 

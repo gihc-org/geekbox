@@ -25,6 +25,7 @@ DISABLE_GPU_COMPOSITING=${CHROMIUM_DISABLE_GPU_COMPOSITING:-1}
 DISABLE_ACCEL_2D=${CHROMIUM_DISABLE_ACCEL_2D:-1}
 DISABLE_GPU_WATCHDOG=${CHROMIUM_DISABLE_GPU_WATCHDOG:-1}
 DEPTHCLEAR=${CHROMIUM_DEPTHCLEAR:-1}
+ZERO_COPY=${CHROMIUM_ZERO_COPY:-0}
 VERBOSE=${CHROMIUM_VERBOSE:-0}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
@@ -66,6 +67,11 @@ GLFLAGS=(--use-gl="$USE_GL")
 [ "$DISABLE_GPU_COMPOSITING" = 1 ] && GLFLAGS+=(--disable-gpu-compositing)
 [ "$DISABLE_ACCEL_2D" = 1 ] && GLFLAGS+=(--disable-accelerated-2d-canvas)
 [ "$DISABLE_GPU_WATCHDOG" = 1 ] && GLFLAGS+=(--disable-gpu-watchdog)
+# Zero-copy lader compositoren læse canvas-laget direkte fra GPU-bufferen.
+# Målt 2. okt 2026: med --enable-zero-copy står spil-canvas' område på fb0
+# stille (samme hash i 12 s), mens Chromium selv tegner nye frames; uden
+# flaget kopieres laget i stedet. Derfor er det slået FRA som standard.
+[ "$ZERO_COPY" = 1 ] && GLFLAGS+=(--enable-zero-copy)
 LOGFLAGS=(--enable-logging=stderr)
 [ "$VERBOSE" = 1 ] && LOGFLAGS+=(--v=1)
 

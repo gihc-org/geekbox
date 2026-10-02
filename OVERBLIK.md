@@ -174,7 +174,15 @@ WebGL-canvas) læst tilbage fra fb0 afkræfter format-/stride-fejl i presenten �
 "regnbuen" var en anden frame af en animeret testside. Næste skridt: brugerens
 visuelle bekræftelse af om spillet er spilbart efter klik, derefter fps-loftet
 (720p/mindre vindue), MV3-adblocker og integration af EGL-lappen i
-`bringup_after_power.sh`. Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
+`bringup_after_power.sh`. **Fund 2. okt ~00:45:** det "frosne" spilbillede
+(logo der hænger, vand i forgrunden, dreng/skinner væk) skyldtes
+`--enable-zero-copy`: fb0's canvas-rektangel stod stille i 12 s, mens Chromiums
+egen gengivelse ændrede sig ved hvert CDP-screenshot. Uden flaget opdaterer
+fb0's canvas-område hvert par sekunder — flaget er nu slået fra som standard i
+`start_chromium_probe.sh`. **Boksen blev slukket af brugeren 00:50** (anden
+maskine skulle testes), så gameplay efter zero-copy-fravalget er ikke bekræftet;
+næste session skal tænde boksen og gentage kørslen (bring-up uden
+`bringup_after_power.sh`). Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
 
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster

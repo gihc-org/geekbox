@@ -23,6 +23,40 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
 
 ### Chromium-sporet (aktivt 30. sep 2026)
 
+- **God start i en ny session (Chromium-sporet, 2. okt 2026) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-10-01-chromium-fps.md` (HELE notatet — især
+  "Status i ét blik" for begge sessioner, "Opfølgning ~00:35" og "Fælder"),
+  Chromium-afsnittet i `TODO.md` og `OVERBLIK.md`. Branch er `chromium-fps`;
+  seneste commits er `d0384c6` (depth-clear + HDMI-genoptagelse), `b129651`
+  (ren hardware-EGL-kørsel) og `128d190` (1. okt-verifikation).
+  STATUS 2. okt 2026 ~00:45: **boksen er slukket af brugeren** (skulle bruges
+  til en anden maskine), så intet kan verificeres før den er tændt igen.
+  Chromium-vejen virker teknisk: hardware-EGL (ANGLE `gles-egl` mod hybris) giver
+  WebGL 2.0 på PowerVR G6110, 0 `GPU process exited`, 0 watchdog-hits og 0
+  `CONTEXT_LOST`, og præsentationen til fb0 er farvekorrekt (verificeret med
+  farvebånd og en statisk WebGL-canvas). Spillet loadede, men skærmen stod
+  fast på logoet; årsagen er fundet: **`--enable-zero-copy`** fik compositoren
+  til at læse en forældet canvas-buffer (spil-canvas' område på fb0 havde SAMME
+  hash i 12 s, mens Chromiums egen gengivelse ændrede sig). Uden flaget
+  opdaterer området hvert par sekunder — men om spillet nu når forbi intro til
+  gameplay, og om dreng/skinner/tog er synlige, er IKKE bekræftet (brugeren
+  slukkede boksen under testen).
+  FØRSTE OPGAVE: bring boksen op igen UDEN `bringup_after_power.sh` (den lægger
+  vnext12 tilbage og fjerner Chromium-EGL-lappen) — kør i stedet linjerne under
+  "Gendan boksen efter genstart" i `docs/log/2026-10-01-chromium-fps.md` (ur,
+  `pvrsrvkm` + `gpu_up.sh`, bindapi-lap med `BOXIP`), læg
+  `devuan/gpu/eglplatform_x11/start_chromium_probe.sh` over på boksen (defaults
+  er nu hardware-EGL + software-compositing + `--disable-gpu-watchdog` +
+  `CYAN_DEPTHCLEAR=1` + zero-copy FRA), og start en ren kørsel på
+  `https://poki.com/en/g/subway-surfers`. Bekræft med
+  `chromium_cdp.py probe 8` og ved at hashe fb0's canvas-rektangel to gange
+  (skal give FORSKELLIGE hashes). Klik derefter spillet i gang og afgør sammen
+  med brugeren, om dreng/skinner/tog er synlige og spillet spilbart; mål først
+  derefter fps (rAF + `fb_fps`). Vær opmærksom på: HDMI-udgangen kan blive slået
+  fra ved Chromium-nedlukning (`echo 1 > /sys/class/display/HDMI/enable` giver
+  billedet tilbage — scriptet gør det nu selv), og `--enable-zero-copy` skal
+  være slået fra på denne stak."*
+
 - **God start i en ny session (Chromium-sporet, 1. okt 2026) — AFLØST 2. okt:**
   (prompten nedenfor blev kørt; se "Ren kørsel med `--disable-gpu-watchdog`"
   længere nede og `docs/log/2026-10-01-chromium-fps.md` for den aktuelle status)
@@ -78,11 +112,30 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   WebGL 2.0 på `ANGLE (…, PowerVR Rogue G6110, OpenGL ES 3.1)`, rAF 3,0-3,6/s,
   skærmen 5,2 opdateringer/s. Farvetest mod fb0 afkræfter format-/stride-fejl i
   presenten. Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
-- [ ] **Næste (2. okt):** få brugerens øjne på skærmen — er spillet nu spilbart
-  efter klik (titel-/startskærm vs. intro/loading)? Derefter: (a) angrib fps-loftet
-  (~3,6 rAF/s mod 5,2 skærm-opdateringer/s) med 720p eller mindre vindue, (b) sæt
-  en MV3-adblocker ind (uBlock Origin Lite) for fair sammenligning med Firefox,
-  (c) integrér EGL-lappen + hardware-EGL-starten i `bringup_after_power.sh`
+- [x] **Depth-clear-lap og HDMI-fald (2. okt 2026 ~00:35):** proxyen ER
+  vnext15-kilden (md5 `54133609` = repoets `egl_proxy.c`), men
+  `CYAN_DEPTHCLEAR` manglede i Chromium-starten; den er nu standard, og proxyen
+  logger én `force-depth-clear` pr. frame i spillets fbo (fbo=23, 1031x580).
+  Samtidig slog en hardware-EGL-Chromium HDMI-udgangen fra ved nedlukning
+  (`hdmi remove from lcdc0`, `enable=0` → sort TV, mens X kørte fint);
+  `echo 1 > /sys/class/display/HDMI/enable` gav billedet tilbage, og
+  `start_chromium_probe.sh` tænder nu udgangene igen efter nedlukning og 8 s
+  efter start (`restore_display`).
+- [x] **ÅRSAG til det frosne spilbillede fundet (2. okt 2026 ~00:45):**
+  **`--enable-zero-copy`**. Med flaget stod spil-canvas' område på fb0 stille
+  (identisk md5 i 12 s), mens Chromiums egen gengivelse ændrede sig ved hvert
+  CDP-screenshot — altså en forældet canvas-buffer i compositoren, ikke en
+  fejl i spillets logik. Uden `--enable-zero-copy` skifter fb0's canvas-område
+  hash hvert par sekunder (målt 4 forskellige hashes på 12 s). Flaget er nu
+  slået FRA som standard i `start_chromium_probe.sh`.
+- [ ] **Næste (ny session, 2. okt):** boksen skal tændes igen. Bring den op uden
+  `bringup_after_power.sh` (se prompten øverst i Chromium-afsnittet), start en
+  ren kørsel og afgør med brugeren: er dreng/skinner/tog synlige og spillet
+  spilbart med zero-copy slået fra? Derefter: (a) mål fps (rAF + `fb_fps`) —
+  bemærk at 5,2 skærm-opdateringer/s blev målt MED zero-copy, så tallet skal
+  tages om, (b) angrib fps-loftet med 720p eller mindre vindue, (c) sæt en
+  MV3-adblocker ind (uBlock Origin Lite) for fair sammenligning med Firefox,
+  (d) integrér EGL-lappen + hardware-EGL-starten i `bringup_after_power.sh`
   (i dag overskriver den EGL-lappen med vnext12).
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
