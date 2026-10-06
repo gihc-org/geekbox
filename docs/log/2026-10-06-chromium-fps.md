@@ -62,6 +62,15 @@
   før crashet — altså: spillet *renderer* fint, det er JS-motoren der dør.
 - **Værktøj:** `devuan/gpu/eglplatform_x11/capture_renderer_crash.sh` (venter på
   renderer med et givet `--renderer-client-id` og fanger crashet med gdb).
+- **Femte kørsel, ren software-GL (SwiftShader, 21:56-21:59):** med
+  `CHROMIUM_USE_ANGLE=swiftshader CHROMIUM_UNSAFE_SWIFTSHADER=1` er hverken
+  hybris-EGL'en eller vores proxy i spillet. **Brugeren kunne se drengen
+  (spilfiguren) på skærmen** — det er første gang i Chromium-sporet (hardware-EGL
+  stoppede ved logoet). Kort efter blev skærmen sort, og boksen blev slukket.
+  Betydning: symptomet "drengen/skinnerne mangler" er altså ikke bundet til
+  V8-crashet — spillet kan nå at tegne figuren. Om det skyldes software-GL'en,
+  at dybde-lappen (som IKKE er aktiv uden vores proxy) ikke var i vejen, eller
+  blot at spillet nåede længere i asset-load, er ikke afgjort.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
