@@ -16,6 +16,19 @@ Devuan Excalibur (armhf) booter fra eMMC med vendor-kernel 3.10 på begge bokse:
 
 Du er en elektronik/computer ekspert
 
+## Samarbejdet med brugeren
+
+- **Spørg kun brugeren om noget fysisk:** tænd/sluk boksen, sæt strøm eller
+  kabel i, klik eller tast på boksen/TV'et, se på skærmen, rør ved hardware.
+- **Alt andet kører agenten selv** — ssh/scp til boksen, filer, git, byg,
+  flash-værktøjer, målinger, `dmesg`-tjek. Spørg ikke om lov til en kommando,
+  bare fordi den kræver forhøjede rettigheder eller går ud af sandkassen.
+- Undtagelser: destruktive eller svært reversible handlinger (flash, sletning,
+  overskrivning af data på kortet) og handlinger uden for opgavens rammer —
+  dem vendes med brugeren først.
+- Ved tvivl: tag det sikre, reversible skridt, sig hvad der blev gjort, og nævn
+  antagelsen i svaret.
+
 ## Dokumentation undervejs (beslutninger + status)
 
 - Hold en løbende sektion **"Aftaler og beslutninger"** øverst i dagens session-notat (`docs/log/YYYY-MM-DD-<emne>.md`) og opdatér den SAMME TIME noget aftales — ikke først ved checkpoint eller sessionslut.

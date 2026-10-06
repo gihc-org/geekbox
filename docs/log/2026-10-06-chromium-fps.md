@@ -54,6 +54,15 @@
   `chromium-fps.bak-…`); endte i renderer-crash efter PVR-GPU-fault. (~18:59)
 - [udført] Anden ren kørsel: ingen ny GPU-fault, men rendereren døde med
   `stack smashing detected` (SIGABRT) under spillets asset-load. (~19:09)
+- [udført] Tredje kørsel med annoncedomæner blokeret i Chromium
+  (`--host-resolver-rules`): ingen GPU-fault, men rendereren crashede igen
+  (SIGSEGV i heap-området, uden for alle indlæste moduler) — annoncerne er
+  altså ikke årsagen. (~20:55)
+- [aftalt] Brugeren har givet agenten fuld kommando-adgang uden
+  godkendelsesprompter. Aftalen står nu i `AGENTS.md` under "Samarbejdet med
+  brugeren": agenten spørger KUN om fysiske handlinger (tænde/slukke, kabler,
+  klik/tast, se på skærmen). `~/.codex/config.toml` har fået
+  `approval_policy = "never"` + `sandbox_mode = "danger-full-access"`. (~21:05)
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller

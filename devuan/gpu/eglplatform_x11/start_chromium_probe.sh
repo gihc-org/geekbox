@@ -27,6 +27,10 @@ DISABLE_GPU_WATCHDOG=${CHROMIUM_DISABLE_GPU_WATCHDOG:-1}
 DEPTHCLEAR=${CHROMIUM_DEPTHCLEAR:-1}
 ZERO_COPY=${CHROMIUM_ZERO_COPY:-0}
 VERBOSE=${CHROMIUM_VERBOSE:-0}
+# Ekstra Chromium-flags adskilt af lodret streg (hvert led bliver ét argv-element,
+# så værdier med mellemrum overlever), fx
+#   CHROMIUM_EXTRA_FLAGS='--host-resolver-rules=MAP *.doubleclick.net 0.0.0.0|--foo bar'
+EXTRA_FLAGS=${CHROMIUM_EXTRA_FLAGS:-}
 LD_PRELOAD_V=${CHROMIUM_LD_PRELOAD-$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so}
 LD_LIBRARY_PATH_V=${CHROMIUM_LD_LIBRARY_PATH:-/opt/hybris}
 
@@ -72,6 +76,10 @@ GLFLAGS=(--use-gl="$USE_GL")
 # stille (samme hash i 12 s), mens Chromium selv tegner nye frames; uden
 # flaget kopieres laget i stedet. Derfor er det slået FRA som standard.
 [ "$ZERO_COPY" = 1 ] && GLFLAGS+=(--enable-zero-copy)
+if [ -n "$EXTRA_FLAGS" ]; then
+    IFS='|' read -r -a EXTRA_ARR <<< "$EXTRA_FLAGS"
+    GLFLAGS+=("${EXTRA_ARR[@]}")
+fi
 LOGFLAGS=(--enable-logging=stderr)
 [ "$VERBOSE" = 1 ] && LOGFLAGS+=(--v=1)
 
