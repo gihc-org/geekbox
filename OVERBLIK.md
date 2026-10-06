@@ -195,6 +195,18 @@ asset-load — samme renderer begge gange. Chromium-vejen er altså blokeret af 
 renderer-crash, ikke (kun) af zero-copy eller fps. Detaljer:
 `docs/log/2026-10-06-chromium-fps.md`.
 
+**Opdateret 6. okt 2026 ~21:55 (Chromium-sporet, rodårsag):** crashene er
+**V8, Chromiums JS-motor**. Crashpad-dumperne blev symboliseret via Debians
+debuginfod (build-id `f0e2662b…`): fejlene ligger i V8's GC-markering
+(`ConcurrentMarking::RunMajor`, `UnifiedHeapMarkingVisitorBase::Visit`), i
+Maglev-JIT-kompileren og som glibc `stack smashing detected` i en
+renderer-worker-tråd. Fire isolationskørsler (annonceblokering, ingen samtidig
+markering/parallel markering, ingen V8-baggrundstråde, ingen JIT) crashede alle
+igen, og spillet *renderer* fint (grønt Subway Surfers-billede på fb0) indtil
+JS-motoren dør. GPU-stakken er ikke årsagen — kun den første kørsel havde et
+PVR-fault. Åbent: hardware vs. software (samme kørsel på boks 2), ellers
+parkér Chromium-sporet og brug Firefox-vejen (spilbar, 2,6 fps).
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

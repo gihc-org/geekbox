@@ -137,9 +137,19 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   som Firefox-sporet 26. aug) og SIGSEGV i rendereren; anden kørsel UDEN
   GPU-fault, hvor rendereren i stedet døde af glibc's
   `stack smashing detected` (SIGABRT) under spillets asset-load — samme
-  renderer begge gange (`--renderer-client-id=5`). Næste: annonceblokering
-  (Poki viser annoncer uden adblocker) og en rigtig backtrace af
-  stack-smashing-crashet. Detaljer: `docs/log/2026-10-06-chromium-fps.md`.
+  renderer begge gange (`--renderer-client-id=5`). **RODÅRSAG (6. okt ~21:55):
+  det er V8.** Crashpad-dumperne er symboliseret via Debians debuginfod
+  (build-id `f0e2662b…`): crashene ligger i V8's GC-markering
+  (`ConcurrentMarking::RunMajor`, `UnifiedHeapMarkingVisitorBase::Visit`) og i
+  Maglev-JIT-kompileren, plus glibc `stack smashing detected` i en
+  renderer-worker-tråd. Fire isolationskørsler crashede alle igen:
+  annoncedomæner blokeret, `--js-flags=--no-concurrent-marking
+  --no-parallel-marking`, `--js-flags=--single-threaded` og
+  `--js-flags=--jitless`. Spillet *renderer* fint (grønt spilbillede på fb0)
+  indtil JS-motoren dør. GPU-stakken er ikke årsagen (kun den første kørsel
+  havde et PVR-fault). Næste: kør samme kørsel på boks 2 for at skelne hardware
+  fra software, ellers parkér Chromium-sporet og gå tilbage til Firefox-vejen.
+  Detaljer: `docs/log/2026-10-06-chromium-fps.md`.
 - [ ] **Næste (ny session, 2. okt):** boksen skal tændes igen. Bring den op uden
   `bringup_after_power.sh` (se prompten øverst i Chromium-afsnittet), start en
   ren kørsel og afgør med brugeren: er dreng/skinner/tog synlige og spillet

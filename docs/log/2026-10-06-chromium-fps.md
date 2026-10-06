@@ -33,6 +33,40 @@
   `__stack_chk_fail` rejser) i **samme renderer begge gange**
   (`--renderer-client-id=5`). Dvs. en bufferoverløb-i-renderer, ikke (kun) en
   GPU-kontekstfejl.
+- **RODÅRSAGEN FUNDET (6. okt ~21:55): det er V8, Chromiums JS-motor.**
+  Crashpad-minidumperne blev hentet ned og adresserne oversat med Debians
+  debuginfod (build-id `f0e2662b…` → 197 MB debugfil, `addr2line`). Alle
+  crash-dumps er fra en **renderer** (én gang også browser-processen), og de
+  rammer V8's hukommelseshåndtering:
+
+| nr | proces | signal | symbol |
+|----|--------|--------|--------|
+| 1 | renderer | SIGSEGV | `v8::internal::ConcurrentMarking::RunMajor` / `MarkingVisitorBase::ProcessStrongHeapObject` (`v8/src/heap/concurrent-marking.cc`) |
+| 2 | renderer | SIGABRT | glibc `abort()` efter `*** stack smashing detected ***` i en `ThreadPoolForegroundWorker`-tråd |
+| 3 | renderer | SIGSEGV | samme concurrent-marking-funktion som nr. 1 |
+| 4 | browser | SIGSEGV | chromium +0x63b5872 (ikke symboliseret) |
+| 5 | renderer | SIGABRT | stack-smashing igen (worker-tråd) |
+| 6 | renderer | SIGSEGV | `v8::internal::maglev::MaglevCodeGenerator::RecordInlinedFunctions` (JIT-kompiler, NULL-deref) |
+| 7 | renderer | SIGSEGV | `v8::internal::UnifiedHeapMarkingVisitorBase::Visit` (GC-markering) |
+
+   To af fejladresserne lå i heap-området uden for alle indlæste moduler
+   (0x64df0334, 0x68cc0000) — altså vilde pointere, ikke dårlig kode-adresse.
+- **Isolationsforsøg der alle crashede igen (1-2 min inde i spillet):**
+  annoncedomæner blokeret i Chromium (`--host-resolver-rules`),
+  `--js-flags=--no-concurrent-marking --no-parallel-marking`,
+  `--js-flags=--single-threaded` og `--js-flags=--jitless`. GPU-faulten i
+  PVR-kernen forekom kun i den første kørsel — de øvrige crashede uden nogen
+  ny fault, så GPU-stakken er ikke årsagen.
+- Med `--js-flags=--single-threaded --jitless` stod skærmen stadig på
+  spilbilledet (grønt Subway Surfers-scene, 41 % `(8,255,106)`) i nogle minutter
+  før crashet — altså: spillet *renderer* fint, det er JS-motoren der dør.
+- **Værktøj:** `devuan/gpu/eglplatform_x11/capture_renderer_crash.sh` (venter på
+  renderer med et givet `--renderer-client-id` og fanger crashet med gdb).
+- **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
+  bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
+  1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
+  dækker altså kun den øverste halvdel af skærmen — det påvirker `fb_fps` og
+  `rgb565_to_png.py` og bør klares.
 - I begge kørsler kører der **annoncer** på Poki-siden (bl.a. `1x1.a-mo.net`,
   `…ay.delivery`), som spawer mange ekstra renderer-processer (målt op til ~15
   samtidige) — en mulig kilde til både støj og ustabilitet.
@@ -63,6 +97,13 @@
   brugeren": agenten spørger KUN om fysiske handlinger (tænde/slukke, kabler,
   klik/tast, se på skærmen). `~/.codex/config.toml` har fået
   `approval_policy = "never"` + `sandbox_mode = "danger-full-access"`. (~21:05)
+- [udført] Crashpad-minidumperne analyseret; Debians debuginfod brugt til at
+  symbolisere adresserne (build-id `f0e2662b…`). (~21:40)
+- [udført] Fire isolationskørsler (annonceblokering, ingen samtidig markering,
+  ingen V8-baggrundstråde, ingen JIT) — alle crashede igen i V8. (~21:50)
+- [afventer] Beslutning med brugeren: (a) afgør hardware vs. software ved at
+  køre samme Chromium på boks 2, (b) RAM-test af boks 1, eller (c) parkér
+  Chromium-sporet og gå tilbage til Firefox-vejen (spilbar, fps-loftet åbent).
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller
@@ -97,16 +138,16 @@
 
 ## Næste skridt
 
-1. Fjern annonce-variablen: kør spillet via CDP'ens `game`-kommando (blokerer
-   annonce-/trackerdomæner) og se om renderer-crashet forsvinder eller flytter
-   sig. Billigt og i tråd med TODO-punktet om en MV3-adblocker.
-2. Få en rigtig backtrace af `stack smashing`-crashet (gdb på rendereren via
-   `--renderer-cmd-prefix`, eller core-dump med crashpad slået fra) — dét giver
-   rodårsagen i stedet for endnu en symptommåling.
-3. Spørgsmålet om zero-copy (2. okt-rettelsen) er stadig uafklaret, men bør
-   først besvares når rendereren ikke længere dør: kør én gang med
-   `CHROMIUM_ZERO_COPY=1` og sammenlign canvas-hashen på fb0.
-4. Først derefter giver fps-målinger mening.
+1. Afgør om det er hardware eller software: kør samme Chromium-kørsel på
+   **boks 2** (samme model, samme image). Crasher den der også, er det
+   Chromium 150 + denne 3.10-kernel; crasher den ikke, er boks 1 mistænkelig
+   (jf. boksens historik med hard lockups, ext2-korruption og et
+   strømforsynings-uheld).
+2. Hvis boks 1 skal renses: kør `memtester` på den (kræver at Chromium stoppes).
+3. Ellers: parkér Chromium-sporet. Firefox-vejen kører spillet (2,6 fps) og er
+   den vej der virker; fps-loftet er det åbne spor der.
+4. Zero-copy-spørgsmålet fra 2. okt er sat til side indtil videre — det kan
+   ikke besvares mens rendereren dør.
 
 ## Kommandoer der virker (6. okt)
 
