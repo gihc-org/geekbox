@@ -126,6 +126,21 @@
   Det er præcis det observerede forløb (SwiftShader belaster alle 8 kerner).
   Brugerens mavefornemmelse var rigtig: det er kernen — nærmere bestemt
   vendorens spændingsafhængige temperaturformel kombineret med DVFS.
+- **Termik og crash er to forskellige problemer (målt 15:00-15:25):**
+  - Spilkørsel på hardware-EGL med fri governor: temperaturen nåede 97 °C et
+    øjeblik, men boksen blev oppe — og rendereren crashede efter ~1,5 min.
+    Spillet alene udløser altså IKKE termik-trip'et; det kræver alle-kerner-last.
+  - **Fair test (brugerens indvending):** spillet kørt ved **816 MHz** (låst
+    frekvens, hvor temperaturen lå roligt på 59-64 °C). Det crashede OGSÅ — og
+    ifølge brugeren mens det stadig stod i "50 % loadet", altså **uden 3D**.
+    Crash-tallet gik fra 45 til 46 dumper. Dermed er frekvens-/termik-hypotesen
+    for crashet **afvist**: det sker både ved 1,2 GHz og 816 MHz, og det kræver
+    hverken top-OPP'en eller 3D-rendering.
+  - **Kontrolleret modtest:** `devuan/gpu/eglplatform_x11/v8_gc_stress.html`
+    (tunge JS-allokeringer + 300 GL-kald pr. frame) kørte 5 min ved 1,2 GHz med
+    16,4 mio. allokeringer **uden crash**. Ren V8-GC-belastning er altså ikke nok
+    — spillet gør noget mere (tunge tekstur-/asset-pipelines og meget mere
+    GPU<->renderer-IPC).
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
@@ -187,6 +202,19 @@
   DVFS-artefakt. (~14:52)
 - [aftalt] CPU-governoren er gendannet til `interactive`, boksen er i ro
   (312 MHz, 52 °C), og der ligger ingen efterladt belastning. (~14:54)
+- [udført] Ligevægtstest: fuld last ved låst 816 MHz stabiliserer på **77 °C**
+  (3 min), og boksen falder til 62 °C bagefter. Kølingen er fin nok ved den
+  frekvens. (~15:00)
+- [udført] Spilkørsel på hardware-EGL: 97 °C i top, ingen nedlukning, men
+  renderer-crash efter ~1,5 min. (~15:03)
+- [udført] Fair test: spillet ved 816 MHz crashede også, mens det stod i 50 %
+  load (uden 3D). Frekvens-/termik-hypotesen for crashet er afvist. (~15:23)
+- [udført] Kontrolleret modtest: `v8_gc_stress.html` (tung JS-allokering + GL) i
+  5 min ved 1,2 GHz uden crash. (~15:21)
+- [afventer] Næste isolationsforsøg: spillet med **SwiftShader + CPU låst på
+  816 MHz** (undgår termik-nedlukningen). Det er den sidste kørsel hvor spillet
+  faktisk kom videre (brugeren så drengen) — og den afgør om det er
+  hybris-/EGL-vejen eller Chromium selv.
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller

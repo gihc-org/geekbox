@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V8 GC + GL stress</title>
+<style>html,body{margin:0;background:#111}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1031" height="580"></canvas>
+<script>
+// v8_gc_stress.html — belastning der ligner spillets: WebGL2-tegning i hver
+// frame PLUS masser af korte JS-allokeringer, som udløser V8's GC/marking —
+// netop der Chromium-crashene på GeekBox'en blev fanget 6. okt 2026
+// (ConcurrentMarking::RunMajor, UnifiedHeapMarkingVisitorBase::Visit).
+//
+// Parametre i URL: objs (objekter pr. frame), draws (GL-kald pr. frame).
+// Fremgang skrives til document.title og console.log (havner i
+// /root/chromium_game.log som INFO:CONSOLE).
+function log(s) { try { console.log(s); } catch (e) {} document.title = s; }
+
+var P = new URLSearchParams(location.search);
+var OBJS = parseInt(P.get('objs') || '20000', 10);
+var DRAWS = parseInt(P.get('draws') || '300', 10);
+
+var cv = document.getElementById('c');
+var gl = cv.getContext('webgl2') || cv.getContext('webgl');
+if (!gl) {
+  log('FAIL: ingen WebGL-kontekst');
+} else {
+  log('OK ' + gl.getParameter(gl.VERSION) + ' objs=' + OBJS + ' draws=' + DRAWS);
+
+  var vs = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+  var fs = 'precision mediump float; void main(){ gl_FragColor = vec4(0.2,0.6,0.3,1.0); }';
+  function sh(t, src) {
+    var s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); return s;
+  }
+  var pr = gl.createProgram();
+  gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs));
+  gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(pr); gl.useProgram(pr);
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  var loc = gl.getAttribLocation(pr, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  var frames = 0, last = performance.now(), keep = null, total = 0;
+
+  function frame() {
+    // 1) JS-allokeringer: presser scavenge og marking i V8's GC
+    var a = new Array(OBJS);
+    for (var i = 0; i < OBJS; i++) {
+      a[i] = {i: i, s: 'x' + i, f: i * 0.5, o: {n: i & 15}};
+    }
+    keep = a[OBJS >> 1];
+    total += OBJS;
+
+    // 2) GL-arbejde: samme størrelsesorden som spillet (~250-280 kald/frame)
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    for (var d = 0; d < DRAWS; d++) {
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+    frames++;
+    var now = performance.now();
+    if (now - last >= 1000) {
+      log('V8GC frames=' + frames + ' fps=' + (frames * 1000 / (now - last)).toFixed(1) +
+          ' allokeret=' + total + ' keep=' + (keep ? keep.i : -1));
+      frames = 0; last = now;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
