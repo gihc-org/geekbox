@@ -23,7 +23,77 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
 
 ### Chromium-sporet (aktivt 30. sep 2026)
 
-- **God start i en ny session (Chromium-sporet, 2. okt 2026) — NUVÆRENDE:**
+- **God start i en ny session (Chromium-sporet, 7. okt 2026) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-10-06-chromium-fps.md` (HELE notatet — især "Status i
+  ét blik", "Hvad vi ved (målt 6. okt)" og "(målt 7. okt)", "Næste skridt" og
+  "Fælder"), Chromium-afsnittet i `TODO.md` og `OVERBLIK.md`. Branch er
+  `chromium-fps`; nyeste commits er `d72d307` (uBOL-politik), `e96d9c2` (uBOL
+  installeret), `939bf8e` (frekvens-hypotesen afvist), `aaef372` (rodårsagen er
+  V8) og `2f99d32` (zero-copy-rettelsen var ufuldstændig).
+  STATUS 7. okt 2026: boksen kører og nås med `bash devuan/find_box.sh` (IP
+  skifter ved hver boot — senest 192.168.0.135). **Boksen nulstiller sit ur til
+  2013 ved hver boot** — sæt det først, ellers er logs og dump-tællinger
+  misvisende. Der er **to uafhængige blokader**:
+
+  (1) **Pokis reklame-pause står foran spillet.** Med annoncer blokeret (uBlock
+  Origin Lite 2026.1006.1931, MV3, installeret i
+  `/home/kristian/ublock-origin-lite`) starter spillet ALDRIG: siden venter på
+  sin ad-break ("We'll be back after this short break / Preparing..."), og
+  spillets egen JS kører ikke (0 `Cache size`-beskeder). Uden blocker loader
+  annoncen, og nogle gange starter spillet — hvorefter rendereren crasher.
+  Spillet kan ikke loades uden om Poki-siden: `games.poki.com` svarer
+  "has moved", og `gdn.poki.com`-bygget afvises af Cloudflare.
+  FØRSTE OPGAVE: kør Chromium i vinduestilstand én gang (ikke `--kiosk`) og få
+  brugeren til at give uBOL adgang til alle sider i dens UI (fysisk klik), så
+  "complete"-mode med scriptlets kan slå reklame-pausen fra. En politik-fil
+  ligger allerede som forsøg (`/etc/chromium/policies/managed/ubol.json` med
+  `defaultFiltering: complete`) — den alene var ikke nok.
+  Alternativ: find reglen/scriptlet'en fra Firefox-profilens klassiske uBO og
+  læg den ind som brugerfilter i uBOL.
+
+  (2) **Renderer-crashet er det egentlige problem.** Det er V8's
+  hukommelseshåndtering (GC-markering `ConcurrentMarking` /
+  `UnifiedHeapMarkingVisitorBase`, Maglev-JIT og glibc `stack smashing` i
+  worker-tråde), symboliseret via Debians debuginfod. Det sker uanset annoncer,
+  CPU-frekvens (1,2 GHz og 816 MHz), `--no-concurrent-marking`,
+  `--single-threaded` og `--jitless`. NÆSTE: gør
+  `devuan/gpu/eglplatform_x11/v8_gc_stress.html` tungere og mere spillignende
+  (teksturer, readbacks, større canvas, mange flere draw-kald) og kør A/B
+  mellem hardware-EGL (`--use-angle=gles-egl`) og `--use-angle=swiftshader`;
+  crasher kun hybris-vejen, er det vores EGL-/hybris-stak. Alternativt: samme
+  kørsel på boks 2 (hardware vs. software).
+
+  IKKE længere åbne spor: zero-copy-spørgsmålet fra 2. okt (den hårdkodede
+  `--enable-zero-copy` er fjernet; kan ikke besvares mens rendereren dør) og
+  termik (boksens selv-nedlukning er kernens eget `orderly_poweroff` ved 120 °C
+  under alle-kerner-last — målt, ikke en brownout; forsyningen ser fin ud).
+
+  Fysisk fra brugeren: give uBOL tilladelser i dens UI, holde øje med skærmen
+  under spilkørsler, og tænde/slukke boksen.
+
+  Bring-up (uden `bringup_after_power.sh`, så EGL-lappen bevares):
+  `bash devuan/find_box.sh` → `NOW=$(date +%s); BOXIP=<ip> bash devuan/box.sh
+  "date -s @$NOW"` → `BOXIP=<ip> bash devuan/box.sh 'lsmod | grep -q "^pvrsrvkm"
+  || insmod /root/pvrsrvkm_leddaz.ko; sh /root/gpu_up.sh; chmod 666
+  /dev/sw_sync'` → `BOXIP=<ip> bash
+  devuan/gpu/eglplatform_x11/patch_android_bindapi.sh` → læg
+  `devuan/gpu/eglplatform_x11/start_chromium_probe.sh` over på boksen.
+  START: `CHROMIUM_LD_PRELOAD= CHROMIUM_USE_GL=angle CHROMIUM_USE_ANGLE=gles-egl
+  CHROMIUM_EXTRA_FLAGS='--load-extension=/home/kristian/ublock-origin-lite|--disable-extensions-except=/home/kristian/ublock-origin-lite'
+  CHROMIUM_URL=https://poki.com/en/g/subway-surfers nohup
+  /root/start_chromium_probe.sh > /root/chromium_launch.log 2>&1 &` → tunnel
+  `ssh -f -N -L 9223:127.0.0.1:9223 root@<ip>` → `python3
+  devuan/gpu/eglplatform_x11/chromium_cdp.py eval
+  "document.body.innerText.slice(0,300)"` viser om siden står i reklame-pausen.
+  Crash-jagt: `devuan/gpu/eglplatform_x11/capture_renderer_crash.sh <client-id>`
+  (gdb på rendereren), `devuan/templog.sh` (sort boks for temperatur), og
+  `addr2line` mod den debuginfod-hentede `chromium.debug`.
+  FÆLDER (kort): sæt uret først; `/dev/fb0` kan kun læses til 1920x540 (2 MB)
+  selvom alt andet siger 1080p; brug python-zipfile ved store overførsler
+  (tar gav trunkeret udpakning); `pkill -f <mønster>` dræber din egen
+  ssh-session; kernens termiske trip kan slukke boksen under alle-kerner-last."*
+
+- **God start i en ny session (Chromium-sporet, 2. okt 2026) — AFLØST 7. okt:**
   *"Læs `docs/log/2026-10-01-chromium-fps.md` (HELE notatet — især
   "Status i ét blik" for begge sessioner, "Opfølgning ~00:35" og "Fælder"),
   Chromium-afsnittet i `TODO.md` og `OVERBLIK.md`. Branch er `chromium-fps`;
@@ -147,8 +217,14 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   --no-parallel-marking`, `--js-flags=--single-threaded` og
   `--js-flags=--jitless`. Spillet *renderer* fint (grønt spilbillede på fb0)
   indtil JS-motoren dør. GPU-stakken er ikke årsagen (kun den første kørsel
-  havde et PVR-fault). Næste: kør samme kørsel på boks 2 for at skelne hardware
-  fra software, ellers parkér Chromium-sporet og gå tilbage til Firefox-vejen.
+  havde et PVR-fault). **7. okt:** dertil kommer at Pokis reklame-pause
+  blokerer for spillet når annoncerne er blokeret (uBlock Origin Lite er nu
+  installeret i `/home/kristian/ublock-origin-lite`), og at boksens
+  selv-nedlukning er kernens termiske trip ved 120 °C under alle-kerner-last.
+  Næste: (1) få uBOL i "complete"-mode via et fysisk klik i dens UI, (2) lav en
+  tungere spillignende stress-side og kør A/B mellem hardware-EGL og
+  SwiftShader, (3) ellers samme kørsel på boks 2 for at skelne hardware fra
+  software — eller parkér Chromium-sporet og gå tilbage til Firefox-vejen.
   Detaljer: `docs/log/2026-10-06-chromium-fps.md`.
 - [ ] **Næste (ny session, 2. okt):** boksen skal tændes igen. Bring den op uden
   `bringup_after_power.sh` (se prompten øverst i Chromium-afsnittet), start en

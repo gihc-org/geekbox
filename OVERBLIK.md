@@ -207,6 +207,24 @@ JS-motoren dør. GPU-stakken er ikke årsagen — kun den første kørsel havde 
 PVR-fault. Åbent: hardware vs. software (samme kørsel på boks 2), ellers
 parkér Chromium-sporet og brug Firefox-vejen (spilbar, 2,6 fps).
 
+**Opdateret 7. okt 2026 (Chromium-sporet, to blokader):** (1) **Pokis
+reklame-pause** står foran spillet: med annoncer blokeret venter siden på sin
+ad-break ("We'll be back after this short break / Preparing...") og spillets JS
+starter aldrig; uden blocker loader annoncen og spillet starter nogle gange —
+og så crasher rendereren. uBlock Origin **Lite** (MV3, 2026.1006.1931) er
+installeret i `/home/kristian/ublock-origin-lite` og virker (annonce-iframes
+væk), men "complete"-mode med scriptlets kræver et fysisk klik i dens UI.
+Spillet kan ikke loades uden om Poki-siden (games.poki.com: "has moved";
+gdn.poki.com: Cloudflare-blokering). (2) **Renderer-crashet er V8's
+hukommelseshåndtering** og sker uanset annoncer, CPU-frekvens (1,2 GHz og
+816 MHz), `--no-concurrent-marking`, `--single-threaded` og `--jitless`.
+**Termik-hypotesen er afklaret:** boksens selv-nedlukning er kernens eget
+`orderly_poweroff(true)` ved `hw-shut-temp = 120 °C` (fra DTB'en) under
+alle-kerner-last; fuld last tog den udregnede temperatur fra 42 til 104 °C på
+8 sekunder, mens den ved låst 816 MHz stabiliserer på 77 °C. Formlen bruger
+CPU-regulatorens spænding, så en del af udsvinget er et DVFS-artefakt. Detaljer
+og kommandoer: `docs/log/2026-10-06-chromium-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

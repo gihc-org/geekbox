@@ -1,10 +1,12 @@
-# Chromium-sporet — session-notat 6. okt 2026
+# Chromium-sporet — session-notat 6.-7. okt 2026
 
 > Agent/model: `codex` / `deepseek-v4-flash` (læst fra denne sessions egen
 > metadata: `~/.codex/sessions/2026/10/06/rollout-2026-10-06T18-50-48-…jsonl`
 > → `"model":"deepseek-v4-flash"`). Branch: `chromium-fps`.
 > Fortsætter handover-prompten i `TODO.md` (Chromium-sporet, 2. okt 2026,
 > `0338a0f`) og `docs/log/2026-10-01-chromium-fps.md`.
+> Sessionen fortsatte ind i 7. okt (uBlock Origin Lite, termik-målinger og
+> Pokis reklame-pause); afsnittene nedenfor er mærket med dato.
 
 ## Status i ét blik (6. okt 2026 ~19:10)
 
@@ -293,18 +295,72 @@
   ugens-logo/timing-fælden i `docs/boksen/skaerm.md`) eller et artefakt skal
   afklares.
 
+## Hvad vi ved (målt 7. okt)
+
+- **Crashet er ikke frekvens- eller varmebestemt:** spillet kørt ved 816 MHz
+  (hvor temperaturen lå roligt på 59-64 °C) crashede også — og mens det stadig
+  stod i "50 % loadet", altså uden 3D. Crash-tallet gik 45 -> 46 dumper.
+- **Kontrolleret modtest:** `v8_gc_stress.html` (tunge JS-allokeringer + 300
+  GL-kald pr. frame) kørte 5 min ved 1,2 GHz med 16,4 mio. allokeringer uden
+  crash. Ren V8-GC-belastning er altså ikke nok.
+- **SwiftShader (ren software-GL, ingen hybris/EGL) + 816 MHz:** ingen crash i
+  5 min, skærmen opdaterede (fb-hash skiftede ved hver måling) — men spillet
+  stod i Pokis reklame-pause. Det er den eneste kørsel hvor spillet kom videre
+  (brugeren så drengen 6. okt).
+- **Boksens selv-nedlukning er kernens termiske trip:** DTB'en sætter
+  `hw-shut-temp = 120000` (120 °C); `rockchip_thermal.c:762-774` kalder
+  `orderly_poweroff(true)` når temperaturen har været over grænsen i 3 målinger
+  i træk (~0,3 s). Full load (8 kerner) tog den udregnede temperatur fra 42 til
+  104 °C på 8 sekunder; ved låst 816 MHz stabiliserer den på 77 °C.
+- **Temperaturen er delvist et artefakt:** formlen er
+  `code_temp = ADC-kode * voltage / 1e6`, hvor `voltage` er CPU-regulatorens
+  spænding. DVFS flytter den 0,925 V (312 MHz) -> 1,275 V (1,2 GHz), og
+  aflæsningen følger med inden for et sekund (tomgang 52 °C ved 312 MHz mod
+  59-62 °C ved låst 1,2 GHz uden last). Termometeret er
+  `/sys/rockchip_thermal/temp` (ingen generisk thermal-zone i sysfs).
+- **uBlock Origin Lite (MV3) 2026.1006.1931 er installeret og aktiv** på boksen
+  (924 filer i `/home/kristian/ublock-origin-lite`); annonce-iframes forsvinder
+  (0 mål mod 23-24 renderere uden blocker). Klassisk uBlock Origin (MV2) kan
+  ikke bruges i Chromium 150.
+- **50 %-stop'et er Pokis reklame-pause**, ikke spillets indlæsning: sidens
+  tekst er "We'll be back after this short break / Preparing...", og spillets
+  egen JS kører aldrig (0 `Cache size`-beskeder). Uden blocker loader annoncen
+  og spillet starter nogle gange — og så crasher rendereren i V8.
+- **Poki-siden kan ikke omgås:** `games.poki.com/<game-id>` -> "Sorry! Subway
+  Surfers has moved"; `<game-id>.gdn.poki.com/<version>/index.html?...` ->
+  Cloudflare ("Sorry, you have been blocked").
+
 ## Næste skridt
 
-1. Afgør om det er hardware eller software: kør samme Chromium-kørsel på
-   **boks 2** (samme model, samme image). Crasher den der også, er det
-   Chromium 150 + denne 3.10-kernel; crasher den ikke, er boks 1 mistænkelig
-   (jf. boksens historik med hard lockups, ext2-korruption og et
-   strømforsynings-uheld).
-2. Hvis boks 1 skal renses: kør `memtester` på den (kræver at Chromium stoppes).
-3. Ellers: parkér Chromium-sporet. Firefox-vejen kører spillet (2,6 fps) og er
-   den vej der virker; fps-loftet er det åbne spor der.
-4. Zero-copy-spørgsmålet fra 2. okt er sat til side indtil videre — det kan
-   ikke besvares mens rendereren dør.
+Der er to uafhængige blokader, og de skal holdes adskilt:
+
+**A. Pokis reklame-pause (7. okt) — står foran alt andet.**
+Med annoncer blokeret starter spillet aldrig (siden venter på sin ad-break:
+"We'll be back after this short break / Preparing..."). Uden blocker starter
+spillet nogle gange, men rendereren crasher i V8.
+1. Giv uBOL de brede host-tilladelser, så "complete"-mode kan bruge scriptlets
+   (kræver et fysisk klik i dens UI — kør Chromium i vinduestilstand én gang).
+   Virker det, forsvinder reklame-pausen forhåbentlig, og vi kan måle på spillet.
+2. Alternativ hvis det ikke virker: find den konkrete regel/scriptlet som
+   klassisk uBO bruger på Poki (sammenlign med Firefox-profilen) og læg den ind
+   som brugerfilter i uBOL.
+
+**B. V8-crashet (6. okt) — det egentlige problem.**
+Rendereren dør under spillets indlæsning, uanset annoncer, CPU-frekvens,
+V8-tråde og JIT. Den nemmeste vej til en kontrolleret reproduktion:
+3. Gør `v8_gc_stress.html` tungere og mere spillignende (teksturer, readbacks,
+   større canvas, mange flere draw-kald) og kør A/B: hardware-EGL (`gles-egl`)
+   mod `--use-angle=swiftshader`. Crasher kun hybris-vejen, peger det på vores
+   EGL-/hybris-stak; crasher begge, er det Chromium selv på denne kerne.
+4. Afgør hardware vs. software: kør samme kørsel på **boks 2** (samme model,
+   samme image).
+
+**C. Hvis ingen af dem lykkes:** parkér Chromium-sporet. Firefox-vejen kører
+spillet (2,6 fps) og er den vej der virker; fps-loftet er det åbne spor der.
+
+**Sat til side:** zero-copy-spørgsmålet fra 2. okt (kan ikke besvares mens
+rendereren dør), og den termiske margin (boksens 2,4A-forsyning ser fin ud —
+nedlukningen er kernens eget trip, ikke en brownout).
 
 ## Kommandoer der virker (6. okt)
 
@@ -335,7 +391,40 @@ BOXIP=<ip> bash devuan/box.sh 'dmesg | grep -c "Guilty Lockup"; dmesg | grep -n 
 BOXIP=<ip> bash devuan/box.sh 'ls -la --time-style=+%H:%M:%S "/home/kristian/.config/chromium/Crash Reports/pending/" | tail -6'
 ```
 
-## Fælder (nye, 6. okt)
+Symbolisér crash-adresser (Debians debuginfod):
+
+```bash
+readelf -n /usr/lib/chromium/chromium | grep -A1 "Build ID"      # f0e2662b…
+curl -sS -o /tmp/chromium.debug \
+  https://debuginfod.debian.net/buildid/<build-id>/debuginfo    # ~197 MB
+addr2line -f -C -e /tmp/chromium.debug 0x2bbc2fe                 # PC-offset fra minidump
+```
+
+Kør med uBlock Origin Lite (MV3) som upakket udvidelse:
+
+```bash
+CHROMIUM_EXTRA_FLAGS='--load-extension=/home/kristian/ublock-origin-lite|--disable-extensions-except=/home/kristian/ublock-origin-lite'
+# politik (valgfri): /etc/chromium/policies/managed/ubol.json med
+#   {"3rdparty":{"extensions":{"efibmdkmadlglmjplfpeonnhblbfncip":{"defaultFiltering":"complete"}}}}
+```
+
+Temperatur og termik:
+
+```bash
+BOXIP=<ip> bash devuan/box.sh 'cat /sys/rockchip_thermal/temp'            # "current cpu_temp:NN"
+BOXIP=<ip> bash devuan/box.sh 'cat /sys/rockchip_thermal/temp_adjust'     # kalibrering fra eFuse
+BOXIP=<ip> bash devuan/box.sh 'echo t > /sys/rockchip_thermal/temp; dmesg | grep -a "cpu code temp"'
+BOXIP=<ip> bash devuan/box.sh 'nohup bash /root/templog.sh /root/templog.txt 5 >/dev/null 2>&1 &'
+```
+
+Se hvad siden egentlig laver (CDP):
+
+```bash
+curl -sS http://127.0.0.1:9223/json/list | python3 -c "import json,sys; [print(t['type'], t.get('url','')[:90]) for t in json.load(sys.stdin)]"
+python3 devuan/gpu/eglplatform_x11/chromium_cdp.py eval "document.body.innerText.slice(0,300)"
+```
+
+## Fælder (nye, 6.-7. okt)
 
 - `pkill -f "<mønster>"` dræber også ens egen ssh-session, når mønsteret står i
   den kommando man selv kører (samme som fælde 41). Brug `ss -ltnp`/`pgrep -af`
@@ -345,3 +434,23 @@ BOXIP=<ip> bash devuan/box.sh 'ls -la --time-style=+%H:%M:%S "/home/kristian/.co
   dagens — filtér på tidsstempel.
 - `python3 chromium_cdp.py` skal køres uden for sandkassen (socket-adgang);
   `ssh`/`scp` til boksen ligeså.
+- **Boksen nulstiller sit ur til 2013 ved hver boot.** Sæt det først
+  (`date -s @$(date +%s)`), ellers er logtidsstempler, `find -newermt` og
+  optælling af crash-dumps misvisende — gamle dumps fra 30. sep har mtimes i
+  2026 og ser "nyere" ud end dagens. Tæl i stedet absolut før/efter.
+- **`/dev/fb0` kan kun læses til 2.073.600 bytes (1920x540x16)**, selvom
+  HDMI-mode, X og fb-varen alle siger 1920x1080 (4.147.200 bytes). Vores
+  fb-dumps dækker altså kun den øverste halvdel af skærmen — vigtigt for
+  `fb_fps` og `rgb565_to_png.py`.
+- **Overførsel af store arkiver: `scp` + `tar xzf` gav trunkeret udpakning på
+  boksen** (tar/gzip-fejl og "Unexpected EOF", selvom md5 var identisk).
+  Sammenlign filantal og byte-sum, og brug `python3 -c "import zipfile; …"`
+  på den originale zip i stedet for tar.
+- **Poki-spærringer:** reklame-pausen ("Preparing...") kan ikke omgås ved at
+  loade spillet direkte — `games.poki.com` svarer "has moved", og
+  `gdn.poki.com`-bygget afvises af Cloudflare. Brug Poki-siden og håndtér
+  ad-break'en der.
+- **Kernen kan slukke boksen selv** (`orderly_poweroff(true)` ved 120 °C efter
+  3 målinger). Ved fuld 8-kerner-last sker det inden for et halvt minut, og
+  kernelloggen skrev intet de sidste 55 min før den ene nedlukning — brug
+  `devuan/templog.sh` som sort boks når der køres hård last.
