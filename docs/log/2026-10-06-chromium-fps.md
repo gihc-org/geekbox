@@ -141,6 +141,34 @@
     16,4 mio. allokeringer **uden crash**. Ren V8-GC-belastning er altså ikke nok
     — spillet gør noget mere (tunge tekstur-/asset-pipelines og meget mere
     GPU<->renderer-IPC).
+
+### uBlock Origin Lite på Chromium (7. okt) — og hvad der blokerer 50 %-stop'et
+
+- **Klassisk uBlock Origin (MV2) kan ikke bruges i Chromium 150.** I stedet er
+  **uBlock Origin Lite 2026.1006.1931** (MV3) hentet fra
+  `uBlockOrigin/uBOL-home` og lagt på boksen i
+  `/home/kristian/ublock-origin-lite` (924 filer, 35.483.328 bytes — samme som
+  den udpakkede zip på laptoppen). Den indlæses som **upakket udvidelse**:
+  `CHROMIUM_EXTRA_FLAGS='--load-extension=/home/kristian/ublock-origin-lite|--disable-extensions-except=/home/kristian/ublock-origin-lite'`.
+  Den er verificeret aktiv (CDP viser dens `service_worker` på
+  `chrome-extension://efibmdkmadlglmjplfpeonnhblbfncip/js/background.js`), og
+  annonce-iframes er væk (0 mål mod 23-24 renderere uden blocker).
+- **50 %-stop'et er Pokis reklame-pause, ikke spillets indlæsning.** Sidens
+  tekst (læst via CDP) er: `We'll be back after this short break` /
+  `Preparing...`. Med uBOL blokeret kan annoncen ikke hentes, og Poki venter i
+  det uendelige på sin ad-break — spillets egen JS kører aldrig (0
+  `Cache size`-beskeder mod hundredvis i de kørsler hvor spillet kom i gang).
+- **Poki-siden kan ikke omgås:** `https://games.poki.com/<game-id>` svarer med
+  "Sorry! Subway Surfers has moved / Click here to play!" (linker tilbage til
+  `poki.com/en/g/subway-surfers`), og selve spilbygget på
+  `https://<game-id>.gdn.poki.com/<version>/index.html?...` bliver afvist af
+  Cloudflare ("Sorry, you have been blocked" / "You are unable to access
+  poki.com").
+- **Betydning for den fair sammenligning:** Firefox-vejen har klassisk uBO, som
+  også fjerner selve reklame-pause-logikken (scriptlets). uBOL i standard
+  ("basic") blokerer kun annoncedomænerne, så siden står fast. Skal Chromium
+  matche, kræver det enten uBOL i "complete"-mode med scriptlets (slås til i
+  dens dashboard — en fysisk klik-handling) eller tilsvarende regler.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
@@ -215,6 +243,17 @@
   816 MHz** (undgår termik-nedlukningen). Det er den sidste kørsel hvor spillet
   faktisk kom videre (brugeren så drengen) — og den afgør om det er
   hybris-/EGL-vejen eller Chromium selv.
+- [udført] SwiftShader + 816 MHz: **ingen crash** i 5 min, skærmen opdaterede
+  (fb-hash skiftede) — men spillet stod i Pokis reklame-pause. (~15:40)
+- [udført] uBlock Origin Lite (MV3) hentet og installeret på boksen; verificeret
+  aktiv. Annonce-iframes væk, men Pokis reklame-pause hænger stadig. (~15:55)
+- [udført] Direkte game-URL'er afprøvet: games.poki.com ("has moved") og
+  gdn.poki.com-bygget (Cloudflare-blokering) — ingen vej uden om Poki-siden.
+  (~16:00)
+- [afventer] Beslutning med brugeren: (a) uBOL i "complete"-mode med scriptlets
+  (kræver et fysisk klik i dashbordet på boksen) så reklame-pausen springes
+  over, (b) fortsætte Chromium-sporet på V8-crashet, eller (c) parkere Chromium
+  og gå tilbage til Firefox-vejen, hvor spillet kører.
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller
