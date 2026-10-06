@@ -71,6 +71,20 @@
   V8-crashet — spillet kan nå at tegne figuren. Om det skyldes software-GL'en,
   at dybde-lappen (som IKKE er aktiv uden vores proxy) ikke var i vejen, eller
   blot at spillet nåede længere i asset-load, er ikke afgjort.
+- **Boksen slukkede SIG SELV (brugeren, 6. okt):** "Det var ikke mig som
+  slukkede maskinen. Den lukkede selv ned." Skærmen blev sort først, og ssh
+  holdt samtidig op med at svare på 192.168.0.103.
+- Det peger på **strøm/termik, ikke software**: et SoC-hard-hang giver ikke
+  power-off (en watchdog ville give reboot), mens en spontan nedlukning kommer
+  fra PMIC'en (undervoltage/brownout) eller SoC'ens termiske beskyttelse.
+  Projektet har set det før: 20. aug 2026 ("brownout-crashede den — men det var
+  strømforsyningen, ikke chromium") og 25. aug 2026 ("to spil-kørsler tog boksen
+  ned"). SwiftShader-kørslen er den tungeste belastning vi har prøvet: ren
+  CPU-software-rendering på alle kerner.
+- **Arbejdshypotese:** hvis forsyningen (eller CPU/DDR-marginen) er marginal
+  under last, kan der opstå tavs hukommelseskorruption i den tungeste proces —
+  det passer på vilde pointere i V8's GC, stack-smashing i worker-tråde og på at
+  Firefox-vejen (2,6 fps, meget lettere last) kører stabilt.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
@@ -113,6 +127,15 @@
 - [afventer] Beslutning med brugeren: (a) afgør hardware vs. software ved at
   køre samme Chromium på boks 2, (b) RAM-test af boks 1, eller (c) parkér
   Chromium-sporet og gå tilbage til Firefox-vejen (spilbar, fps-loftet åbent).
+- [udført] Femte kørsel med ren software-GL (SwiftShader): brugeren så drengen;
+  skærmen blev sort, og boksen slukkede SIG SELV kort efter. (~21:59)
+- [afventer] Fysisk: stærkere 5V-forsyning til boksen (helst 3A + godt kabel),
+  og tjek om den bliver varm. Det er den førende hypotese for både V8-crashene
+  og den spontane nedlukning.
+- [afventer] Ved næste boot: læs den forrige boots kernellog
+  (`/var/log/kern.log`) for termiske/undervoltage-linjer, og tjek
+  `/sys/class/thermal/*/temp`. Software-mitigering der kan bekræfte teorien:
+  lås CPU-frekvensen lavt (cpufreq `userspace`) og se om crashene holder op.
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller
