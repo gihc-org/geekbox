@@ -85,6 +85,21 @@
   under last, kan der opstå tavs hukommelseskorruption i den tungeste proces —
   det passer på vilde pointere i V8's GC, stack-smashing i worker-tråde og på at
   Firefox-vejen (2,6 fps, meget lettere last) kører stabilt.
+- **Kernen kan selv slukke boksen (fundet i `lollipop_kernel_src`, 6. okt):**
+  `drivers/thermal/rockchip_thermal.c` linje 762-774 logger
+  `critical temperature reached(%ld C),shutting down` og kalder
+  `orderly_poweroff(true)`, når temperaturen har været over `hw_shut_temp` i
+  `TSADC_MAX_HW_SHUT_TEMP_COUNT` (3) målinger i træk. Standardgrænsen er
+  chip-default **125 °C**; ingen DTS i træet sætter `hw-shut-temp`. Den
+  generiske termiske kerne (`thermal_core.c:366`) kalder også
+  `orderly_poweroff(true)` på et "critical"-trip — `rk3368-thermal.dtsi` sætter
+  `cpu_crit`/`gpu_crit` til **115 °C**. Bemærk: cooling-maps (CPU-throttling ved
+  80 °C) er kommenteret ud i vendortræet, så der er **ingen termisk throttling**
+  — kun nedlukning.
+- Konsekvens: en spontan nedlukning er altså en *kernel-mekanisme*, og den
+  skriver en bestemt linje i kernelloggen. Findes den linje i
+  `/var/log/kern.log` efter næste boot, er sagen afgjort (termik); gør den ikke,
+  peger det på PMIC'en/strømvejen i stedet.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
