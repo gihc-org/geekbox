@@ -100,6 +100,32 @@
   skriver en bestemt linje i kernelloggen. Findes den linje i
   `/var/log/kern.log` efter næste boot, er sagen afgjort (termik); gør den ikke,
   peger det på PMIC'en/strømvejen i stedet.
+- **Målt på boksen (6. okt ~14:50, efter genstart på 192.168.0.135):**
+  - DTB'en sætter `hw-shut-temp = 120000` (120 °C) — læst direkte fra
+    `/sys/firmware/devicetree/base/tsadc@ff280000/hw-shut-temp`. Det er altså
+    den grænse, software-trip'et bruger.
+  - Termometeret er `/sys/rockchip_thermal/temp` (driverens eget sysfs-punkt,
+    ikke den generiske thermal-klasse). Tomgang: 39-44 °C. Kalibreringen kommer
+    fra eFuse (`cpu_temp_adjust = 18`).
+  - **Fuld CPU-last (8 x `yes`) i 8 sekunder: 42 -> 87 -> 104 °C.** Testen blev
+    afbrudt ved 100 °C. Efter stop faldt den til 52-57 °C i løbet af få sekunder.
+  - Driveren kan printe rå-tallene (`echo t > /sys/rockchip_thermal/temp` giver
+    `cpu code temp:[ADC-kode, temp], voltage: <µV>`). Målt:
+    - tomgang, 312 MHz: kode 162, **0,925 V** -> 52 °C
+    - tomgang, låst 1,2 GHz: kode 124-126, **1,225 V** -> 57-62 °C
+    - under last: kode 130-131, **1,275 V** -> 94-97 °C, og 157-158 ved
+      1,025 V -> 79-82 °C (samme last, spændingen svinger)
+  - Formlen i driveren er `code_temp = (ADC-kode * voltage) / 1e6`: den bruger
+    **CPU-regulatorens spænding**, og DVFS flytter den fra 0,925 V (312 MHz) til
+    1,275 V (1,2 GHz). Derfor følger den udregnede temperatur spændingen med
+    titals grader — og det sker inden for et sekund, hurtigere end nogen rigtig
+    termisk masse kan følge. Den udregnede værdi er altså delvist et
+    spændings-artefakt oveni den ægte opvarmning.
+- **Konklusion:** under vedvarende fuld last krydser den udregnede temperatur
+  120 °C, og kernen kalder `orderly_poweroff(true)` -> boksen slukker sig selv.
+  Det er præcis det observerede forløb (SwiftShader belaster alle 8 kerner).
+  Brugerens mavefornemmelse var rigtig: det er kernen — nærmere bestemt
+  vendorens spændingsafhængige temperaturformel kombineret med DVFS.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
@@ -151,6 +177,16 @@
   (`/var/log/kern.log`) for termiske/undervoltage-linjer, og tjek
   `/sys/class/thermal/*/temp`. Software-mitigering der kan bekræfte teorien:
   lås CPU-frekvensen lavt (cpufreq `userspace`) og se om crashene holder op.
+- [udført] Boksen oppe igen på 192.168.0.135. Kernelloggen indeholder **ingen**
+  `critical temperature reached` — men til gengæld stoppede logningen 55 min før
+  døden (sidste linje 21:04:41, døden ~21:59), så loggen kan hverken bekræfte
+  eller afvise trippet. Derfor `devuan/templog.sh` (sort boks). (~14:48)
+- [udført] Målt: `hw-shut-temp = 120 °C` i DTB'en; fuld CPU-last driver den
+  udregnede temperatur fra 42 til 104 °C på 8 sekunder; formlen bruger
+  CPU-spændingen (0,925 -> 1,275 V), så titals grader af læsningen er et
+  DVFS-artefakt. (~14:52)
+- [aftalt] CPU-governoren er gendannet til `interactive`, boksen er i ro
+  (312 MHz, 52 °C), og der ligger ingen efterladt belastning. (~14:54)
 - [afventer] Beslutning med brugeren: skal vi (a) køre med annonceblokering
   (CDP'ens `game`-kommando) for at fjerne annonce-variablen, (b) rulle
   zero-copy tilbage til 2. okt-tilstanden for at se om crashet er nyt, eller
