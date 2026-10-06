@@ -95,7 +95,6 @@ runuser -u kristian -- env -i \
     --no-sandbox \
     --disable-gpu-sandbox \
     --ignore-gpu-blocklist \
-    --enable-zero-copy \
     "${GLFLAGS[@]}" \
     --user-data-dir="$PROFILE" \
     --no-first-run \

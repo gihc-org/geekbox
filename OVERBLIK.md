@@ -184,6 +184,17 @@ maskine skulle testes), så gameplay efter zero-copy-fravalget er ikke bekræfte
 næste session skal tænde boksen og gentage kørslen (bring-up uden
 `bringup_after_power.sh`). Detaljer: `docs/log/2026-10-01-chromium-fps.md`.
 
+**Opdateret 6. okt 2026 ~19:15 (Chromium-sporet):** boksen blev tændt og bragt
+op uden `bringup_after_power.sh` (192.168.0.103). To fund: (1) 2. okt-rettelsen
+var ufuldstændig — scriptet havde stadig en hårdkodet `--enable-zero-copy`, så
+zero-copy var aldrig slået fra; linjen er nu fjernet. (2) To rene kørsler med
+frisk profil endte begge i "Aw, Snap!": først et PVR/RGX-firmware-fault
+(`BIF0 - FAULT` + `Guilty Lockup`) efterfulgt af SIGSEGV i rendereren, derefter
+et renderer-abort fra glibc's `stack smashing detected` (SIGABRT) under spillets
+asset-load — samme renderer begge gange. Chromium-vejen er altså blokeret af et
+renderer-crash, ikke (kun) af zero-copy eller fps. Detaljer:
+`docs/log/2026-10-06-chromium-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

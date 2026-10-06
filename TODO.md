@@ -128,6 +128,18 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   fejl i spillets logik. Uden `--enable-zero-copy` skifter fb0's canvas-område
   hash hvert par sekunder (målt 4 forskellige hashes på 12 s). Flaget er nu
   slået FRA som standard i `start_chromium_probe.sh`.
+- [ ] **6. okt 2026: Chromium-vejen crasher i rendereren — to nye fund.**
+  (1) Fejl i 2. okt-rettelsen: `start_chromium_probe.sh` havde stadig en
+  hårdkodet `--enable-zero-copy`, så zero-copy var ALDRIG slået fra i
+  "uden flaget"-kørslen; linjen er fjernet (script md5 `297429ac`).
+  (2) To rene kørsler med frisk profil endte begge i "Aw, Snap!": første kørsel
+  med et PVR/RGX-firmware-fault (`BIF0 - FAULT` + `Guilty Lockup`, samme klasse
+  som Firefox-sporet 26. aug) og SIGSEGV i rendereren; anden kørsel UDEN
+  GPU-fault, hvor rendereren i stedet døde af glibc's
+  `stack smashing detected` (SIGABRT) under spillets asset-load — samme
+  renderer begge gange (`--renderer-client-id=5`). Næste: annonceblokering
+  (Poki viser annoncer uden adblocker) og en rigtig backtrace af
+  stack-smashing-crashet. Detaljer: `docs/log/2026-10-06-chromium-fps.md`.
 - [ ] **Næste (ny session, 2. okt):** boksen skal tændes igen. Bring den op uden
   `bringup_after_power.sh` (se prompten øverst i Chromium-afsnittet), start en
   ren kørsel og afgør med brugeren: er dreng/skinner/tog synlige og spillet
