@@ -169,6 +169,13 @@
   ("basic") blokerer kun annoncedomænerne, så siden står fast. Skal Chromium
   matche, kræver det enten uBOL i "complete"-mode med scriptlets (slås til i
   dens dashboard — en fysisk klik-handling) eller tilsvarende regler.
+- **Forsøgt uden UI (7. okt):** uBOL har managed storage-politik
+  (`managed_storage.json` med bl.a. `defaultFiltering: none|basic|optimal|complete`).
+  Derfor er `/etc/chromium/policies/managed/ubol.json` lagt på boksen med
+  `"defaultFiltering": "complete"` for uBOL's id. Siden står **stadig** på
+  "Preparing..." efter genstart — sandsynligvis fordi "complete"-mode kræver at
+  uBOL får tildelt de brede host-tilladelser (normalt et klik i dens UI), eller
+  fordi Pokis ad-break-flow kræver en regel som klassisk uBO har og uBOL ikke.
 - **Observation der skal undersøges:** `/dev/fb0` kan kun læses til 2.073.600
   bytes (1920x540x16), selvom HDMI-modus er `1920x1080p-60`, X melder
   1920x1080 og fb-varen siger `1920,1080` (4.147.200 bytes). Vores fb-dumps
