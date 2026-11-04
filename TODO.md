@@ -455,7 +455,66 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (Firefox/FPS-sporet, 4. nov 2026) — NUVÆRENDE:**
+- **God start i en ny session (Firefox/FPS-sporet, 5. nov 2026 ~00:40) —
+  NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-05-firefox-fps.md` (HELE notatet),
+  `docs/log/2026-11-04-firefox-fps.md` (HELE notatet, baggrund),
+  `docs/log/2026-11-04-chromium-fps.md` (Chromium er parkeret),
+  `docs/grafik/fps-analysen-2026-09-25.md` (§0, §5, §8 og §9),
+  `docs/faeller.md` fælde 41-63 og `OVERBLIK.md`. Branch er
+  `firefox-fps-tuning`; funktionscommittet for målingerne er `340191f`, og
+  denne handover følger i den næste dokumentationscommit.
+  STATUS 5. nov 2026 ~00:40: Firefox-vejen er stadig den spillbare vej med
+  vnext12 `dcc0a68f` + alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`.
+  Spillet er brugerbekræftet spilbart. Boksen er på `192.168.0.135` med
+  fallback `192.168.1.50`. Ved sessionsslut kører hverken Firefox, BiDi eller
+  testlyd; temperaturen er 74-77 °C. `user.js` er genskabt bit-identisk med
+  `md5 0ac16be87cdf95b1250043f4efc00816`. Chromium er fortsat parkeret.
+  MÅLT: Ren gameplay-baseline er **1,4 skærm-opdateringer/s** og
+  **1,3-1,4 rAF/s**. `layout.frame_rate=30` gav 1,3/s.
+  `layout.throttle_in_process_iframes=false` gav også 1,3/s.
+  `MOZ_LOG=timestamp,nsRefreshDriver:5` viser cirka 18 ticks/s, men kun
+  1,33-1,35 completed transactions/s. En transaction tager median **1,398 s**
+  fra allocation til completion i spilprocessen og **1,183 s** i
+  parent-processen. Den hardcodede pending-grænse er 2, så to samtidige
+  transactions giver en completion cirka hver 0,74 s. S3 i preload fryser
+  spillet på load-skærmen; live-halvering efter stabil gameplay virker, men
+  giver også kun 1,3/s.
+  NÆSTE, i denne rækkefølge: (1) Bekræft i samme session at en transaction
+  stadig tager cirka 1,2-1,4 s, og gem `Allocating`/`Completed`-par pr. PID.
+  (2) Find hvor de 1,2-1,4 s ligger i compositor-/IPC-rundturen. Brug
+  `DEBUGINFOD_URLS=https://debuginfod.debian.net` og gdb mod de relevante
+  content-/parent-processer, eller en kort Gecko-profil hvis symbolerne er
+  utilstrækkelige. Fatal-signal-logning skal være slået til før kørsel.
+  (3) Hvis rundturen ikke kan forklares i Firefox-koden, overvej S4 med
+  governor/DDR/swap; dette er kun et supplement.
+  (4) Ændring af den hardcodede grænse fra 2 kræver rebuild eller binær patch
+  af `libxul`; det er et større, risikabelt forsøg og må ikke gøres uden
+  backup og brugerens godkendelse.
+  START: `GAME_URL=about:blank CYAN_DEPTHCLEAR=1 nohup
+  /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &` → vent på port
+  9222 → `CLOSE_WHEN_DONE=1 PYTHONUNBUFFERED=1 nohup python3
+  /root/bidi_cyan.py preload goto https://poki.com/en/g/subway-surfers 900
+  > /root/bidi_cyan.log 2>&1 &`.
+  MÅL MED: `/root/fb_fps /dev/fb0 40 20` og `FPS tr=` fra spillets
+  iframe. Tag en frisk baseline i samme session før hver A/B, og brug
+  `POLL=20`. Til MOZ_LOG: `MOZ_LOG=timestamp,nsRefreshDriver:5` med
+  `MOZ_LOG_FILE` i `/tmp`, aldrig under `/root`; loggen er tung og må ikke
+  bruges til FPS-tallet.
+  LIVE S3: start normalt, vent på stabil gameplay, kør BiDi med
+  `CANVAS_SCALE_POLL=/tmp/canvas_scale_now`, og skriv `0.5` til filen. Brug
+  ikke `CYAN_CANVAS_SCALE` i preload; det fryser spillet.
+  LUK PÆNT: send SIGTERM kun til BiDi-PID'en; `CLOSE_WHEN_DONE=1` kalder
+  derefter `browser.close`. Hvis PulseAudio hænger med gentagen spilllyd,
+  stop den fastlåste PulseAudio-PID og start den som `kristian`; bekræft at
+  `pactl list short sink-inputs` er tom. Efter reboot skal GPU,
+  bindapi-lappen og vnext12 bringes op som i notatet.
+  FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session; X kan skifte VT
+  ved `service nodm restart`; `/tmp` ryddes ved reboot; `MOZ_LOG_FILE` i
+  `/root` giver ingen log."*
+
+- **God start i en ny session (Firefox/FPS-sporet, 4. nov 2026) —
+  AFLØST 5. nov 2026:**
   *"Læs `docs/log/2026-11-04-firefox-fps.md` (HELE notatet),
   `docs/log/2026-11-04-chromium-fps.md` (HELE notatet; Chromium er parkeret),
   `docs/grafik/fps-analysen-2026-09-25.md` (§0, §5, §8 og §9),
@@ -492,41 +551,6 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session; MOZ_LOG er tungt
   og må ikke køre samtidig med FPS-målingen; X kan skifte VT ved
   `service nodm restart`; `/tmp` ryddes ved reboot."*
-
-- **Firefox/FPS-status 4. nov 2026 ~23:56:** Ren baseline er 1,4
-  skærm-opdateringer/s og 1,3-1,4 spil-rAF/s. `layout.frame_rate=30` gav
-  ingen ændring. Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s,
-  men også cirka 17,6 skipped paints/s og kun 1,33-1,35 completed
-  transactions/s i aktivt gameplay; median wait-mode er 0,65 s. Den
-  tidsstemplede kørsel endte med `Segmentation fault` i Firefox'
-  indholdsproces uden OOM eller ny PVR/GPU-fault. En fastlåst PulseAudio
-  buffer blev stoppet og lydserveren genstartet. **Ingen flere spilkørsler
-  før crash-signaturen er undersøgt.** Beviser:
-  `/root/firefox_crash_20261104_2355` og
-  `/root/nsrefresh_timestamp_evidence_20261104_2352` på boksen.
-
-- **Firefox/FPS-status 5. nov 2026 ~00:09:** `layout.frame_rate=30` gav
-  ingen ændring. Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s
-  men kun 1,33-1,35 completed transactions/s; wait-mode og skipped paints
-  står for backpressure. S3 med `CYAN_CANVAS_SCALE=0.5` gav teknisk
-  `516x290` backing ved `1031x580` CSS, men spillet hang på load-skærmen med
-  `draws=0` i to kørsler. Næste S3-idé er live resize efter stabil gameplay,
-  ikke skalering under initialisering. Se
-  `docs/log/2026-11-05-firefox-fps.md`.
-
-- **Firefox/FPS-status 5. nov 2026 ~00:21:** Live-canvas-halvering efter
-  stabil gameplay virker teknisk (`1031x580 -> 516x290`, CSS bevaret), men
-  giver **1,3/s mod baseline 1,4/s**. Preload-halvering fryser spillet på
-  load-skærmen. Både `layout.frame_rate=30` og S3 er dermed negative.
-  Næste relevante skridt er Firefox' pending-transaction-grænse/prefs før S4.
-
-- **Firefox/FPS-status 5. nov 2026 ~00:34:** Pending-transaction-grænsen i
-  Firefox 140.12 er hardcoded til 2, og
-  `layout.throttle_in_process_iframes=false` gav ingen ændring (1,3/s mod
-  baseline 1,4/s). S3 og de testede refresh-prefs er dermed afvist.
-  `user.js` er gendannet, boksen er ren, og næste forsøg er S4 eller en
-  målrettet undersøgelse af hvorfor compositor først bekræfter transaction
-  efter cirka 0,74 s. Se `docs/log/2026-11-05-firefox-fps.md`.
 
 - **God start i en ny session (FPS-sporet, 26. sep 2026, efter S1+S2) —
   AFLØST 4. nov 2026:**

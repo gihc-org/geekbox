@@ -11,6 +11,9 @@
 - Tidsstemplet `nsRefreshDriver`-log viser cirka **18 ticks/s**, men næsten
   alle går i wait-mode: kun **1,33-1,35 completed transactions/s**. Median
   wait-mode er 0,65 s, og medianafstanden mellem completions er 0,74 s.
+  Fra `Allocating transaction` til `Completed transaction` er medianen
+  **1,398 s i spilprocessen** og **1,183 s i parent-processen**. De to
+  samtidige transactions giver derfor en færdig frame cirka hver 0,74 s.
 - S3 med canvas-halvering virker teknisk (`516x290` backing og
   `1031x580` CSS), men spillet bliver hængende på load-skærmen med
   `raf=300/10s` og `draws=0`, når skaleringen sker i preload. To kørsler,
@@ -31,7 +34,7 @@
   genstartet; den kører nu uden sink-inputs. Brugeren bekræftede, at lyden
   stoppede.
 - Boksen er ren ved sessionscheckpoint: Firefox, BiDi og testlyd er stoppet,
-  og temperaturen er faldet til 74 °C.
+  og temperaturen er faldet til 74-77 °C.
 
 ## Aftaler og beslutninger
 
@@ -42,7 +45,7 @@
   transaction-mekanismen. `timestamp` er nødvendigt; logfilen skal ligge i
   `/tmp` eller under `/home/kristian`, fordi Firefox ikke kan skrive i `/root`.
   (~23:53)
-- [udført] FireFox/BiDi lukkes fremover via `CLOSE_WHEN_DONE=1`, som kalder
+- [udført] Firefox/BiDi lukkes fremover via `CLOSE_WHEN_DONE=1`, som kalder
   `browser.close` fra den eksisterende BiDi-session. (~23:58)
 - [udført] S3 bagudkompatibelt indbygget som `CYAN_CANVAS_SCALE` i
   `bidi_cyan.py`; standard er 1,0 og ændrer intet. (~23:58)
@@ -62,12 +65,22 @@
   hardcoded til 2 (`AtPendingTransactionLimit()` og
   `TooManyPendingTransactions()`). Der er ingen relevant pref at justere.
   (~00:25)
+- [udført] De gemte tidsstempler parser nu også transaction-levetid:
+  median **1,398 s** fra allocation til completion i spilprocessen og
+  **1,183 s** i parent-processen. Backpressure-grænsen på 2 giver derfor
+  kun en ny completion cirka hver 0,74 s. (~00:40)
 - [udført] `layout.throttle_in_process_iframes=false` testet isoleret med
   backup og diff. Resultatet var 1,3 skærm-opdateringer/s og 1,3-1,4 rAF/s,
   altså ingen ændring. `user.js` er genskabt bit-identisk
   (`md5 0ac16be8…`). (~00:33)
 - [udført] Testkørslen lukket pænt via BiDi. Firefox, BiDi og lydstreams er
   stoppet; temperaturen er faldet til 74 °C. (~00:33)
+- [udført] Dokumentationsaudit: `OVERBLIK.md` peger nu på 5. nov-notatet og
+  opsummerer de nye målinger. `TODO.md` har fået en ny NUVÆRENDE
+  handover-prompt; 4. nov-prompten er markeret som afløst. (~00:39)
+- [udført] Tre nye driftsfælder er dokumenteret som fælde 61-63:
+  `MOZ_LOG_FILE`-rettigheder/timestamps, canvas-skalering i preload kontra
+  live, og fastlåst PulseAudio-buffer efter hård Firefox-stop. (~00:39)
 
 ## Vigtige kommandoer
 
@@ -76,13 +89,22 @@
 GAME_URL=about:blank CYAN_DEPTHCLEAR=1 \
   nohup /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &
 
-# BiDi med S3 og pæn lukning (send senere SIGTERM til kun BiDi-PID'en)
-CYAN_CANVAS_SCALE=0.5 CLOSE_WHEN_DONE=1 PYTHONUNBUFFERED=1 \
+# BiDi med live-S3 og pæn lukning (send senere SIGTERM til kun BiDi-PID'en)
+CANVAS_SCALE_POLL=/tmp/canvas_scale_now CLOSE_WHEN_DONE=1 \
+  PYTHONUNBUFFERED=1 \
   nohup python3 /root/bidi_cyan.py preload goto \
   https://poki.com/en/g/subway-surfers 600 > /root/bidi_cyan.log 2>&1 &
 
+# Først når gameplay er stabilt:
+printf '0.5\n' > /tmp/canvas_scale_now
+
 # Måling
 /root/fb_fps /dev/fb0 40 20
+
+# Tidsstempler til transaction-analyse (kun timing, ikke FPS)
+MOZ_LOG=timestamp,nsRefreshDriver:5 \
+MOZ_LOG_FILE=/tmp/nsrefresh.log \
+  nohup /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &
 ```
 
 ## Beviser på boksen

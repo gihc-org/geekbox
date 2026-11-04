@@ -16,6 +16,9 @@ og de flytter konklusionen. Kort:
 `layout.frame_rate=30` gav ingen ændring (1,3/s mod baseline 1,4/s).
 Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s, men pending-grænsen
 er hardcoded til 2, og kun 1,33-1,35 transactions/s bliver completed.
+En transaction tager median **1,398 s** fra allocation til completion i
+spilprocessen og **1,183 s** i parent-processen; med to samtidige
+transactions bliver afstanden mellem færdige frames cirka 0,74 s.
 `layout.throttle_in_process_iframes=false` hjalp heller ikke. Canvas-halvering
 fryser spillet, hvis den sættes i preload; live-halvering efter stabil gameplay
 virker teknisk, men giver også kun 1,3/s. Se
@@ -334,11 +337,13 @@ rAF og `fb_fps` stiger; 0 opdateringer/s eller sorte frames = rul tilbage.
 
 ### 9.2 S2 — profilering af kompositoren
 
-`MOZ_LOG`-linjerne lander i `/root/cyan_game.log`, som kørslen kopierer til
-`$D/game.log`. Tråd-profilen dumpes ved Firefox' afslutning.
+Brug `timestamp` som speciel MOZ_LOG-modul, og læg logfilen i `/tmp`, fordi
+Firefox kører som `kristian` og ikke kan skrive i `/root` (fælde 61). Tråd-
+profilen dumpes kun ved pæn lukning.
 
 ```bash
-run 'setsid nohup env MOZ_LOG="Compositor:5,LayerManager:5,Paint:5,nsRefreshDriver:5" \
+run 'setsid nohup env MOZ_LOG="timestamp,nsRefreshDriver:5" \
+      MOZ_LOG_FILE=/tmp/nsrefresh.log \
       SHIM_NO_DISPLAY_DANCE=1 SHIM_NO_CHVT=1 FBSEC=40 SETTLE=40 POLL=20 \
       bash /root/cyan_ab_run.sh S2_log 110 "" "" > /tmp/S2_log.out 2>&1 < /dev/null & echo startet'
 
@@ -348,31 +353,32 @@ run 'setsid nohup env MOZ_PROFILER_STARTUP=1 MOZ_PROFILER_SHUTDOWN=/tmp/prof.jso
 ssh -i ~/.ssh/geekbox_key root@$IP 'cat /tmp/prof.json' > /tmp/prof.json   # hent hjem
 ```
 
-De to linjer vi leder efter i `game.log`: hvor lang tid kompositoren bruger pr.
-frame, og hvilken tråd/funktion der dominerer (rasterisering, skalering, kopi
-mellem processer eller selve X-presenten).
+Loggen skal parses pr. refresh-driver-pointer og transaction-id:
+`Allocating transaction id N` -> `Completed transaction id N`. Målt 5. nov
+2026 er medianen 1,398 s i spilprocessen og 1,183 s i parent-processen. Det er
+den rundtur næste undersøgelse skal forklare, ikke bare tick-frekvensen.
 
-### 9.3 S3 — canvas-nedskalering via preload
+### 9.3 S3 — canvas-nedskalering efter stabil gameplay
 
-`bidi_cyan.py` ligger nu både på boksen (`/root`, md5 `50c3aa46`) og i repoet
+`bidi_cyan.py` ligger både på boksen (`/root`) og i repoet
 (`devuan/gpu/eglplatform_x11/bidi_cyan.py`). Ændringer skal kopieres til boksen
 i én ssh-kommando uden `&` (fælde 52) og verificeres med `md5sum`.
 
-Idéen: lad Unity rendere i den halve opløsning, mens CSS-størrelsen bevares, så
-browseren skalerer op. I preload-scriptet (samme sted hvor `getContext` wraps):
+**Resultat 5. nov 2026:** Hvis canvas patches i preloadet, bliver spillet
+hængende på load-skærmen med `raf=300/10s` og `draws=0` (fælde 62). Start i
+stedet normalt i `1031x580`, vent på stabil gameplay, og aktivér live-
+skaleringen via en fil:
 
-```js
-['width','height'].forEach(function(k){
-  var d=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,k);
-  if(!d||!d.set) return;
-  Object.defineProperty(HTMLCanvasElement.prototype,k,{
-    get:d.get,
-    set:function(v){ d.set.call(this, Math.max(64, Math.round(v/2))); }
-  });
-});
+```bash
+CANVAS_SCALE_POLL=/tmp/canvas_scale_now CLOSE_WHEN_DONE=1 \
+  PYTHONUNBUFFERED=1 nohup python3 /root/bidi_cyan.py preload goto \
+  https://poki.com/en/g/subway-surfers 600 > /root/bidi_cyan.log 2>&1 &
+
+# Når gameplay er stabilt:
+printf '0.5\n' > /tmp/canvas_scale_now
 ```
 
-Mål med `WIN="1280 720"`: uden tricket giver den konfiguration 1,8-1,9/s
-(canvas 836x470) — med tricket håber vi på 4-5/s (canvas ~418x235) *uden* at
-formindske vinduet. Efterprøv til sidst om spillet stadig kan spilles (Unity
-regner musekoordinater ud fra canvas-størrelsen).
+Live-skaleringen virkede teknisk (`1031x580` -> `516x290`, CSS bevaret), men
+gav **1,3/s mod baseline 1,4/s**. Der er derfor ingen grund til at gentage den
+uden en ny hypotese. Bevis og præcise tal står i
+`docs/log/2026-11-05-firefox-fps.md`.

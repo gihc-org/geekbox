@@ -2,7 +2,7 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
-> `docs/log/2026-09-25-cyan-fps.md` (seneste, 25. sep S1),
+> `docs/log/2026-11-05-firefox-fps.md` (5. nov, Firefox/FPS),
 > `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
 > `docs/log/2026-08-26-gralloc-lock-spor.md` (beslutningslog).
 
@@ -256,6 +256,18 @@ som parkeret research-spor. Testkørslen er lukket ved sessionsslut; næste
 session starter uden Firefox/BiDi/Chromium. Detaljer og startkommandoer:
 `docs/log/2026-11-04-firefox-fps.md`.
 
+**Opdateret 5. nov 2026 ~00:40 (Firefox/FPS-målinger):** Ren
+gameplay-baseline er **1,4 skærm-opdateringer/s og 1,3-1,4 rAF/s**.
+`layout.frame_rate=30` gav 1,3/s og hjalp ikke. Tidsstemplet
+`nsRefreshDriver`-log viser cirka 18 ticks/s, men pending-grænsen er hardcoded
+til 2: en transaction tager median **1,398 s** i spilprocessen og **1,183 s**
+i parent-processen, så der kun bliver cirka 1,35 færdige transactions/s.
+`layout.throttle_in_process_iframes=false` hjalp heller ikke. Almindelig
+S3-canvas-halvering fryser spillet under load; live-halvering efter stabil
+gameplay virker, men giver også kun 1,3/s. Næste spørgsmål er hvor i
+compositor-/IPC-rundturen de cirka 1,2-1,4 s forsvinder. Detaljer og beviser:
+`docs/log/2026-11-05-firefox-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
@@ -274,7 +286,8 @@ session starter uden Firefox/BiDi/Chromium. Detaljer og startkommandoer:
   `raf_test_full.html` (fuldt gentegnet kontrolside, 20. sep),
   `kill_bidi.sh`;
   `bidi_ctxloss.py` har `preloadmin` + `SHOT_AT`/`SHOT_POLL` (screenshot fra
-  Firefox' egen gengivelse).
+  Firefox' egen gengivelse). `bidi_cyan.py` har desuden `CLOSE_WHEN_DONE`,
+  `CYAN_CANVAS_SCALE` og live `CANVAS_SCALE_POLL`.
 - **Proxy på boksen:** vnext14 `7c508108` (vnext12 + `CYAN_LIGHT`-gating +
   frame/draw-tælling). Backup af den spillbare vnext12:
   `/root/egl_proxy_dcc0a68f.so.bak`.

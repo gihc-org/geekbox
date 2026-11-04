@@ -1223,6 +1223,43 @@ hjalp ikke. Brug en MV3-adblocker eller CDP-blokering i testøjemed. Undgå
 Debian-wrapperens automatiske MV2-load til målinger: start
 `/usr/lib/chromium/chromium` direkte.
 
+### Fælde 61: `MOZ_LOG_FILE` i `/root` giver ingen Firefox-log
+Firefox kører som brugeren `kristian`, mens `/root` er 0700 og ikke skrivbar
+for brugeren. `MOZ_LOG_FILE=/root/nsrefresh.log` starter Firefox normalt, men
+der kommer ingen logfil; fejlen er tavs i den normale udskrift.
+
+**Regel:** læg `MOZ_LOG_FILE` i `/tmp` eller under `/home/kristian`, og brug
+`timestamp` som speciel MOZ_LOG-modul. Filnavnet får suffikser som
+`.moz_log`, `.child-2.moz_log` osv. pr. proces. Eksempel:
+
+```bash
+MOZ_LOG=timestamp,nsRefreshDriver:5 \
+MOZ_LOG_FILE=/tmp/nsrefresh.log \
+  nohup /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &
+```
+
+### Fælde 62: Canvas-halvering under preload kan fryse spillet
+Målt 5. nov 2026. Hvis `HTMLCanvasElement.prototype.width/height` patches i
+BiDi-preloadet, får spillet ganske vist `516x290` backing ved `1031x580` CSS,
+men Poki/Unity bliver hængende på load-skærmen med `raf=300/10s` og `draws=0`.
+
+**Virkende måde:** start spillet normalt i `1031x580`, vent til gameplay er
+stabilt, og skalér derefter canvas live via BiDi. `bidi_cyan.py` understøtter
+dette med `CANVAS_SCALE_POLL=/tmp/canvas_scale_now`; filens indhold er
+faktoren, fx `0.5`. Live-skaleringen holdt spillet kørende, men gav ingen FPS-
+gevinst på denne stak.
+
+### Fælde 63: PulseAudio kan gentage den sidste lydbuffer efter hård stop
+Målt 5. nov 2026. Efter at Firefox var stoppet med SIGTERM under aktivt
+spil, fortsatte PulseAudio med en konstant dunkende/skydende lyd. `pactl`
+kunne ikke få forbindelse, og den gamle proces stod på cirka 12 % CPU.
+
+**Regel:** send SIGTERM til kun BiDi-klienten med `CLOSE_WHEN_DONE=1`, så
+klienten selv kalder `browser.close`. Hvis lydserveren alligevel hænger:
+stop den fastlåste PulseAudio-PID og start den som `kristian`. Kontrollér
+med `pactl list short sink-inputs`; et `auto_null`-sink alene beviser ikke
+at den fysiske lyd er væk.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer
