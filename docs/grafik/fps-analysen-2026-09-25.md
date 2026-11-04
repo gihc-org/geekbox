@@ -12,6 +12,15 @@
 Analysen nedenfor er skrevet 25. sep om aftenen. **S1 og S2 er siden kørt**,
 og de flytter konklusionen. Kort:
 
+**Opdateret 5. nov 2026:** De tre næste forsøg er nu kørt.
+`layout.frame_rate=30` gav ingen ændring (1,3/s mod baseline 1,4/s).
+Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s, men pending-grænsen
+er hardcoded til 2, og kun 1,33-1,35 transactions/s bliver completed.
+`layout.throttle_in_process_iframes=false` hjalp heller ikke. Canvas-halvering
+fryser spillet, hvis den sættes i preload; live-halvering efter stabil gameplay
+virker teknisk, men giver også kun 1,3/s. Se
+`docs/log/2026-11-05-firefox-fps.md`.
+
 * **S1 (skift Firefox' kompositor-vej) er et negativt resultat.** SWGL (V2) og
   software uden GPU-proces (V4) ligger inden for støj omkring baselinen (V1);
   WebRender på GPU (V3) og samme uden GPU-proces (V5) dræber kompositor-laget

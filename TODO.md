@@ -493,6 +493,41 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   og må ikke køre samtidig med FPS-målingen; X kan skifte VT ved
   `service nodm restart`; `/tmp` ryddes ved reboot."*
 
+- **Firefox/FPS-status 4. nov 2026 ~23:56:** Ren baseline er 1,4
+  skærm-opdateringer/s og 1,3-1,4 spil-rAF/s. `layout.frame_rate=30` gav
+  ingen ændring. Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s,
+  men også cirka 17,6 skipped paints/s og kun 1,33-1,35 completed
+  transactions/s i aktivt gameplay; median wait-mode er 0,65 s. Den
+  tidsstemplede kørsel endte med `Segmentation fault` i Firefox'
+  indholdsproces uden OOM eller ny PVR/GPU-fault. En fastlåst PulseAudio
+  buffer blev stoppet og lydserveren genstartet. **Ingen flere spilkørsler
+  før crash-signaturen er undersøgt.** Beviser:
+  `/root/firefox_crash_20261104_2355` og
+  `/root/nsrefresh_timestamp_evidence_20261104_2352` på boksen.
+
+- **Firefox/FPS-status 5. nov 2026 ~00:09:** `layout.frame_rate=30` gav
+  ingen ændring. Tidsstemplet `nsRefreshDriver`-log viser cirka 18 ticks/s
+  men kun 1,33-1,35 completed transactions/s; wait-mode og skipped paints
+  står for backpressure. S3 med `CYAN_CANVAS_SCALE=0.5` gav teknisk
+  `516x290` backing ved `1031x580` CSS, men spillet hang på load-skærmen med
+  `draws=0` i to kørsler. Næste S3-idé er live resize efter stabil gameplay,
+  ikke skalering under initialisering. Se
+  `docs/log/2026-11-05-firefox-fps.md`.
+
+- **Firefox/FPS-status 5. nov 2026 ~00:21:** Live-canvas-halvering efter
+  stabil gameplay virker teknisk (`1031x580 -> 516x290`, CSS bevaret), men
+  giver **1,3/s mod baseline 1,4/s**. Preload-halvering fryser spillet på
+  load-skærmen. Både `layout.frame_rate=30` og S3 er dermed negative.
+  Næste relevante skridt er Firefox' pending-transaction-grænse/prefs før S4.
+
+- **Firefox/FPS-status 5. nov 2026 ~00:34:** Pending-transaction-grænsen i
+  Firefox 140.12 er hardcoded til 2, og
+  `layout.throttle_in_process_iframes=false` gav ingen ændring (1,3/s mod
+  baseline 1,4/s). S3 og de testede refresh-prefs er dermed afvist.
+  `user.js` er gendannet, boksen er ren, og næste forsøg er S4 eller en
+  målrettet undersøgelse af hvorfor compositor først bekræfter transaction
+  efter cirka 0,74 s. Se `docs/log/2026-11-05-firefox-fps.md`.
+
 - **God start i en ny session (FPS-sporet, 26. sep 2026, efter S1+S2) —
   AFLØST 4. nov 2026:**
   *"Læs `docs/log/2026-09-25-cyan-fps.md` (HELE notatet — S1-sessionen, den

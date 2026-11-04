@@ -293,6 +293,45 @@ def main():
             "window.__drawms=0;"
             "if(window.__dc)window.__dc=0;}catch(x){}},10000);"
         )
+        canvas_scale_raw = os.environ.get("CYAN_CANVAS_SCALE", "1")
+        try:
+            canvas_scale = float(canvas_scale_raw)
+        except ValueError:
+            raise SystemExit("CYAN_CANVAS_SCALE skal være et tal, fx 0.5")
+        if not 0.25 <= canvas_scale <= 1.0:
+            raise SystemExit("CYAN_CANVAS_SCALE skal være mellem 0.25 og 1.0")
+        canvas_scale_js = (
+            "var __cyCanvasScale=" + json.dumps(canvas_scale) + ";"
+            "if(__cyCanvasScale!==1&&typeof HTMLCanvasElement!=='undefined'){"
+            "try{"
+            "['width','height'].forEach(function(k){"
+            "var d=Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype,k);"
+            "if(!d||!d.set)return;"
+            "Object.defineProperty(HTMLCanvasElement.prototype,k,{"
+            "configurable:d.configurable,enumerable:d.enumerable,get:d.get,"
+            "set:function(v){"
+            "var nv=Number(v);"
+            "var large=isFinite(nv)&&nv>=256;"
+            "var sv=large?Math.max(64,Math.round(nv*__cyCanvasScale)):v;"
+            "if(large){"
+            "try{if(k==='width'&&!this.style.width)this.style.width=nv+'px';"
+            "if(k==='height'&&!this.style.height)this.style.height=nv+'px';}"
+            "catch(x){}"
+            "}"
+            "d.set.call(this,sv);"
+            "if(large){"
+            "try{dump('CANVAS-SCALE '+k+' '+nv+' -> '+sv+' css='+"
+            "this.style.width+'x'+this.style.height+'\\n');}catch(x){}"
+            "}"
+            "}"
+            "});"
+            "});"
+            "try{dump('CANVAS-SCALE aktiv scale='+__cyCanvasScale+'\\n');}catch(x){}"
+            "}catch(e){"
+            "try{dump('CANVAS-SCALE-FEJL '+e+'\\n');}catch(x){}"
+            "}"
+            "}"
+        )
         # preloadmin: KUN alpha-shim + loseContext-blok (ingen per-draw-JS-
         # wrappers, ingen __cap, ingen 10-s-intervaller) — bruges til fps-
         # sammenligning hvor shimmen skal være så billig som muligt.
@@ -332,7 +371,8 @@ def main():
             "try{dump('CAPNAV hw='+navigator.hardwareConcurrency+'\\n');}catch(x){}"
             "window.addEventListener('error',function(e){"
             "try{dump('PAGE-ERROR: '+e.message+'\\n');}catch(x){}});"
-            + pre_measure +
+            + canvas_scale_js +
+            pre_measure +
             "}catch(e){}}"
         )
         pre_full = (
@@ -462,7 +502,8 @@ def main():
             "}}"
             "}catch(e){}}"
             ",10000);"
-            + pre_measure +
+            + canvas_scale_js +
+            pre_measure +
             "}catch(e){}}"
         )
         pre = pre_min if mode == "preloadmin" else pre_full
@@ -474,6 +515,70 @@ def main():
             r = call("browsingContext.navigate",
                      {"context": ctx, "url": target}, timeout=30)
             print("NAVIGERET:", json.dumps(r)[:200])
+            # CANVAS_SCALE_POLL=/tmp/canvas_scale_now: skalér backing-store
+            # live, efter spillet er færdigindlæst. Filens indhold er faktoren.
+            scale_poll = os.environ.get("CANVAS_SCALE_POLL")
+            if scale_poll:
+                def _scale_poll():
+                    while not stop[0]:
+                        time.sleep(2)
+                        if not os.path.exists(scale_poll):
+                            continue
+                        try:
+                            with open(scale_poll) as fh:
+                                factor = float(fh.read().strip() or "0.5")
+                        except Exception as e:
+                            print("CANVAS-LIVE-SCALE læsefejl:", e)
+                            continue
+                        if not 0.25 <= factor <= 1.0:
+                            print("CANVAS-LIVE-SCALE: faktor skal være 0.25-1.0")
+                            continue
+                        try:
+                            os.unlink(scale_poll)
+                        except Exception:
+                            pass
+                        tree2 = call("browsingContext.getTree", {})
+                        ctxs2 = []
+
+                        def walk4(items):
+                            for it in items or []:
+                                ctxs2.append(it)
+                                walk4(it.get("children"))
+                        walk4(tree2.get("result", {}).get("contexts", []))
+                        tgt = None
+                        for c in ctxs2:
+                            u = c.get("url", "")
+                            if "gdn.poki.com" in u or "index.html" in u:
+                                tgt = c.get("context")
+                                break
+                        if tgt is None:
+                            print("CANVAS-LIVE-SCALE: ingen spilkontekst")
+                            continue
+                        expr = (
+                            "(function(){var s=" + json.dumps(factor) + ";"
+                            "var out=[];"
+                            "document.querySelectorAll('canvas').forEach(function(cv){"
+                            "if(cv.width<256||cv.height<256)return;"
+                            "var r=cv.getBoundingClientRect();"
+                            "var w=cv.width,h=cv.height;"
+                            "if(r.width>0)cv.style.width=r.width+'px';"
+                            "if(r.height>0)cv.style.height=r.height+'px';"
+                            "cv.width=Math.max(64,Math.round(w*s));"
+                            "cv.height=Math.max(64,Math.round(h*s));"
+                            "out.push(w+'x'+h+'->'+cv.width+'x'+cv.height+"
+                            "' rect='+Math.round(r.width)+'x'+Math.round(r.height));"
+                            "});"
+                            "window.dispatchEvent(new Event('resize'));"
+                            "return out.join(',');})()"
+                        )
+                        rr = call("script.evaluate", {
+                            "expression": expr,
+                            "target": {"context": tgt},
+                            "awaitPromise": False,
+                            "returnByValue": True,
+                        }, timeout=30)
+                        print("CANVAS-LIVE-SCALE:", json.dumps(rr)[:500])
+                threading.Thread(target=_scale_poll, daemon=True).start()
             # SHOT_AT="60,180": tag Firefox' EGEN gengivelse af siden på de
             # tidspunkter (uafhængigt af hvad skærmen viser).
             shot_at = os.environ.get("SHOT_AT")
@@ -599,6 +704,10 @@ def main():
                 while time.time() < deadline and not stop[0]:
                     time.sleep(2)
                 print("VENT-FÆRDIG (stop=%s)" % stop[0])
+            if os.environ.get("CLOSE_WHEN_DONE") == "1":
+                print("LUKKER: browser.close")
+                r = call("browser.close", {}, timeout=30)
+                print("browser.close ->", json.dumps(r)[:200])
         if len(sys.argv) > 2 and sys.argv[2] == "reload":
             r = call("browsingContext.reload", {"context": ctx})
             print("GENINDLASTET:", json.dumps(r)[:200])
