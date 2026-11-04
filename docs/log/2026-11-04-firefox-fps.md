@@ -1,8 +1,9 @@
 # Firefox/FPS-sporet - session-notat 4. nov 2026
 
 > Agent/model: `codex` / `deepseek-flash` (læst fra denne sessions
-> `turn_context` i `~/.codex/sessions/2026/11/04/`). Branch: `trunk`
-> (`chromium-fps` blev merget ind 4. nov 2026).
+> `turn_context` i `~/.codex/sessions/2026/11/04/`). Branch:
+> `firefox-fps-tuning`, oprettet fra `trunk` (`chromium-fps` blev merget ind
+> 4. nov 2026).
 > Fortsætter den spillbare Firefox-vej fra 19.-26. sep 2026.
 
 ## Status i ét blik
@@ -40,6 +41,17 @@
   Temperaturen faldt fra 104 °C til 79 °C. (~23:04)
 - [udført] `chromium-fps` merget ind i `trunk` som fast-forward
   (`3563028..4454ae1`). Denne handover er opdateret til `trunk`. (~23:10)
+- [udført] Dokumentationscommit `065d217` på `trunk` opdaterer handoveren til
+  den merged branch. (~23:10)
+- [aftalt] Næste FPS-arbejde kører på den nye branch
+  `firefox-fps-tuning`, oprettet fra `trunk` ved `065d217`. (~23:10)
+- [udført] Den globale git-e-mail er sat til
+  `kristian.n.jensen@gmail.com`; global `user.name` er fortsat tom. Tidligere
+  commits blev derfor amended/committet med eksplicit
+  `Kristian Nygaard Jensen`. (~23:15)
+- [udført] Dokumentationsaudit ved sessionsafslutning: branchskiftet,
+  bindapi-scriptets flytbare nøglesti og git-identiteten er nu dokumenteret.
+  (~23:15)
 
 ## Aktuel bokstilstand
 
@@ -140,3 +152,6 @@ BOXIP=<ip> bash devuan/box.sh 'cat /sys/rockchip_thermal/temp'
 - Temperaturen var 107 °C under gameplay. Overvåg den og hold pause nok til
   at undgå kernens 120 °C-nedlukning.
 - Efter reboot skal bindapi-lappen og vnext12 `dcc0a68f` lægges på igen.
+- Global `git config user.name` er tom. Ved commits skal navnet sættes
+  eksplicit med `git -c user.name='Kristian Nygaard Jensen' ...`, ellers kan
+  Git auto-generere en forkert identitet.

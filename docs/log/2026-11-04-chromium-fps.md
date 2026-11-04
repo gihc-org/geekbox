@@ -33,6 +33,8 @@
 - [udført] uBOL Complete og `<all_urls>`-tilladelse verificeret i Chromium-
   profilen. Dashboardet krævede kun genindlæsning efter extension-start.
   (~16:50)
+- [udført] Den hardkodede nøglesti i `patch_android_bindapi.sh` blev erstattet
+  med `SSHKEY`/`$HOME`, så scriptet også virker fra den nye laptop. (~17:47)
 - [udført] `CHROMIUM_KIOSK=0` kan bruges til vinduestilstand. (~17:00)
 - [udført] `CYAN_DEPTHOFF_TEST=1` fik verdensgeometrien til at rendere.
   (~17:13)

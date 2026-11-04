@@ -245,7 +245,9 @@ genoptage Chromium står i notatet. Detaljer:
 
 **Opdateret 4. nov 2026 ~18:15 (Firefox/FPS er aktivt spor):** Firefox vnext12
 `dcc0a68f` + alpha-shim via BiDi + `CYAN_DEPTHCLEAR=1` er igen den spillbare
-vej. Brugeren har bekræftet gameplay med dreng, banen, lyd og input. En kort
+vej på branch `firefox-fps-tuning`, oprettet fra `trunk` efter
+`chromium-fps` blev merget ind. Brugeren har bekræftet gameplay med dreng,
+banen, lyd og input. En kort
 måling i en igangværende session gav 0,6 skærm-opdateringer/s, men er ikke en
 ren baseline; temperaturen var 107 °C under load og 89 °C efter målingen.
 Næste arbejde er FPS: frisk baseline, `layout.frame_rate=30`,
