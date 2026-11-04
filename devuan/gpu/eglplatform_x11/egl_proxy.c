@@ -51,6 +51,7 @@ typedef EGLBoolean (*real_eglSwapInterval_t)(EGLDisplay, EGLint);
 static int egl_trace_on(void);
 
 static int g_force_clear_pending = 1;
+static int g_depth_always_once;
 
 /* CYAN_LIGHT=1 slår al måle-instrumentering fra (fuld-frame-readbacks,
  * draw/shader/uniform-dumps, buffer-snapshots, swap-prøver). De funktionelle
@@ -924,6 +925,9 @@ GLenum hook_glGetError(void)
 #ifndef GL_DEPTH_ATTACHMENT
 #define GL_DEPTH_ATTACHMENT 0x8D00
 #endif
+#ifndef GL_DEPTH
+#define GL_DEPTH 0x1801
+#endif
 
 static int dlog_fd(void)
 {
@@ -1047,7 +1051,9 @@ static void (*rgl_glDrawBuffers)(GLsizei, const GLenum *);
 static void (*rgl_glEnable)(GLenum);
 static void (*rgl_glDisable)(GLenum);
 static void (*rgl_glDepthMask)(GLboolean);
+static void (*rgl_glDepthFunc)(GLenum);
 static void (*rgl_glClearDepthf)(GLfloat);
+static void (*rgl_glClearBufferfv)(GLenum, GLint, const GLfloat *);
 static void (*rgl_glGetFramebufferAttachmentParameteriv)(GLenum, GLenum,
                                                          GLenum, GLint *);
 
@@ -1142,8 +1148,12 @@ static void rgl_resolve_all(void)
         real_eglGetProcAddress_fn("glDisable");
     rgl_glDepthMask = (void (*)(GLboolean))
         real_eglGetProcAddress_fn("glDepthMask");
+    rgl_glDepthFunc = (void (*)(GLenum))
+        real_eglGetProcAddress_fn("glDepthFunc");
     rgl_glClearDepthf = (void (*)(GLfloat))
         real_eglGetProcAddress_fn("glClearDepthf");
+    rgl_glClearBufferfv = (void (*)(GLenum, GLint, const GLfloat *))
+        real_eglGetProcAddress_fn("glClearBufferfv");
     rgl_glGetFramebufferAttachmentParameteriv =
         (void (*)(GLenum, GLenum, GLenum, GLint *))
         real_eglGetProcAddress_fn("glGetFramebufferAttachmentParameteriv");
@@ -1176,6 +1186,55 @@ static void dm_lap_end(int active)
         rgl_glDepthMask(GL_TRUE);
 }
 
+/* Diagnose (4. nov 2026): slå depth-test fra omkring store 3D-draws i en
+ * offscreen-FBO. Chromium-kørslen viste pre-post-diff=0 for alle
+ * verdens-draws, mens himmel og HUD blev tegnet. Testen afgør om geometrien
+ * forsvinder på grund af depth-state eller på grund af shader/vertex-data.
+ * Kun aktiv når CYAN_DEPTHOFF_TEST=1. */
+static int depthoff_test_begin(void)
+{
+    const char *e = getenv("CYAN_DEPTHOFF_TEST");
+    if (!e || !*e || !strcmp(e, "0"))
+        return 0;
+    if (!rgl_glGetIntegerv || !rgl_glIsEnabled ||
+        !rgl_glDisable || !rgl_glEnable)
+        return 0;
+    GLint fbo = 0;
+    rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+    if (fbo == 0 || !rgl_glIsEnabled(GL_DEPTH_TEST))
+        return 0;
+    rgl_glDisable(GL_DEPTH_TEST);
+    return 1;
+}
+
+static void depthoff_test_end(int active)
+{
+    if (active)
+        rgl_glEnable(GL_DEPTH_TEST);
+}
+
+/* Hvis FBO'ens depth-buffer stadig er ubrugelig efter clear, så tving kun det
+ * første store draw i hver frame gennem depth-testen. Resten af 3D-scenen
+ * bruger igen spillets normale GL_LESS og får dermed korrekt occlusion. */
+static int depthalways_test_begin(void)
+{
+    const char *e = getenv("CYAN_DEPTHALWAYS_FIRST");
+    if (!e || !*e || !strcmp(e, "0") || !g_depth_always_once ||
+        !rgl_glGetIntegerv || !rgl_glDepthFunc)
+        return -1;
+    GLint old = -1;
+    rgl_glGetIntegerv(GL_DEPTH_FUNC, &old);
+    rgl_glDepthFunc(GL_ALWAYS);
+    g_depth_always_once = 0;
+    return old;
+}
+
+static void depthalways_test_end(int old_func)
+{
+    if (old_func >= 0 && rgl_glDepthFunc)
+        rgl_glDepthFunc((GLenum)old_func);
+}
+
 /* vnext8-diagnose: hvis CYAN_DEPTHCLEAR=1, ryd depth-bufferen lige før store
  * depth-on-draws — tester om live-porten er at fbo=3's depth aldrig ryddes
  * (clear i spillet rammer måske fbo=0; UI skriver depth ≈0 med depthtest=0
@@ -1188,21 +1247,40 @@ static void maybe_force_depth_clear(GLsizei count)
         return;
     if (!g_force_clear_pending)
         return;
-    if (!rgl_glClear || !rgl_glIsEnabled || !rgl_glGetIntegerv)
+    if (!rgl_glClear || !rgl_glIsEnabled || !rgl_glGetIntegerv ||
+        !rgl_glDepthMask)
         return;
     if (!rgl_glIsEnabled(GL_DEPTH_TEST))
         return;
-    GLint fbo = 0, vp[4] = {0, 0, 0, 0}, dfunc = -1;
+    GLint fbo = 0, vp[4] = {0, 0, 0, 0}, dfunc = -1, depthmask = 1;
+    GLboolean scissor = rgl_glIsEnabled(GL_SCISSOR_TEST);
     rgl_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
     rgl_glGetIntegerv(GL_VIEWPORT, vp);
     rgl_glGetIntegerv(GL_DEPTH_FUNC, &dfunc);
+    rgl_glGetIntegerv(GL_DEPTH_WRITEMASK, &depthmask);
+    if (scissor)
+        rgl_glDisable(GL_SCISSOR_TEST);
+    if (!depthmask)
+        rgl_glDepthMask(GL_TRUE);
     if (rgl_glClearDepthf)
         rgl_glClearDepthf(1.0f);
     g_force_clear_pending = 0;
     GLfloat cdv = -1.0f;
     if (rgl_glGetFloatv)
         rgl_glGetFloatv(GL_DEPTH_CLEAR_VALUE, &cdv);
-    rgl_glClear(GL_DEPTH_BUFFER_BIT);
+    const char *clearbuf = getenv("CYAN_CLEARBUFFER_TEST");
+    if (clearbuf && *clearbuf && strcmp(clearbuf, "0") &&
+        rgl_glClearBufferfv) {
+        const GLfloat ones[1] = {1.0f};
+        rgl_glClearBufferfv(GL_DEPTH, 0, ones);
+    } else {
+        rgl_glClear(GL_DEPTH_BUFFER_BIT);
+    }
+    if (!depthmask)
+        rgl_glDepthMask(GL_FALSE);
+    if (scissor)
+        rgl_glEnable(GL_SCISSOR_TEST);
+    g_depth_always_once = 1;
     /* Denne sti kører pr. frame i den spillbare opskrift (CYAN_DEPTHCLEAR) —
      * brug den som frame-tick (eglSwapBuffers kaldes ikke med software-
      * layers, så swap-stien tæller intet). */
@@ -1220,9 +1298,11 @@ static void maybe_force_depth_clear(GLsizei count)
     n++;
     if (!cyan_light() && (n <= 40 || n % 250 == 0))
         dlog_msg("force-depth-clear fbo=%d %dx%d count=%d att-col=0x%x "
-                 "att-depth=0x%x depthfunc=0x%x clearval=%g (kald=%lu)",
+                 "att-depth=0x%x depthfunc=0x%x depthmask=%d clearval=%g "
+                 "(kald=%lu)",
                  (int)fbo, vp[2], vp[3], (int)count, (unsigned)at_col,
-                 (unsigned)at_dep, (unsigned)dfunc, (double)cdv, n);
+                 (unsigned)at_dep, (unsigned)dfunc, (int)depthmask,
+                 (double)cdv, n);
 }
 
 static const char *gls_mode_name(GLenum m)
@@ -1824,7 +1904,11 @@ static void hook_glDrawElements(GLenum mode, GLsizei count, GLenum type,
     maybe_force_depth_clear(count);
     int dm_lap = 0;
     dm_lap_begin(&dm_lap);
+    int depthoff_lap = depthoff_test_begin();
+    int depthfunc_old = depthalways_test_begin();
     rgl_glDrawElements(mode, count, type, indices);
+    depthalways_test_end(depthfunc_old);
+    depthoff_test_end(depthoff_lap);
     dm_lap_end(dm_lap);
     if (dm_lap) {
         static unsigned long n = 0;
@@ -1847,7 +1931,11 @@ static void hook_glDrawArrays(GLenum mode, GLint first, GLsizei count)
     maybe_force_depth_clear(count);
     int dm_lap = 0;
     dm_lap_begin(&dm_lap);
+    int depthoff_lap = depthoff_test_begin();
+    int depthfunc_old = depthalways_test_begin();
     rgl_glDrawArrays(mode, first, count);
+    depthalways_test_end(depthfunc_old);
+    depthoff_test_end(depthoff_lap);
     dm_lap_end(dm_lap);
     if (dm_lap) {
         static unsigned long n = 0;
@@ -1874,10 +1962,14 @@ static void hook_glDrawElementsInstanced(GLenum mode, GLsizei count,
     maybe_force_depth_clear(count);
     int dm_lap = 0;
     dm_lap_begin(&dm_lap);
+    int depthoff_lap = depthoff_test_begin();
+    int depthfunc_old = depthalways_test_begin();
     if (rgl_glDrawElementsInstanced)
         rgl_glDrawElementsInstanced(mode, count, type, indices, primcount);
     else
         rgl_glDrawElements(mode, count, type, indices);
+    depthalways_test_end(depthfunc_old);
+    depthoff_test_end(depthoff_lap);
     dm_lap_end(dm_lap);
     if (dm_lap) {
         static unsigned long n = 0;
@@ -1908,10 +2000,14 @@ static void hook_glDrawArraysInstanced(GLenum mode, GLint first,
     maybe_force_depth_clear(count);
     int dm_lap = 0;
     dm_lap_begin(&dm_lap);
+    int depthoff_lap = depthoff_test_begin();
+    int depthfunc_old = depthalways_test_begin();
     if (rgl_glDrawArraysInstanced)
         rgl_glDrawArraysInstanced(mode, first, count, primcount);
     else
         rgl_glDrawArrays(mode, first, count);
+    depthalways_test_end(depthfunc_old);
+    depthoff_test_end(depthoff_lap);
     dm_lap_end(dm_lap);
     if (dm_lap) {
         static unsigned long n = 0;

@@ -21,9 +21,34 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
 - [x] Boot-hæng løst: 14.04-initramfs flytter ikke /proc,/sys,/dev ind i nyt root → sysvinit hænger i rcS. Løsning: **`myinit.sh` som PID1-shim** (init=/root/myinit.sh) der mounter selv, starter netværk+dropbear, logger til kortet, og exec'er /sbin/init
 - [x] **Ren uovervåget boot til runlevel 2 med ssh verificeret** (aug 2026)
 
-### Chromium-sporet (aktivt 30. sep 2026)
+### Chromium-sporet (parkeret 4. nov 2026)
 
-- **God start i en ny session (Chromium-sporet, 7. okt 2026) — NUVÆRENDE:**
+- **Parkeret midlertidigt 4. nov 2026. Aktiv spilvej er Firefox/FPS-sporet.**
+  Chromium kan afspille spillets lyd og logik, men 3D-verdenen mangler, og
+  rendereren crasher i både Maglev-, JITless- og compositor-stier. En native
+  `glClearBufferfv`-test renderede korrekt, men efterlod GPU-processen i
+  `D`-tilstand. Beslutningen og kriterierne for genoptagelse står i
+  `docs/log/2026-11-04-chromium-fps.md` under "Beslutning: hvorfor Chromium
+  parkeres midlertidigt".
+
+- **God start i en ny session (Chromium-sporet, 4. nov 2026) — PARKERET:**
+  *"Læs `docs/log/2026-11-04-chromium-fps.md` (HELE notatet), Chromium-afsnittet
+  i `TODO.md` og `OVERBLIK.md`. Branch er `chromium-fps`. Ny laptop: SSH virker,
+  men `pass` mangler i PATH. Boksen nås via `bash devuan/find_box.sh`; husk at
+  sætte uret. uBOL Complete og `<all_urls>` er allerede aktive. Spillet når
+  titelskærmen og kan starte gameplay med lyd og stigende score; det udløser
+  stadig `PokiSDK.commercialBreak()`, men det blokerer ikke længere forløbet.
+  Manglende 3D-verden er bekræftet som depth-state-fejl: depth-off gør
+  geometrien synlig. `glClearBufferfv(GL_DEPTH)` renderede Halloween-banen
+  korrekt, men efterlod GPU-processen i `D`-tilstand. Kendt god proxy er
+  `/root/egl_proxy_chromium_2d66a43c.so.bak`. gdb fangede V8 Maglev
+  `TaggedEqual::GenerateCode`; `--no-maglev` og `--jitless` crashede også.
+  Næste: gør depth-clear stabil uden GPU-wedge, og kør en gdb-fanget test.
+  Hvis det ikke lykkes, parkér
+  Chromium og brug den Firefox-vej der er bekræftet spilbar. Fælder og
+  kommandoer står i session-notatet."*
+
+- **God start i en ny session (Chromium-sporet, 7. okt 2026) — AFLØST 4. nov:**
   *"Læs `docs/log/2026-10-06-chromium-fps.md` (HELE notatet — især "Status i
   ét blik", "Hvad vi ved (målt 6. okt)" og "(målt 7. okt)", "Næste skridt" og
   "Fælder"), Chromium-afsnittet i `TODO.md` og `OVERBLIK.md`. Branch er
@@ -430,8 +455,44 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+- **God start i en ny session (Firefox/FPS-sporet, 4. nov 2026) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-04-firefox-fps.md` (HELE notatet),
+  `docs/log/2026-11-04-chromium-fps.md` (HELE notatet; Chromium er parkeret),
+  `docs/grafik/fps-analysen-2026-09-25.md` (§0, §5, §8 og §9),
+  `docs/faeller.md` fælde 41-59 og `OVERBLIK.md`.
+  STATUS 4. nov 2026 ~23:04: **Firefox-vejen er aktiv og spillet er
+  brugerbekræftet spilbart.** Proxy vnext12 `dcc0a68f` + alpha-shim via
+  BiDi-preload + `CYAN_DEPTHCLEAR=1`; dreng, tog, skinner og Halloween-scene
+  renderes, og lyd/input virker. Boksen var på `192.168.0.135` og har også
+  fallback `192.168.1.50`; uret blev sat. En kort `fb_fps`-måling i en
+  allerede kørende/pauset session gav 0,6 skærm-opdateringer/s og er ikke en
+  ren baseline. Temperaturen var 107 °C under gameplay og 89 °C efter
+  målingen; overvåg den mod kernens 120 °C-trip. Testkørslen er lukket ved
+  sessionsslut (SIGTERM efter BiDi "Maximum number of active sessions");
+  næste session starter uden Firefox/BiDi/Chromium, og temperaturen var
+  79 °C efter lukning.
+  Chromium-sporet er parkeret: lyd/logik kan køre, men 3D mangler, native
+  depth-clear giver GPU-wedge, og separate Maglev-/JITless-crashes består.
+  NÆSTE, i denne rækkefølge: (1) mål ren baseline i samme session med
+  `/root/fb_fps /dev/fb0 40 20` og spillets rAF; (2) tag backup af
+  `/home/kristian/ffprof/user.js`, sæt
+  `user_pref("layout.frame_rate", 30);`, genstart Firefox og mål samme
+  scenarie; genskab `user.js` bagefter; (3) kort `MOZ_LOG=nsRefreshDriver:5`
+  kørsel og mål tick -> completed transaction; (4) S3 canvas-nedskalering via
+  BiDi-preload; (5) S4 governor/DDR/swap kun hvis de første tests ikke flytter
+  noget. Brug `POLL=20`, ikke `CYAN_LIGHT` når billedet skal ses, og mål en
+  frisk baseline i samme session før hver A/B.
+  START: `GAME_URL=about:blank CYAN_DEPTHCLEAR=1 nohup
+  /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &` → vent på Firefox
+  → `PYTHONUNBUFFERED=1 nohup python3 /root/bidi_cyan.py preload goto
+  https://poki.com/en/g/subway-surfers 7200 > /root/bidi_cyan.log 2>&1 &`.
+  Efter reboot: GPU/bindapi-lap/vnext12 skal bringes op som i notatet.
+  FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session; MOZ_LOG er tungt
+  og må ikke køre samtidig med FPS-målingen; X kan skifte VT ved
+  `service nodm restart`; `/tmp` ryddes ved reboot."*
+
 - **God start i en ny session (FPS-sporet, 26. sep 2026, efter S1+S2) —
-  NUVÆRENDE:**
+  AFLØST 4. nov 2026:**
   *"Læs `docs/log/2026-09-25-cyan-fps.md` (HELE notatet — S1-sessionen, den
   rene baseline efter strøm-cyklus, netværksfejlen og S2-profileringsafsnittet
   med "Status ved sessionsslut"), `docs/grafik/fps-analysen-2026-09-25.md`

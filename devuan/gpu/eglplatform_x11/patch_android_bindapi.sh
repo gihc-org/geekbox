@@ -49,7 +49,7 @@ set -uo pipefail
 IP="${BOXIP:-$(bash "$(dirname "$0")/../../find_box.sh" 2>/dev/null | awk '/GEEKBOX/{print $2; exit}')}"
 IP="${IP:-192.168.0.188}"
 BOX="root@$IP"
-KEY=/home/kristian/.ssh/geekbox_key
+KEY=${SSHKEY:-$HOME/.ssh/geekbox_key}
 SRC=/system/lib/libEGL.so
 DST=/root/egl_patch/libEGL.so
 OFF=0x11df8

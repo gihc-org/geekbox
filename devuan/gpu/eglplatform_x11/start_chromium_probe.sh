@@ -27,6 +27,7 @@ DISABLE_GPU_WATCHDOG=${CHROMIUM_DISABLE_GPU_WATCHDOG:-1}
 DEPTHCLEAR=${CHROMIUM_DEPTHCLEAR:-1}
 ZERO_COPY=${CHROMIUM_ZERO_COPY:-0}
 VERBOSE=${CHROMIUM_VERBOSE:-0}
+KIOSK=${CHROMIUM_KIOSK:-1}
 # Ekstra Chromium-flags adskilt af lodret streg (hvert led bliver ét argv-element,
 # så værdier med mellemrum overlever), fx
 #   CHROMIUM_EXTRA_FLAGS='--host-resolver-rules=MAP *.doubleclick.net 0.0.0.0|--foo bar'
@@ -71,6 +72,8 @@ GLFLAGS=(--use-gl="$USE_GL")
 [ "$DISABLE_GPU_COMPOSITING" = 1 ] && GLFLAGS+=(--disable-gpu-compositing)
 [ "$DISABLE_ACCEL_2D" = 1 ] && GLFLAGS+=(--disable-accelerated-2d-canvas)
 [ "$DISABLE_GPU_WATCHDOG" = 1 ] && GLFLAGS+=(--disable-gpu-watchdog)
+WINDOW_FLAGS=()
+[ "$KIOSK" = 1 ] && WINDOW_FLAGS+=(--kiosk)
 # Zero-copy lader compositoren læse canvas-laget direkte fra GPU-bufferen.
 # Målt 2. okt 2026: med --enable-zero-copy står spil-canvas' område på fb0
 # stille (samme hash i 12 s), mens Chromium selv tegner nye frames; uden
@@ -96,10 +99,13 @@ runuser -u kristian -- env -i \
   EGL_PROXY_CONFIG_FIX="${EGL_PROXY_CONFIG_FIX:-1}" \
   EGL_PROXY_FAKE_VISUAL="${EGL_PROXY_FAKE_VISUAL:-0x21}" \
   CYAN_DEPTHCLEAR="$DEPTHCLEAR" \
+  CYAN_DEPTHOFF_TEST="${CYAN_DEPTHOFF_TEST:-}" \
+  CYAN_DEPTHALWAYS_FIRST="${CYAN_DEPTHALWAYS_FIRST:-}" \
+  CYAN_CLEARBUFFER_TEST="${CYAN_CLEARBUFFER_TEST:-}" \
   CYAN_LIGHT="${CHROMIUM_CYAN_LIGHT:-}" \
   EGL_PLATFORM=x11 \
   "$CHROME" \
-    --kiosk \
+    "${WINDOW_FLAGS[@]}" \
     --no-sandbox \
     --disable-gpu-sandbox \
     --ignore-gpu-blocklist \

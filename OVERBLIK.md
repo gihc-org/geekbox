@@ -225,6 +225,35 @@ alle-kerner-last; fuld last tog den udregnede temperatur fra 42 til 104 °C på
 CPU-regulatorens spænding, så en del af udsvinget er et DVFS-artefakt. Detaljer
 og kommandoer: `docs/log/2026-10-06-chromium-fps.md`.
 
+**Opdateret 4. nov 2026 (Chromium-sporet, depth og JIT):** uBOL Complete virker,
+og spillet kan starte gameplay med lyd og stigende score. Startklik udløser
+fortsat Pokis `commercialBreak()`, men det stopper ikke forløbet. Den manglende
+3D-verden er bekræftet som depth-state:
+med depth-test slået fra blev togvogne, skinner og bygninger synlige. En
+`glClearBufferfv(GL_DEPTH)`-test renderede Halloween-banen korrekt, men
+GPU-processen gik senere i `D`-tilstand, så metoden er ikke stabil nok.
+gdb fangede en SIGSEGV i V8 Maglev (`TaggedEqual::GenerateCode`);
+`--no-maglev` og `--jitless` crashede også med andre signaturer. Den kendte
+gode EGL-proxy gendannes efter testene. Næste skridt er Poki-preload uden
+ad-break, stabil depth-clear og ny gdb-kørsel. **4. nov ~18:03 blev Chromium
+parkeret midlertidigt:** lyd/logik kan køre, men 3D-verdenen mangler, den
+native clearBuffer-fix giver GPU-wedge, og separate Maglev-/JITless-crashes
+består. Den bekræftede Firefox-vej er igen aktiv: et skærmdump under gameplay
+viste drengen, skinnerne, togvognene og Halloween-scenen. Kriterierne for at
+genoptage Chromium står i notatet. Detaljer:
+`docs/log/2026-11-04-chromium-fps.md`.
+
+**Opdateret 4. nov 2026 ~18:15 (Firefox/FPS er aktivt spor):** Firefox vnext12
+`dcc0a68f` + alpha-shim via BiDi + `CYAN_DEPTHCLEAR=1` er igen den spillbare
+vej. Brugeren har bekræftet gameplay med dreng, banen, lyd og input. En kort
+måling i en igangværende session gav 0,6 skærm-opdateringer/s, men er ikke en
+ren baseline; temperaturen var 107 °C under load og 89 °C efter målingen.
+Næste arbejde er FPS: frisk baseline, `layout.frame_rate=30`,
+`MOZ_LOG=nsRefreshDriver:5` og derefter canvas-nedskalering. Chromium bevares
+som parkeret research-spor. Testkørslen er lukket ved sessionsslut; næste
+session starter uden Firefox/BiDi/Chromium. Detaljer og startkommandoer:
+`docs/log/2026-11-04-firefox-fps.md`.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne

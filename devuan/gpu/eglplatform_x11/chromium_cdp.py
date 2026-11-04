@@ -12,6 +12,8 @@ Kommandoer:
   chromium_cdp.py click <x> <y>
   chromium_cdp.py goto <url> [sekunder]
   chromium_cdp.py game [url] [sekunder]
+  chromium_cdp.py poki [url] [sekunder]
+  chromium_cdp.py poki-depth [url] [sekunder]
 
 `probe` inspicerer den side der ALLEREDE kører (ingen navigering): frame-træ,
 canvas/WebGL-status og rAF-raten i spil-iframe'en hvis den findes, ellers i
@@ -148,6 +150,92 @@ def raf_rate(cdp, context_id, seconds):
     return cdp.value("window.__codex_raf || 0", context_id)
 
 
+POKI_BYPASS = r"""
+(() => {
+  try { console.log('[codex-poki] preload', location.href); } catch (e) {}
+  let sdk;
+  const wrap = value => {
+    if (!value || value.__codex_poki_bypass) return value;
+    try {
+      value.commercialBreak = () => Promise.resolve();
+      value.rewardedBreak = () => Promise.resolve(true);
+      Object.defineProperty(value, '__codex_poki_bypass', {value: true});
+      document.documentElement.dataset.codexPokiBypass = '1';
+      console.log('[codex-poki] wrapped');
+    } catch (e) {}
+    return value;
+  };
+  try {
+    Object.defineProperty(window, 'PokiSDK', {
+      configurable: true,
+      get() { return sdk; },
+      set(value) { sdk = wrap(value); }
+    });
+  } catch (e) {}
+  const poll = () => {
+    try {
+      if (window.PokiSDK && !window.PokiSDK.__codex_poki_bypass)
+        window.PokiSDK = wrap(window.PokiSDK);
+    } catch (e) {}
+    setTimeout(poll, 50);
+  };
+  poll();
+})();
+"""
+
+
+WEBGL_DEPTH_CLEAR = r"""
+(() => {
+  const pending = new WeakMap();
+  const counters = new WeakMap();
+  const patch = proto => {
+    if (!proto || proto.__codex_depth_clear) return;
+    Object.defineProperty(proto, '__codex_depth_clear', {value: true});
+    const clear = proto.clear;
+    proto.clear = function(mask) {
+      clear.call(this, mask);
+      if (mask & this.DEPTH_BUFFER_BIT) {
+        pending.set(this, true);
+        const n = (counters.get(this) || 0) + 1;
+        counters.set(this, n);
+        if (n <= 5) console.log('[codex-depth] clear depth', n);
+      }
+    };
+    for (const name of ['drawElements', 'drawArrays',
+                        'drawElementsInstanced', 'drawArraysInstanced',
+                        'drawElementsInstancedANGLE',
+                        'drawArraysInstancedANGLE']) {
+      const draw = proto[name];
+      if (!draw) continue;
+      proto[name] = function(...args) {
+        const gl = this;
+        const count = args[1];
+        const fbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+        if (pending.get(gl) && count >= 512) {
+          const depthMask = gl.getParameter(gl.DEPTH_WRITEMASK);
+          const scissor = gl.isEnabled(gl.SCISSOR_TEST);
+          if (scissor) gl.disable(gl.SCISSOR_TEST);
+          if (!depthMask) gl.depthMask(true);
+          gl.clearDepth(1);
+          clear.call(gl, gl.DEPTH_BUFFER_BIT);
+          if (!depthMask) gl.depthMask(false);
+          if (scissor) gl.enable(gl.SCISSOR_TEST);
+          pending.set(gl, false);
+          const n = (counters.get(gl) || 0) + 1;
+          counters.set(gl, n);
+          if (n <= 10)
+            console.log('[codex-depth] fixed', n, 'fbo', fbo, 'count', count);
+        }
+        return draw.apply(gl, args);
+      };
+    }
+  };
+  patch(window.WebGLRenderingContext && WebGLRenderingContext.prototype);
+  patch(window.WebGL2RenderingContext && WebGL2RenderingContext.prototype);
+})();
+"""
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -246,6 +334,28 @@ def main():
             summary["raf_per_s"] = raf / 10.0
             summary["clicked"] = bool(rect)
             print(json.dumps(summary, indent=2)[:8000])
+        elif cmd in ("poki", "poki-depth"):
+            url = sys.argv[2] if len(sys.argv) > 2 else \
+                "https://poki.com/en/g/subway-surfers"
+            wait = float(sys.argv[3]) if len(sys.argv) > 3 else 35
+            cdp.call("Page.enable")
+            cdp.call("Page.addScriptToEvaluateOnNewDocument",
+                     {"source": POKI_BYPASS})
+            if cmd == "poki-depth":
+                cdp.call("Page.addScriptToEvaluateOnNewDocument",
+                         {"source": WEBGL_DEPTH_CLEAR})
+            cdp.call("Page.navigate", {"url": url})
+            time.sleep(wait)
+            frame = find_game_frame(cdp)
+            if frame:
+                summary, _ = game_summary(cdp, frame["id"])
+                print(json.dumps(summary, indent=2)[:8000])
+            else:
+                print(json.dumps({
+                    "title": cdp.value("document.title"),
+                    "url": cdp.value("location.href"),
+                    "game_frame": None
+                }, indent=2))
         elif cmd == "screenshot":
             cdp.call("Page.enable")
             res = cdp.call("Page.captureScreenshot")
