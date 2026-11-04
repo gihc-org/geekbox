@@ -1,7 +1,8 @@
 # Firefox/FPS-sporet - session-notat 4. nov 2026
 
 > Agent/model: `codex` / `deepseek-flash` (læst fra denne sessions
-> `turn_context` i `~/.codex/sessions/2026/11/04/`). Branch: `chromium-fps`.
+> `turn_context` i `~/.codex/sessions/2026/11/04/`). Branch: `trunk`
+> (`chromium-fps` blev merget ind 4. nov 2026).
 > Fortsætter den spillbare Firefox-vej fra 19.-26. sep 2026.
 
 ## Status i ét blik
@@ -37,6 +38,8 @@
   lukkes med `browser.close` (`Maximum number of active sessions`), så
   Firefox blev afsluttet med SIGTERM. Ingen profiler-dump var nødvendigt.
   Temperaturen faldt fra 104 °C til 79 °C. (~23:04)
+- [udført] `chromium-fps` merget ind i `trunk` som fast-forward
+  (`3563028..4454ae1`). Denne handover er opdateret til `trunk`. (~23:10)
 
 ## Aktuel bokstilstand
 

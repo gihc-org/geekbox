@@ -1,7 +1,8 @@
 # Chromium-sporet - session-notat 4. nov 2026
 
 > Agent/model: `codex` / `deepseek-flash` (læst fra denne sessions
-> `turn_context` i `~/.codex/sessions/2026/11/04/`). Branch: `chromium-fps`.
+> `turn_context` i `~/.codex/sessions/2026/11/04/`). Oprindelig branch:
+> `chromium-fps`; merget ind i `trunk` 4. nov 2026.
 > Fortsætter handover-prompten i `TODO.md` fra 7. okt 2026.
 
 ## Status i ét blik

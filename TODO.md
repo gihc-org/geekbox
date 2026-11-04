@@ -459,7 +459,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   *"Læs `docs/log/2026-11-04-firefox-fps.md` (HELE notatet),
   `docs/log/2026-11-04-chromium-fps.md` (HELE notatet; Chromium er parkeret),
   `docs/grafik/fps-analysen-2026-09-25.md` (§0, §5, §8 og §9),
-  `docs/faeller.md` fælde 41-59 og `OVERBLIK.md`.
+  `docs/faeller.md` fælde 41-59 og `OVERBLIK.md`. Branch er `trunk`;
+  `chromium-fps` blev merget ind 4. nov 2026.
   STATUS 4. nov 2026 ~23:04: **Firefox-vejen er aktiv og spillet er
   brugerbekræftet spilbart.** Proxy vnext12 `dcc0a68f` + alpha-shim via
   BiDi-preload + `CYAN_DEPTHCLEAR=1`; dreng, tog, skinner og Halloween-scene

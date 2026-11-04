@@ -10,7 +10,16 @@ GeekBox er flashet med Lubuntu V160309 (august 2026). Metode, værktøjer og kil
 
 Devuan Excalibur (armhf) booter fra eMMC med vendor-kernel 3.10 på begge bokse: desktop (LXDE/fbdev), WiFi, HDMI-lyd, ssh (dropbear) — alt virker. **GPU + WebGL virker (26. aug 2026):** DDK 1.5@3830101 kører på en genbygget 3.10-kernel (PVR fra, TRACING, VT, compat-403-fix) med 1.5-KM `.ko` + 1.5-UM (32-bit) + 64-bit pvrsrvctl — `GL_VERSION = "OpenGL ES 3.1 build 1.5@3830101"`, `shader_ext_test` draw_buffers OK (ES2+ES3), WebGL OK i firefox-esr. Subway Surfers (poki.com) er STADIG blokeret: præsentationen til skærmen fejler (gralloc-lock EINVAL i Firefox' GPU-proces) — shader-blokaderne (GL_EXT_frag_depth + WR cs_blur) er løst via proxy-omskrivning. Se docs/grafik/gpu-historien.md §5.15, docs/faeller.md fælde 16+ og TODO.md. Boks 2 flashet direkte fra laptop i loader-tilstand (script `09` + `UF`, aug 2026). Scripts i `devuan/`.
 
-**Aktuelt spor (4. nov 2026): Firefox/FPS-sporet** (branch `chromium-fps`). Spillet er spilbart med vnext12 `dcc0a68f` + alpha-shim via BiDi + `CYAN_DEPTHCLEAR=1`, men stadig meget langsomt. Næste arbejde er ren FPS-baseline, `layout.frame_rate=30`, refresh-driver-timing og canvas-nedskalering. Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler, native depth-clear giver GPU-wedge, og der er separate Maglev-/JITless-crashes. Læs `docs/log/2026-11-04-firefox-fps.md` (hele notatet), `docs/log/2026-11-04-chromium-fps.md` (hvorfor Chromium er parkeret) og den nye handover-prompt i `TODO.md`.
+**Aktuelt spor (4. nov 2026): Firefox/FPS-sporet** (branch `trunk`;
+`chromium-fps` er merget ind 4. nov). Spillet er spilbart med vnext12
+`dcc0a68f` + alpha-shim via BiDi + `CYAN_DEPTHCLEAR=1`, men stadig meget
+langsomt. Næste arbejde er ren FPS-baseline, `layout.frame_rate=30`,
+refresh-driver-timing og canvas-nedskalering. Chromium-sporet er parkeret:
+lyd/logik kan køre, men 3D-verdenen mangler, native depth-clear giver
+GPU-wedge, og der er separate Maglev-/JITless-crashes. Læs
+`docs/log/2026-11-04-firefox-fps.md` (hele notatet),
+`docs/log/2026-11-04-chromium-fps.md` (hvorfor Chromium er parkeret) og den
+nye handover-prompt i `TODO.md`.
 
 **Firefox/FPS-sporet (19. sep 2026, baggrund — stadig den vej der virker):** spillet er spilbart igen (bruger-bekræftet 19. sep: spillet blev spillet og sat på pause, spilområdet forblev synligt) med proxy **vnext12 `dcc0a68f` (den TUNGE)** + alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`. **Vigtigt: `CYAN_LIGHT=1` frøser præsentationen** (0,2 skærm-opdateringer/s mod 1,5 med den tunge) — den må kun bruges til isolerede målinger uden billede. Fps er stadig ~2,6; kendte årsager: draw-kald koster 0,098-0,140 ms × ~2.000-2.700 kald pr. frame (250-370 ms/frame) plus 1080p-software-compositing (~173 ms readback); `eglSwapBuffers` kaldes aldrig. Næste forsøg (prioriteret): minimum-flush (billig `glFinish`/1x1-readback i stedet for fulde readbacks), 720p, mindre vindue, WebGL-vej-prefs — se "God start"-prompten i `TODO.md`. Blå glitches er lagt til side indtil videre. Baggrund: `docs/log/2026-09-08-cyan-scene.md` og `docs/log/2026-08-27-cyan-scene-handover.md`. Kernel clone3-fix (syscall 435→ENOSYS) bygget og flashet 6. sep — Firefox telemetri-crash væk. Næste kernel-byg (planlagt): CONFIG_ANDROID_PARANOID_NETWORK fra + bcmdhd. NTP-sporet åbent. Overblik: `OVERBLIK.md` — opdater denne linje når et nyt spor starter.
 
