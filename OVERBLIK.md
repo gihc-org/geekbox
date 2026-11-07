@@ -2,6 +2,7 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
+> `docs/log/2026-11-08-stability.md` (8. nov, stabilitet og næste spor),
 > `docs/log/2026-11-07-firefox-fast-play.md` (7. nov, fast-play og lyd),
 > `docs/log/2026-11-05-firefox-fps.md` (5. nov, Firefox/FPS),
 > `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
@@ -333,6 +334,27 @@ en PulseAudio-server autospawnet uden `/opt/alsa-da`, hvilket gav `auto_null`.
 at lyden er tilbage. Fast-play- og lydarbejdet er dermed afsluttet;
 960x540 er standard. Det tidligere minidump er fortsat arkiveret.
 
+**Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
+En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var
+pauset. Firefox-parenten blev efterladt uden content-process og spandt i en
+poll-løkke med høj CPU; et nyt minidump blev ikke skrevet. En gammel
+WebExtensions-helper fra en tidligere kørsel levede samtidig som orphan med
+høj CPU. `kill_firefox.sh` stopper nu alle Firefox- og helperprocesser og er
+testet på boksen. Stabilitet, brugervenlighed, dybere FPS og accept af
+nuværende baseline er dokumenteret som kandidatspor i
+`docs/log/2026-11-08-stability.md`. Mønter og bogstaver vises desuden ofte som
+gullige, halvgennemsigtige skyer; det er et separat renderingsspor.
+
+**Opdateret 8. nov 2026 ~00:38 (crash reproduceret):**
+Også den anden længere test crashede efter cirka 22 minutter og den anden
+pause; den første pause efter cirka 10 minutter var stabil. `Web Content`
+forsvandt, mens Firefox-parenten fortsatte. Loggen viser IPC-kanalbrud og
+`CompositorBridgeChild receives IPC close with reason=AbnormalShutdown`, men
+der kom hverken minidump, GPU-fault eller OOM-linje. Parentens gdb-stack
+viser fortsat mange tråde med main-tråden i `poll()`. Logs og stack er
+arkiveret i `/root/crash_fastplay_20261108_0035/`. Stabilitetsmonitoren blev
+rettet, fordi den oprindeligt talte WebExtensions som spil-content.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
@@ -484,6 +506,7 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 | `docs/log/2026-09-08-cyan-scene.md` | **Seneste session (8. sep):** divisor ude, live-vs-offline, præsentationssymptom, nye probes/fælder |
 | `docs/log/2026-11-05-firefox-fps.md` | FPS-baseline, transaction-profiler og vinduesarealets betydning |
 | `docs/log/2026-11-07-firefox-fast-play.md` | Fast-play-launcher, content-crash, stabil 960x540-test og lydfix |
+| `docs/log/2026-11-08-stability.md` | Reproduceret pause-crash, procesoprydning, monitorering og kandidatspor |
 | `devuan/gpu/eglplatform_x11/*.c/.py/.sh` | Kode: proxy, probes, scripts (se §De mange elementer) |
 
 ## Åbne spor / næste skridt

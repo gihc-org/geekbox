@@ -455,8 +455,54 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (Firefox/FPS-sporet, 7. nov 2026 ~23:48) —
+- **God start i en ny session (stabilitet, 8. nov 2026 ~00:45) —
   NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-08-stability.md`,
+  `docs/log/2026-11-07-firefox-fast-play.md` og `docs/faeller.md` fælde
+  41-68. Branch er `firefox-fps-tuning`; commit `da2ec65` er pushet.
+  STATUS 8. nov 2026 ~00:45: stabilitet er det aktive spor. To længere
+  spilkørsler er nu crashet efter cirka 20-22 minutter under anden pause;
+  den første pause efter cirka 10 minutter crashede ikke. I den seneste
+  kørsel forsvandt `Web Content`, mens Firefox-parenten fortsatte. Loggen
+  viser IPC-kanalbrud og `CompositorBridgeChild receives IPC close with
+  reason=AbnormalShutdown`; der kom ikke et nyt minidump, GPU-fault eller
+  OOM-linje. Parenten havde fortsat mange tråde; main-tråden stod i `poll()`.
+  Content-processens RSS steg fra cirka 253 MB til 328 MB, mens ledig
+  hukommelse faldt fra cirka 279 MB til 134 MB. Der var ingen OOM-linje.
+  En WebExtensions-helper fra en tidligere kørsel levede som orphan med
+  cirka 63 % CPU. `kill_firefox.sh` er tilføjet og testet; den stopper
+  parent, Web Content, WebExtensions, Utility/Socket/RDD og crashhelper.
+  Den gamle helper krævede SIGKILL. Alle Firefox-processer er nu stoppet.
+  KANDIDATSPOR: stabilitet (aftalt og aktivt), brugervenlighed ved
+  bring-up/desktopflow (foreslået), dybere FPS via Firefox/WebRender eller
+  DDK/kernel (foreslået) og accept af nuværende 960x540-baseline
+  (foreslået). Mønter og bogstaver ses desuden ofte som gullige,
+  halvgennemsigtige skyer; dette er et separat, endnu ikke undersøgt
+  renderingsspor.
+  Kørsel og monitorbevis er arkiveret i
+  `/root/crash_fastplay_20261108_0035/`. Stabilitetsmonitoren talte fejlagtigt
+  WebExtensions som spil-content; den er rettet til kun at følge `Web
+  Content` og logger nu også `VmSize`, `VmRSS`, trådantal og memory-mappings.
+  Sessionen sluttede rent: monitor og alle Firefox-processer er stoppet, og
+  lydsinken er fortsat `alsa_output.dmixer`.
+  NÆSTE: Kør en ny længere test med den rettede monitor og IPC-/hang-logging.
+  Prøv `MOZ_LOG=IPC:3 MOZ_LOG_FILE=/tmp/ipc_stability_20261108.log` og verificér
+  at der faktisk oprettes `.moz_log`-filer; hvis modulnavnet er tavst, brug
+  proces-/mappingdata og en målrettet `dom.ipc.processHangMonitor` A/B-test.
+  Undersøg ikke mønt-/bogstavfejlen eller FPS, før stabiliteten er afklaret.
+  START PÅ BOKSEN: `RESTART=1 bash /root/play_fast_game.sh`. Ved behov:
+  `bash /root/kill_firefox.sh`, `bash /root/ensure_audio.sh`.
+  Kør stabilitetsmonitoren med
+  `nohup /root/stability_monitor.sh 1800 5 >/tmp/stability_monitor.out 2>&1 &`.
+  Bevis og crashlogs fra de to hidtidige kørsler ligger i
+  `/root/crash_fastplay_20261107_2305/` og
+  `/root/crash_fastplay_20261108_0035/`.
+  FÆLDER: `pkill -x firefox-esr` efterlader helperprocesser (fælde 68);
+  `pkill -f` kan dræbe egen ssh; BiDi = én session; Openbox' klientramme er
+  10x10 større end renderfladen; `MOZ_LOG_FILE` skal ligge i `/tmp`."*
+
+- **God start i en ny session (Firefox/FPS-sporet, 7. nov 2026 ~23:48) —
+  HISTORISK, AFLØST 8. nov 2026:**
   *"Læs `docs/log/2026-11-07-firefox-fast-play.md`,
   `docs/log/2026-11-05-firefox-fps.md` (HELE notatet),
   `docs/faeller.md` fælde 41-67 og `OVERBLIK.md`. Branch er

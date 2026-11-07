@@ -18,8 +18,13 @@ rm -f "$PROFILE/.parentlock" "$PROFILE/lock"
 rm -f /tmp/cyan_draw_probe.log /tmp/fragdepth_probe.log
 rm -rf /tmp/shaders && mkdir -p /tmp/shaders && chmod 777 /tmp/shaders
 
-pkill -9 -x firefox-esr 2>/dev/null
-sleep 1
+if [ -x /root/kill_firefox.sh ]; then
+    bash /root/kill_firefox.sh >/dev/null 2>&1
+else
+    # Fallback paa en boks hvor helperen endnu ikke er kopieret.
+    pkill -9 -x firefox-esr 2>/dev/null || true
+    sleep 1
+fi
 
 LXPID=$(pidof lxpanel | tr ' ' '\n' | head -1)
 DBUS=$(tr '\0' '\n' < "/proc/$LXPID/environ" 2>/dev/null | grep '^DBUS_SESSION_BUS_ADDRESS=' | cut -d= -f2-)

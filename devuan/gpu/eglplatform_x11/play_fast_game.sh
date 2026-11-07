@@ -78,6 +78,7 @@ content_geometry() {
 [ "$(id -u)" -eq 0 ] || die "skal koeres som root paa boksen"
 [ -x /root/start_cyan_probe.sh ] || die "/root/start_cyan_probe.sh mangler"
 [ -x /root/ensure_audio.sh ] || die "/root/ensure_audio.sh mangler"
+[ -x /root/kill_firefox.sh ] || die "/root/kill_firefox.sh mangler"
 [ -f /root/bidi_cyan.py ] || die "/root/bidi_cyan.py mangler"
 [ -x /root/x_resize ] || die "/root/x_resize mangler"
 [ -f "$PROFILE/xulstore.json" ] || die "$PROFILE/xulstore.json mangler"
@@ -112,13 +113,8 @@ fi
 if pgrep -x firefox-esr >/dev/null 2>&1; then
     [ "$RESTART" = "1" ] \
         || die "Firefox koerer allerede; luk den, eller brug RESTART=1"
-    say "stopper eksisterende Firefox"
-    pkill -TERM -x firefox-esr 2>/dev/null || true
-    for _ in $(seq 1 15); do
-        pgrep -x firefox-esr >/dev/null 2>&1 || break
-        sleep 1
-    done
-    pkill -9 -x firefox-esr 2>/dev/null || true
+    say "stopper eksisterende Firefox og alle helper-processer"
+    bash /root/kill_firefox.sh
 fi
 
 # En doed BiDi-klient kan laase Firefox' ene session (faelde 42).

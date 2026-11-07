@@ -1329,6 +1329,18 @@ bredde og højde er nået. Brug ikke den ydre Firefox-ramme som bevis på
 spilstørrelsen. Den faktiske flade er også den `x11ws`-flade, som screenshot
 og FPS-målinger bruger.
 
+### Fælde 68: `pkill -x firefox-esr` efterlader Firefox-helpers som orphans
+Målt 8. nov 2026. Efter et tab-crash levede en `WebExtensions`-proces fra en
+tidligere Firefox-kørsel med parent PID 1 og cirka 63 % CPU. Content-, RDD-,
+Socket-, Utility- og crashhelper-processer har andre procesnavne end
+`firefox-esr`, så `pkill -x firefox-esr` stopper ikke hele Firefox-træet.
+
+**Regel:** Brug `kill_firefox.sh`, som matcher den fulde `argv[0]` for både
+Firefox-binæren og crashhelper. Den sender SIGTERM og derefter SIGKILL til
+resterende processer. Ved testen blev syv processer stoppet, og den gamle
+WebExtensions-helper krævede SIGKILL. Undgå et bredt `pkill -f`, som kan ramme
+egen SSH-session (fælde 41).
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

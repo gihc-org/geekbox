@@ -33,6 +33,8 @@ og fast-play-/lydværktøjerne 7. nov 2026.
 | `cyan_ab_run.sh` | én A/B-målekørsel: ren profil, Firefox med proxy-opskriften, BiDi-preload, fokus, `fb_fps`, rAF- og GL-tælling, canvas-geometri |
 | `play_fast_game.sh` | fast-play-launcher: standard 960x540 eller `WIN="640 360"`, sikrer `xulstore.json`, starter den kendte Firefox-opsætning, indlæser spillet via minimal BiDi-preload, verificerer renderflade/WebGL og efterlader Firefox kørende |
 | `ensure_audio.sh` | kontrollerer at PulseAudio bruger `/opt/alsa-da` og `alsa_output.dmixer`; genstarter serveren kontrolleret hvis den er faldet tilbage til `auto_null` |
+| `kill_firefox.sh` | stopper Firefox-parent og alle content-/helperprocesser via præcis argv[0]-matchning; undgår orphans og SSH-fælden ved `pkill -f` |
+| `stability_monitor.sh` | logger Firefox-proces-træ, hukommelse, temperatur og crashfiler under en længere test; markerer når parenten eller en aktiv content-process forsvinder |
 | `s1_variants.sh` | S1-værktøjskæden: `backup`, `prefs V1-V5`, `restore <ts>`, `run`, `wait`, `result` — lægger `s1_prefs/*.user.js` ind i profilen og starter målingen afkoblet |
 | `s1_prefs/V1-V5.user.js` | de fem kompositor-varianter fra S1 (V1 baseline, V2 SWGL, V3 WebRender/GPU, V4 uden GPU-proces, V5 WR/GPU uden GPU-proces) |
 | `s1_snapshot.sh` | kører PÅ boksen: proces-snapshot 75 s inde i kørslen (GPU-proces? hvem har hybris-libEGL? GL-aktivitet i probe.log). Nødvendigt fordi `MOZ_LOG`-modulerne Compositor/LayerManager/WebRender er tavse i ESR-140 (fælde 53) |
@@ -62,5 +64,9 @@ ikke pålideligt (fælde 66).
 Den er ikke en målekørsel, kræver `RESTART=1` hvis Firefox allerede kører,
 og lægger logs/screenshot i `/tmp/play_fast_game.*`. Verificér renderfladen,
 ikke Openbox' ydre klientramme (fælde 67).
+
+**Firefox-oprydning fra 8. nov 2026:** Brug `kill_firefox.sh`, ikke kun
+`pkill -x firefox-esr`. Sidstnævnte efterlod WebExtensions med parent PID 1
+og høj CPU (fælde 68). Launcheren kalder den nye helper automatisk.
 
 ---
