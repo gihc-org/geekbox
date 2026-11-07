@@ -459,7 +459,8 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   NUVÆRENDE:**
   *"Læs `docs/log/2026-11-08-stability.md`,
   `docs/log/2026-11-07-firefox-fast-play.md` og `docs/faeller.md` fælde
-  41-68. Branch er `firefox-fps-tuning`; commit `da2ec65` er pushet.
+  41-68. Branch er `firefox-fps-tuning`; `da2ec65` er pushet, og
+  stabilitetsarbejdet blev committet som `3836d01` i denne session.
   STATUS 8. nov 2026 ~00:45: stabilitet er det aktive spor. To længere
   spilkørsler er nu crashet efter cirka 20-22 minutter under anden pause;
   den første pause efter cirka 10 minutter crashede ikke. I den seneste

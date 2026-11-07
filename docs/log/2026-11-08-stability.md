@@ -73,6 +73,8 @@ orphan med cirka 63 % CPU. Det viser, at den gamle oprydning med
   processen forsvandt uden minidump. (00:40)
 - [udført] Sessionen afsluttes rent: monitor og alle Firefox-processer er
   stoppet, og PulseAudio står fortsat på `alsa_output.dmixer`. (00:42)
+- [udført] Oprydningsværktøjer, monitor, crashanalyse og denne handover blev
+  committet i `3836d01`. (00:47)
 
 ## Kandidatspor
 
