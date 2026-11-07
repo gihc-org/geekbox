@@ -89,6 +89,14 @@ grep -c alsa-da /proc/$(pgrep -x pulseaudio | head -1)/maps    # skal være over
 **Gjort:** både `07` og `09` sætter linjen. Test lyden med PulseAudio, ikke med `aplay` —
 `aplay` kan ikke køre mod det gamle bibliotek og giver et misvisende svar.
 
+**Gentaget 7. nov 2026:** efter en manuel genstart var PulseAudio autospawnet
+uden `LD_LIBRARY_PATH`, brugte systemets `libasound` og endte igen på
+`auto_null`. En kontrolleret genstart krævede, at autospawn blev slået
+midlertidigt fra, fordi Firefox/LXDE ellers startede en ny forkert server i
+racet. Baggrunden var, at lyden i den foregående spilsession begyndte at
+hakke, hvorefter PulseAudio blev stoppet. `ensure_audio.sh` gør genstarten
+kontrolleret og efterlader `alsa_output.dmixer`.
+
 ### Fælde 4: Fjernsynet klipper kanterne af billedet
 
 **Du ser:** skrivebordet er der, men bjælken i bunden mangler — eller du kan se 2 pixels
@@ -1182,6 +1190,24 @@ Målt 25. sep 2026 (S2). Tre ting kostede hver sin kørselsrunde:
    håndterer begge. Adresse-frames (`0x…`) mappes til bibliotek via profilens
    `libs`, fordi Debian stripper `libxul`/`libc`.
 
+**Opdatering 5. nov 2026:** Pæn lukning er ikke længere den foretrukne
+profildump. Med `MOZ_PROFILER_STARTUP=1` hænger Firefox efter `browser.close`,
+og Web Content/Utility Process crashede i pthread-mutex, så JSON blev afkortet
+til 12,6 MB. Brug i stedet:
+
+```bash
+MOZ_PROFILER_STARTUP=1 MOZ_PROFILER_STARTUP_INTERVAL=5 \
+  /root/start_cyan_probe.sh
+
+# Efter aktiv gameplay; profilering stopper og dumpes uden shutdown:
+kill -USR2 <Firefox-parent-PID>
+```
+
+Filen skrives til `/home/kristian/Downloads/profile_0_<parent-pid>.json`.
+Vent til filstørrelsen er stabil, og validér JSON før browseren lukkes.
+`salvage_gecko_profile.py` kan lukke et afkortet JSON syntaktisk, men kan ikke
+genskabe tråde, der aldrig blev skrevet.
+
 ### Fælde 59: BiDi-sessionen fra preload-klienten blokerer `browser.close`
 Målt 25. sep 2026 (S2). Efter at have kørt `bidi_cyan.py preload …` (som spillet
 har brug for til alpha-shim'en) kan man **ikke** lukke browseren pænt:
@@ -1259,6 +1285,49 @@ klienten selv kalder `browser.close`. Hvis lydserveren alligevel hænger:
 stop den fastlåste PulseAudio-PID og start den som `kristian`. Kontrollér
 med `pactl list short sink-inputs`; et `auto_null`-sink alene beviser ikke
 at den fysiske lyd er væk.
+
+### Fælde 64: `gfx.logging.slow_frames` giver ikke nødvendigvis `about:support`-poster
+Målt 5. nov 2026. Med `gfx.logging.slow_frames.enabled=true` og aktivt
+gameplay var `about:support` tom for `Slow Frame`-poster. `FrameStats` sendes
+kun for bestemte WebRender-transaktioner; game-pipelinen er root-bridge, så
+denne vej kan ikke bruges som generel stage-måling.
+
+**Brug i stedet:** Gecko-profilerens `CONTENT_FRAME_TIME`,
+`CONTENT_FULL_PAINT_TIME`, `Composite #1`, `CompositeToTarget`,
+`VsyncTimestamp`, `SkippedComposite` og `NumDrawCalls`-markers.
+
+### Fælde 65: `gfx.webrender.software.opengl` er ikke hardware-WebRender
+Målt 5. nov 2026. `gfx.webrender.software.opengl=true` lader SWGL-rasterizeren
+bruge en OpenGL-rendercompositor. Det er stadig software-rasterisering, og på
+denne boks var resultatet dårligere: 960x540 faldt fra 3,2 til 2,2
+skærmopdateringer/s, og game-rAF fra 37-44/10 s til 31-32/10 s.
+
+**Regel:** rul prefen tilbage efter testen og bland den ikke sammen med
+hardware-WebRender (`layers.acceleration.disabled=false`).
+
+### Fælde 66: vinduesstørrelse skal måles før Firefox åbner hovedvinduet
+Målt 5. nov 2026. Et maksimeret Firefox-vindue kan ikke pålideligt gøres mindre
+med `x_resize` bagefter, fordi openbox maximerer det igen.
+
+**Virkende måde:** `cyan_ab_run.sh` patcher `xulstore.json` før start
+(`sizemode=normal` og ønsket størrelse), starter Firefox og verificerer den
+faktiske geometri med `xwininfo`. Restaurér `xulstore.json` i cleanup.
+
+### Fælde 67: vinduesdetektion og Openbox-rammen giver falske geometrifejl
+Målt 7. nov 2026 under den første fast-play-smoke-test. To små fejl fik en
+korrekt start til at se forkert ud:
+
+1. `xwininfo ... | grep -q ...` blev falsk med `set -o pipefail`, fordi
+   `grep -q` lukkede røret før `xwininfo` var færdig. Gem outputtet i en
+   variabel og grep i variablen i stedet.
+2. Openbox' `Navigator`-klientramme kan vise 970x550, mens den underliggende
+   renderflade er præcis 960x540. `x_resize` kan samtidig rapportere en
+   mellemtilstand, før WM'en har anvendt størrelsen.
+
+**Regel:** Poll den største underliggende X-vinduesflade, indtil den ønskede
+bredde og højde er nået. Brug ikke den ydre Firefox-ramme som bevis på
+spilstørrelsen. Den faktiske flade er også den `x11ws`-flade, som screenshot
+og FPS-målinger bruger.
 
 ---
 

@@ -579,6 +579,51 @@ def main():
                         }, timeout=30)
                         print("CANVAS-LIVE-SCALE:", json.dumps(rr)[:500])
                 threading.Thread(target=_scale_poll, daemon=True).start()
+            # SUPPORT_POLL=/tmp/support_now: naviger til about:support og gem
+            # sidens tekst. Bruges efter en måling til Firefox' "Slow Frame"
+            # statistik uden at skulle lukke browseren.
+            support_poll = os.environ.get("SUPPORT_POLL")
+            if support_poll:
+                support_out = os.environ.get(
+                    "SUPPORT_OUT", "/tmp/firefox_support.txt")
+
+                def _support_poll():
+                    while not stop[0]:
+                        time.sleep(2)
+                        if not os.path.exists(support_poll):
+                            continue
+                        try:
+                            os.unlink(support_poll)
+                        except Exception:
+                            pass
+                        try:
+                            rr = call("browsingContext.navigate",
+                                      {"context": ctx,
+                                       "url": "about:support"},
+                                      timeout=60)
+                            print("SUPPORT NAVIGERET:",
+                                  json.dumps(rr)[:300])
+                            time.sleep(5)
+                            rr = call("script.evaluate", {
+                                "expression":
+                                    "document.body ? document.body.innerText : ''",
+                                "target": {"context": ctx},
+                                "awaitPromise": False,
+                                "returnByValue": True,
+                            }, timeout=60)
+                            text = ((rr.get("result") or {}).get("result") or {}).get(
+                                "value")
+                            if text:
+                                with open(support_out, "w") as fh:
+                                    fh.write(text)
+                                print("SUPPORT gemt: %s (%d tegn)" %
+                                      (support_out, len(text)))
+                            else:
+                                print("SUPPORT fejlede:",
+                                      json.dumps(rr)[:500])
+                        except Exception as e:
+                            print("SUPPORT-fejl: %s" % e)
+                threading.Thread(target=_support_poll, daemon=True).start()
             # SHOT_AT="60,180": tag Firefox' EGEN gengivelse af siden på de
             # tidspunkter (uafhængigt af hvad skærmen viser).
             shot_at = os.environ.get("SHOT_AT")

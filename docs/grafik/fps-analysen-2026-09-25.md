@@ -24,22 +24,35 @@ fryser spillet, hvis den sættes i preload; live-halvering efter stabil gameplay
 virker teknisk, men giver også kun 1,3/s. Se
 `docs/log/2026-11-05-firefox-fps.md`.
 
+**Opdateret 5. nov 2026 efter runtime-profil og arealtest:** S2-konklusionen
+skal præciseres. Den daværende profil viste, at de synlige main- og
+Compositor-tråde ventede, men den fangede ikke den samlede pris i
+Renderer-tråden. Den nye 5 ms-profil viser, at spillets rAF-cyklus har p50
+0,699 s, at `CONTENT_FRAME_TIME` er 1,294 s, og at content-paint kun er 66 ms.
+Renderer bruger cirka 0,65 s CPU på de store game-frames og afviser nye frames,
+når der allerede er en pending frame. `about:support` bekræfter
+`Compositing: WebRender (Software)`. Ved 640x360 steg rAF til cirka 4,0/s og
+skærmen til 5,0/s; 960x540 gav cirka 3,7-4,4 rAF/s og 3,2 skærmopdateringer/s.
+SWGL med `gfx.webrender.software.opengl=true` var dårligere og er rullet
+tilbage. Den praktiske løftestang er derfor **softwarekompositorens flade**,
+ikke endnu en frame-rate-pref.
+
 * **S1 (skift Firefox' kompositor-vej) er et negativt resultat.** SWGL (V2) og
   software uden GPU-proces (V4) ligger inden for støj omkring baselinen (V1);
   WebRender på GPU (V3) og samme uden GPU-proces (V5) dræber kompositor-laget
   (`DeviceReset DRIVER_ERROR ::WR_POST_UPDATE` / `WaitFlushedEvent … is
   delayed`), giver ~1/s og maler ikke browserens chrome. Målinger og data:
   `docs/log/2026-09-25-cyan-fps.md` (S1-sessionen), fælder 53-55.
-* **S2 (profilering) peger et helt andet sted hen: frame-planlægningen.** Med
+* **S2 (profilering, oprindelig konklusion).** Med
   Gecko-profileren (66 MB over ~174 s) står *alle* Firefox-tråde og venter —
   indholdsprocessens `GeckoMain` 86,7 % i `PollWrapper`, parent-`GeckoMain`
   64,7 %, `Compositor` 98,2 % i `ThreadEventQueue::GetEvent::Wait`. Der bruges
   kun ~145 ms main-tråds-CPU pr. frame. Profilens egne markers: vsync ~12/s,
   `RefreshDriverTick` ~2,5/s, `SkippedComposite` ~0,7/s — men spillets rAF kun
-  **~0,9/s**. Altså: **loftet er ikke CPU, GPU eller compositing-prisen, men
-  planlægningen fra tick til færdig paint/transaction** (samme sted som
-  `Over max pending transaction limit when trying to paint, skipping`).
-  Værktøj: `prof_top.py`; fælder 58-59.
+  **~0,9/s**. Den daværende konklusion var, at tiden lå mellem tick og færdig
+  paint/transaction. **5. nov 2026 er dette præciseret:** backpressure opstår
+  fortsat der, men den bagvedliggende pris ligger i Renderer-trådens
+  softwarekompositing. Værktøj: `prof_top.py`; fælder 58-59.
 * **Næste tre forsøg** (aftalt 26. sep, skrevet ind i handover-prompten i
   `TODO.md`): (1) `layout.frame_rate` fastsat, (2) kort kørsel med
   `MOZ_LOG=nsRefreshDriver:5` og tidsstempler for tick → "Completed transaction

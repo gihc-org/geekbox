@@ -2,6 +2,7 @@
 
 > Oprettet 6. sep 2026 som samlet indgang til projektets mange elementer.
 > Læs først: [README.md](README.md) (formål/flash), seneste session
+> `docs/log/2026-11-07-firefox-fast-play.md` (7. nov, fast-play og lyd),
 > `docs/log/2026-11-05-firefox-fps.md` (5. nov, Firefox/FPS),
 > `docs/log/2026-08-27-cyan-scene-handover.md` (opgavebaggrund) og
 > `docs/log/2026-08-26-gralloc-lock-spor.md` (beslutningslog).
@@ -268,6 +269,70 @@ gameplay virker, men giver også kun 1,3/s. Næste spørgsmål er hvor i
 compositor-/IPC-rundturen de cirka 1,2-1,4 s forsvinder. Detaljer og beviser:
 `docs/log/2026-11-05-firefox-fps.md`.
 
+**Opdateret 5. nov 2026 ~01:33 (transaction reproduceret + runtime-profil):**
+Fem hundrede og femoghalvfjerds transaction-par i spilprocessen gav p50
+**1,239 s** og p90 **1,418 s**; parent-processen gav p50 0,997 s.
+Compositor-parenten frigiver først transaction-id'en med `DidComposite`.
+Shutdown-dumpet af Gecko-profilen crashede i pthread-mutex og blev afkortet,
+men `SIGUSR2` kan dumpe en komplet profil til
+`/home/kristian/Downloads/profile_0_<pid>.json`, mens Firefox kører. En ny
+spilkørsel med 5 ms sampling er derfor startet uden at være afhængig af en
+pæn shutdown. Detaljer og crashbeviser: `docs/log/2026-11-05-firefox-fps.md`.
+
+**Opdateret 5. nov 2026 ~01:50 (Renderer-tråden er flaskehalsen):** Den
+komplette runtime-profil viser p50 0,699 s mellem spillets rAF-cyklusser.
+`CONTENT_FRAME_TIME` er p50 1,294 s, men content-paint er kun 66 ms og vsync
+er stabil ved 30 Hz. Renderer-tråden har 364 composites over 500 ms med
+p50 652 ms og næsten ingen tomgangssamples; 333 composites blev sprunget over
+med `Too many pending frames`. Næste måling bruger Firefox' egen
+slow-frame-statistik for at opdele transaction, full paint, upload, render og
+composite. Detaljer: `docs/log/2026-11-05-firefox-fps.md`.
+
+**Opdateret 5. nov 2026 ~02:05 (softwarekompositor + lille vindue):**
+`about:support` viser `Compositing: WebRender (Software)`.
+`layers.acceleration.disabled=true` blokerer hardwarekompositoren, mens WebGL
+fortsat kører på PowerVR via hybris. I et 640x360-vindue steg skærmen til
+**5,0 opdateringer/s** og spillets rAF til **40-41/10 s (ca. 4,0 fps)** mod
+1,4/s ved 1080p; brugeren bekræftede, at det føles markant bedre. 960x540
+testes som mulig mellemvej.
+
+**Opdateret 5. nov 2026 ~02:18 (vinduesstørrelse er den virksomme løftestang):**
+Softwarekompositoren skalerer med fladen. 640x360 gav 5,0
+skærm-opdateringer/s og cirka 4,0 rAF/s; 960x540 gav 3,2/s og 37-44 rAF/10 s,
+altså næsten samme spilfart med en større flade. SWGL med
+`gfx.webrender.software.opengl=true` gav kun 2,2/s og er rullet tilbage.
+Displayet har kun 1920x1080-mode, så der er ingen automatisk TV-opskalering af
+et mindre framebuffer. Næste valg er en dedikeret 960x540- eller
+640x360-spilstørrelse.
+
+**Opdateret 7. nov 2026 ~23:05 (fast-play-launcher):**
+`devuan/gpu/eglplatform_x11/play_fast_game.sh` er implementeret og teknisk
+smoke-testet ved 960x540. Den bruger den kendte vnext12-opsætning,
+`CYAN_DEPTHCLEAR=1` og minimal BiDi-preload, patcher `xulstore.json` før
+start, verificerer renderfladen og WebGL samt efterlader Firefox kørende.
+`user.js` er uændret. Firefox står nu på `PRESS TO PLAY`; næste skridt er
+brugerens fysiske accepttest. Hvis 960x540 accepteres, er den standard;
+`WIN="640 360"` er den hurtige variant. Detaljer:
+`docs/log/2026-11-07-firefox-fast-play.md`.
+
+**Opdateret 7. nov 2026 ~23:11 (content-crash under første spiltest):**
+Den første fysiske kørsel fik et kort forsvindende spilområde, som kom
+tilbage, og derefter crashede Web Content med `SIGSEGV / SEGV_MAPERR` på
+adresse `0x6` i `libxul.so` (`libxul+0x32f45f4`). Firefox-parenten og X
+fortsatte; der var ingen `CTXLOST`, GPU-fault eller DeviceReset. Minidump og
+logs er arkiveret i `/root/crash_fastplay_20261107_2305/`. Spillet er
+genstartet rent i 960x540, og næste skridt er at afgøre om crashet gentages.
+
+**Opdateret 7. nov 2026 ~23:43 (stabil 960x540 + lydfix):**
+En efterfølgende fysisk test varede cirka fem minutter uden crash, og
+spilområdet forblev synligt; 960x540 er derfor standard. Manglende lyd skyldtes
+en PulseAudio-server autospawnet uden `/opt/alsa-da`, hvilket gav `auto_null`.
+`ensure_audio.sh` genstarter nu kun lydstakken, når det er nødvendigt, og
+`play_fast_game.sh` kalder den før Firefox. Testtonen kørte gennem
+`alsa_output.dmixer` med et aktivt sink-input. Brugeren bekræftede derefter,
+at lyden er tilbage. Fast-play- og lydarbejdet er dermed afsluttet;
+960x540 er standard. Det tidligere minidump er fortsat arkiveret.
+
 - **Spillet renderer stadig korrekt** (vnext12 `dcc0a68f` + alpha-shim +
   `CYAN_DEPTHCLEAR=1`). Draw-kaldene er ikke loftet: driveren alene koster
   0,099 ms/kald og spillet ~250-280 kald/frame = ~10 ms/frame; proxyens egne
@@ -417,6 +482,8 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
 | `docs/log/2026-08-27-cyan-scene-handover.md` | **Opgaverammen:** cyan-scene + fuld virkende konfiguration + fælder |
 | `docs/log/2026-09-06-cyan-clone3.md` | **Seneste session:** kernel clone3-fix, GL-målinger, replay-probe, load-stall-fælder |
 | `docs/log/2026-09-08-cyan-scene.md` | **Seneste session (8. sep):** divisor ude, live-vs-offline, præsentationssymptom, nye probes/fælder |
+| `docs/log/2026-11-05-firefox-fps.md` | FPS-baseline, transaction-profiler og vinduesarealets betydning |
+| `docs/log/2026-11-07-firefox-fast-play.md` | Fast-play-launcher, content-crash, stabil 960x540-test og lydfix |
 | `devuan/gpu/eglplatform_x11/*.c/.py/.sh` | Kode: proxy, probes, scripts (se §De mange elementer) |
 
 ## Åbne spor / næste skridt

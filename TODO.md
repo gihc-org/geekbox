@@ -455,65 +455,101 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (Firefox/FPS-sporet, 5. nov 2026 ~00:40) —
+- **God start i en ny session (Firefox/FPS-sporet, 7. nov 2026 ~23:48) —
   NUVÆRENDE:**
-  *"Læs `docs/log/2026-11-05-firefox-fps.md` (HELE notatet),
-  `docs/log/2026-11-04-firefox-fps.md` (HELE notatet, baggrund),
-  `docs/log/2026-11-04-chromium-fps.md` (Chromium er parkeret),
-  `docs/grafik/fps-analysen-2026-09-25.md` (§0, §5, §8 og §9),
-  `docs/faeller.md` fælde 41-63 og `OVERBLIK.md`. Branch er
-  `firefox-fps-tuning`; funktionscommittet for målingerne er `340191f`, og
-  denne handover følger i den næste dokumentationscommit.
-  STATUS 5. nov 2026 ~00:40: Firefox-vejen er stadig den spillbare vej med
-  vnext12 `dcc0a68f` + alpha-shim via BiDi-preload + `CYAN_DEPTHCLEAR=1`.
-  Spillet er brugerbekræftet spilbart. Boksen er på `192.168.0.135` med
-  fallback `192.168.1.50`. Ved sessionsslut kører hverken Firefox, BiDi eller
-  testlyd; temperaturen er 74-77 °C. `user.js` er genskabt bit-identisk med
-  `md5 0ac16be87cdf95b1250043f4efc00816`. Chromium er fortsat parkeret.
-  MÅLT: Ren gameplay-baseline er **1,4 skærm-opdateringer/s** og
-  **1,3-1,4 rAF/s**. `layout.frame_rate=30` gav 1,3/s.
-  `layout.throttle_in_process_iframes=false` gav også 1,3/s.
-  `MOZ_LOG=timestamp,nsRefreshDriver:5` viser cirka 18 ticks/s, men kun
-  1,33-1,35 completed transactions/s. En transaction tager median **1,398 s**
-  fra allocation til completion i spilprocessen og **1,183 s** i
-  parent-processen. Den hardcodede pending-grænse er 2, så to samtidige
-  transactions giver en completion cirka hver 0,74 s. S3 i preload fryser
-  spillet på load-skærmen; live-halvering efter stabil gameplay virker, men
-  giver også kun 1,3/s.
-  NÆSTE, i denne rækkefølge: (1) Bekræft i samme session at en transaction
-  stadig tager cirka 1,2-1,4 s, og gem `Allocating`/`Completed`-par pr. PID.
-  (2) Find hvor de 1,2-1,4 s ligger i compositor-/IPC-rundturen. Brug
-  `DEBUGINFOD_URLS=https://debuginfod.debian.net` og gdb mod de relevante
-  content-/parent-processer, eller en kort Gecko-profil hvis symbolerne er
-  utilstrækkelige. Fatal-signal-logning skal være slået til før kørsel.
-  (3) Hvis rundturen ikke kan forklares i Firefox-koden, overvej S4 med
-  governor/DDR/swap; dette er kun et supplement.
-  (4) Ændring af den hardcodede grænse fra 2 kræver rebuild eller binær patch
-  af `libxul`; det er et større, risikabelt forsøg og må ikke gøres uden
-  backup og brugerens godkendelse.
-  START: `GAME_URL=about:blank CYAN_DEPTHCLEAR=1 nohup
-  /root/start_cyan_probe.sh > /root/cyan_launch.log 2>&1 &` → vent på port
-  9222 → `CLOSE_WHEN_DONE=1 PYTHONUNBUFFERED=1 nohup python3
-  /root/bidi_cyan.py preload goto https://poki.com/en/g/subway-surfers 900
-  > /root/bidi_cyan.log 2>&1 &`.
-  MÅL MED: `/root/fb_fps /dev/fb0 40 20` og `FPS tr=` fra spillets
-  iframe. Tag en frisk baseline i samme session før hver A/B, og brug
-  `POLL=20`. Til MOZ_LOG: `MOZ_LOG=timestamp,nsRefreshDriver:5` med
-  `MOZ_LOG_FILE` i `/tmp`, aldrig under `/root`; loggen er tung og må ikke
-  bruges til FPS-tallet.
-  LIVE S3: start normalt, vent på stabil gameplay, kør BiDi med
-  `CANVAS_SCALE_POLL=/tmp/canvas_scale_now`, og skriv `0.5` til filen. Brug
-  ikke `CYAN_CANVAS_SCALE` i preload; det fryser spillet.
-  LUK PÆNT: send SIGTERM kun til BiDi-PID'en; `CLOSE_WHEN_DONE=1` kalder
-  derefter `browser.close`. Hvis PulseAudio hænger med gentagen spilllyd,
-  stop den fastlåste PulseAudio-PID og start den som `kristian`; bekræft at
-  `pactl list short sink-inputs` er tom. Efter reboot skal GPU,
-  bindapi-lappen og vnext12 bringes op som i notatet.
-  FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session; X kan skifte VT
-  ved `service nodm restart`; `/tmp` ryddes ved reboot; `MOZ_LOG_FILE` i
-  `/root` giver ingen log."*
+  *"Læs `docs/log/2026-11-07-firefox-fast-play.md`,
+  `docs/log/2026-11-05-firefox-fps.md` (HELE notatet),
+  `docs/faeller.md` fælde 41-67 og `OVERBLIK.md`. Branch er
+  `firefox-fps-tuning`; de uncommitted ændringer fra 5. nov og
+  fast-play-arbejdet skal bevares.
+  STATUS 7. nov 2026 ~23:48: `devuan/gpu/eglplatform_x11/
+  play_fast_game.sh` er implementeret og teknisk smoke-testet ved 960x540.
+  Den patcher `xulstore.json` før start, rydder kun kendte flygtige
+  profildata, starter vnext12 `dcc0a68f` + `CYAN_DEPTHCLEAR=1`, indlæser
+  spillet via minimal BiDi-preload og efterlader Firefox kørende. Den
+  verificerer den faktiske renderflade og en gyldig WebGL-kontekst samt
+  gemmer et screenshot. `user.js` er uændret (`md5 0ac16be8…`).
+  Første fysiske kørsel fik et kort forsvindende spilområde, som kom tilbage,
+  og derefter et Web Content-crash: PID 12726 døde omkring 23:05:22 med
+  `SIGSEGV / SEGV_MAPERR` på adresse `0x6` i `libxul.so`
+  (`libxul+0x32f45f4`). Der var ingen `CTXLOST`, GPU-fault eller
+  DeviceReset. Minidump og logs er arkiveret i
+  `/root/crash_fastplay_20261107_2305/`.
+  En efterfølgende fem-minutters spiltest crashede ikke, og spilområdet
+  forblev synligt. 960x540 er derfor standard. Manglende lyd blev derefter
+  fundet som PulseAudio `auto_null`: serveren var autospawnet uden
+  `/opt/alsa-da`. `ensure_audio.sh` er tilføjet, og `play_fast_game.sh`
+  kalder den før Firefox-start. Testtonen gav `alsa_output.dmixer` i RUNNING
+  med aktivt sink-input. Testkørslen er `/tmp/play_fast_game.qcBVid/`.
+  Brugeren bekræftede, at lyden er tilbage. Dermed bestod
+  fem-minutters stabilitetstesten, 960x540-accepttesten og lydtesten.
+  Fast-play- og lydarbejdet er afsluttet. Hvis crashet senere gentages, er
+  `/root/crash_fastplay_20261107_2305/` beviset der skal analyseres videre.
+  Næste større spor kræver en ny, udtrykkelig beslutning. Start ikke nye
+  `layout.frame_rate`-, canvas-, SWGL- eller hardware-WebRender-forsøg uden
+  en sådan beslutning.
+  START PÅ BOKSEN: `bash /root/play_fast_game.sh` eller
+  `WIN="640 360" bash /root/play_fast_game.sh`. Hvis Firefox allerede kører,
+  kræver launcheren `RESTART=1`. Logs og screenshot lægges i
+  `/tmp/play_fast_game.*`. Lydstakken kontrolleres separat med
+  `bash /root/ensure_audio.sh`.
+  FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session;
+  `input.performActions` kan hænge efter mange handlinger; Openbox' klientramme
+  er 10x10 større end renderfladen; verificér den største underliggende
+  X-vinduesflade, ikke `Navigator`-rammen; `MOZ_LOG_FILE` skal ligge i
+  `/tmp`."*
 
-- **God start i en ny session (Firefox/FPS-sporet, 4. nov 2026) —
+- **God start i en ny session (Firefox/FPS-sporet, 5. nov 2026 ~02:25) —
+  HISTORISK, AFLØST 7. nov 2026:**
+  *"Læs `docs/log/2026-11-05-firefox-fps.md` (HELE notatet, især
+  "Erfaringer og konklusion"), `docs/grafik/fps-analysen-2026-09-25.md`
+  (§0), `docs/faeller.md` fælde 41-66 og `OVERBLIK.md`. Branch er
+  `firefox-fps-tuning`; seneste commit er `41f8e6d`, men måleværktøjer og
+  dokumentation fra 5. nov er uncommitted i worktree.
+  STATUS 5. nov 2026 ~02:25: Firefox-vejen er fortsat den spillbare vej med
+  vnext12 `dcc0a68f`, alpha-shim via BiDi-preload og `CYAN_DEPTHCLEAR=1`.
+  Boksen er på `192.168.0.135` med fallback `192.168.1.50`. Firefox, BiDi og
+  testlyd er stoppet; temperaturen er cirka 77 °C. `user.js` er bit-identisk
+  med `md5 0ac16be87cdf95b1250043f4efc00816`, og `xulstore.json` er igen
+  maksimeret. Chromium er parkeret.
+  MÅLT: Flaskehalsen er `WebRender (Software)`, ikke vsync eller
+  content-paint. Vsync er stabil ved 30 Hz; `CONTENT_FULL_PAINT_TIME` er
+  cirka 66 ms. `CONTENT_FRAME_TIME` er cirka 1,3 s, fordi Renderer-tråden
+  bruger cirka 0,65 s CPU på de store game-frames og kun tillader én pending
+  frame. Ved 1080p er resultatet 1,4 skærm-opdateringer/s. Ved 960x540 er
+  resultatet 3,2 skærm-opdateringer/s og 37-44 rAF/10 s. Ved 640x360 er
+  resultatet 5,0 skærm-opdateringer/s og cirka 4,0 rAF/s; brugeren bekræftede
+  en tydelig forbedring. SWGL med `gfx.webrender.software.opengl=true` var
+  dårligere (2,2/s og 31-32 rAF/10 s) og er rullet tilbage. Hardware-WebRender
+  er stadig et negativt, risikabelt spor.
+  NÆSTE: Lav en dedikeret fast-play launcher, foreløbig
+  `devuan/gpu/eglplatform_x11/play_fast_game.sh`, med **960x540** som
+  standard og valgfri `WIN="640 360"`. Launcheren skal patche
+  `xulstore.json` før Firefox-start, starte den kendte Firefox-opsætning,
+  vente på port 9222, indlæse spillet via BiDi-preload og efterlade Firefox
+  kørende. Den må ikke være et måle-script og må ikke ændre `user.js`.
+  Verificér faktisk `xwininfo`-geometri og at spillet er synligt. Bed derefter
+  brugeren fysisk spille; dette er den nødvendige accepttest. Hvis 960x540
+  accepteres, gøres den til standard. Tilbyd 640x360 til maksimal hastighed.
+  1280x720 undersøges kun, hvis brugeren synes, at 960x540 er for lille.
+  IKKE NÆSTE: nye `layout.frame_rate`-prefs, canvas-skalering, SWGL/OpenGL
+  eller hardware-WebRender uden en ny, udtrykkelig beslutning.
+  START/MÅL:
+  `bash devuan/gpu/eglplatform_x11/cyan_ab_run.sh <tag> 115 "" ""` med
+  `WIN="960 540" FBSEC=30 SETTLE=50 POLL=20 PLAY_AT="70,85,100"` er den
+  automatiserede referencemåling. Mål både `FPS tr=` og
+  `/root/fb_fps /dev/fb0 30 20`.
+  PROFIL: brug `MOZ_PROFILER_STARTUP=1 MOZ_PROFILER_STARTUP_INTERVAL=5` og
+  `kill -USR2 <Firefox-parent>`. Profilen skrives til
+  `/home/kristian/Downloads/profile_0_<pid>.json`; brug ikke shutdown-dump.
+  LUK: ved testkørsel send SIGTERM til BiDi-klienten og lad
+  `cyan_ab_run.sh` rydde op. Ved fast-play skal Firefox blive kørende.
+  FÆLDER: `pkill -f` kan dræbe egen ssh; BiDi = én session;
+  `input.performActions` kan hænge efter mange handlinger; X kan skifte VT
+  ved `service nodm restart`; vinduesstørrelse skal sættes før start;
+  `MOZ_LOG_FILE` skal ligge i `/tmp`."*
+
+- **God start i en ny session (Firefox/FPS-sporet, 4. nov 2026) — HISTORISK,
   AFLØST 5. nov 2026:**
   *"Læs `docs/log/2026-11-04-firefox-fps.md` (HELE notatet),
   `docs/log/2026-11-04-chromium-fps.md` (HELE notatet; Chromium er parkeret),
