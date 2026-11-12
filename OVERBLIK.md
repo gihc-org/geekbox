@@ -347,9 +347,10 @@ Stabilitetssporet er bestået for det praktiske spilflow. Logs fra den beståede
 test ligger i `/root/stability_success_20261112/`; detaljer og kandidatspor
 står i `docs/log/2026-11-12-stability.md`.
 
-Næste rækkefølge er aftalt: et samlet bring-up-flow og derefter
-FPS-profilering. UI-/viewport-fejlen er løst ved at fokusere spil-iframen
-efter cookie-overlayet og forhindre utilsigtet sidescroll.
+UI-/viewport-fejlen er løst ved at fokusere spil-iframen efter
+cookie-overlayet og forhindre utilsigtet sidescroll. Bring-up-flowet er
+implementeret og bestået gennem genstart med skrivebordsikon og afgrænset
+sudo-regel. FPS-profilering er næste spor.
 
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var

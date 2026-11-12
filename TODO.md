@@ -469,10 +469,11 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   Logs fra den beståede test er arkiveret i
   `/root/stability_success_20261112/`; den tidligere hændelse ligger i
   `/root/crash_fastplay_20261112_0056/`. Stabilitetssporet er bestået for
-  det praktiske spilflow. NÆSTE, AFTALT RÆKKEFØLGE: (1) samlet bring-up-flow,
-  (2) FPS-profilering. UI-/viewport-fejlen er løst: spil-iframen får fokus
+  det praktiske spilflow. UI-/viewport-fejlen er løst: spil-iframen får fokus
   efter cookie-overlayet, og mellemrum/piletaster scroller ikke topsiden.
-  START PÅ BOKSEN:
+  Bring-up-flowet er implementeret og bestået gennem genstart via
+  `/usr/local/bin/subway-surfers` og skrivebordsikonet. NÆSTE:
+  FPS-profilering. START PÅ BOKSEN:
   `RESTART=1 bash /root/play_fast_game.sh`. Monitor:
   `nohup /root/stability_monitor.sh 18000 5
   >/tmp/stability_monitor_20261112.out 2>&1 &`. FÆLDER:

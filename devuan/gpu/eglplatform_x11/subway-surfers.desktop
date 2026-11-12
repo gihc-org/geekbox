@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Subway Surfers
+Comment=Start GPU, lyd og Subway Surfers via den kendte Firefox-opsætning
+Exec=/usr/local/bin/subway-surfers
+Icon=applications-games
+Terminal=false
+Categories=Game;
+StartupNotify=true

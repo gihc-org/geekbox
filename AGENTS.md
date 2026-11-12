@@ -22,9 +22,11 @@ Firefox kørte fortsat efter næsten seks timer. Ressourcetallene var stabile
 eller faldende. En enkeltstående `threaded-ml`-segmentation efter cirka fire
 timer i den foregående kørsel blev ikke reproduceret.
 
-Stabilitets- og UI-sporet er bestået for det praktiske spilflow. Næste spor er
-besluttet i denne rækkefølge: et samlet bring-up-flow nu og derefter
-FPS-profilering. Læs den nyeste handover i `TODO.md`,
+Stabilitets- og UI-sporet er bestået for det praktiske spilflow.
+Bring-up-flowet er implementeret og bestået gennem genstart: skrivebordsikon,
+lxterminal-wrapper, afgrænset sudo-regel og `start_game_all.sh` retter uret
+fra gatewayen og bringer GPU, proxy, bind-api, VT og lyd op før fast-play.
+FPS-profilering er næste aftalte spor. Læs den nyeste handover i `TODO.md`,
 `docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md` og
 `docs/faeller.md` fælde 41-68.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,

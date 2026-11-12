@@ -1,0 +1,1 @@
+kristian ALL=(root) NOPASSWD: /root/start_game_all.sh

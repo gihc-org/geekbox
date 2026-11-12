@@ -84,13 +84,25 @@ er aktivt nu.
   af telemetrien, fordi tastetrykkene nu blev korrekt afleveret til spillets
   iframe i stedet for til topsiden. (21:06)
 - [aftalt] Bring-up-flowet er det næste aktive spor. (21:06)
+- [udført] `start_game_all.sh`, en lokal lxterminal-wrapper, et skrivebordsikon
+  og en sudo-regel begrænset til præcis dette script er implementeret og
+  installeret på boksen. (21:10)
+- [udført] Hele kæden er testet både via `sudo -n /root/start_game_all.sh` og
+  via `/usr/local/bin/subway-surfers`; GPU, proxy, bind-api-lap, VT, lyd og
+  fast-play blev gennemført, og spillet startede. (21:12)
+- [afventer] Kontrollér efter en genstart, at skrivebordsikonet kan starte
+  spillet uden SSH eller manuelle bring-up-trin. (21:12)
+- [udført] Genstartstesten bestod: uret stod på 2013, men launcherne hentede
+  tid fra netværksgatewayen, satte uret til 2026, bragte GPU/proxy/bind-api,
+  VT og lyd op og startede spillet. (21:16)
+- [udført] Bring-up-flowet er bestået for den genstartede boks. Et ekstra
+  værn stopper launcherne med en tydelig besked, hvis Firefox allerede kører.
+  (21:17)
 
 ## Næste skridt
 
-1. Lav et samlet bring-up-flow, så spillet kan startes lokalt efter en
-   strømcyklus uden manuelle SSH-trin.
-2. Gå derefter videre til FPS-profilering.
-3. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
+1. Gå videre til FPS-profilering.
+2. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 
 ## Kommandoer
