@@ -32,7 +32,11 @@ buffer og fire konverteringstråde har øget skærmraten ved 960x540 fra cirka
 3,2 til 6,5 opdateringer/s med måling og 5,9/s uden måleoverhead. Næste
 test viste at 640x360 kun gav 5,2/s og krævede scroll; det er derfor ikke
 bedre. Behold 960x540 som standard. Canvas-nedskalering efter stabil gameplay
-er næste foreslåede FPS-forsøg. Læs den nyeste handover i `TODO.md`,
+er nu det aktive FPS-forsøg. 0,75 gav 7,5/s; 0,5 gav 6,2-6,6/s og blev
+vurderet som tydeligt pixeleret. Brugeren accepterede 0,75 som lidt pixeleret,
+men acceptabelt. Automatisk skalering efter 20 sekunders stabilt canvas er nu
+standard og giver 8,0/s og 69-79 rAF/10 s. Sæt `CYAN_CANVAS_LIVE_SCALE=1` for
+fuld canvas. Læs den nyeste handover i `TODO.md`,
 `docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md` og
 `docs/faeller.md` fælde 41-68.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,

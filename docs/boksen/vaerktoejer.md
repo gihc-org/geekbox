@@ -32,6 +32,7 @@ og fast-play-/lydværktøjerne 7. nov 2026.
 | `x_focus.c`, `x_resize.c` | sætter fokus på hovedvinduet / skalerer det (`-big` = største Firefox-vindue) |
 | `cyan_ab_run.sh` | én A/B-målekørsel: ren profil, Firefox med proxy-opskriften, BiDi-preload, fokus, `fb_fps`, rAF- og GL-tælling, canvas-geometri |
 | `play_fast_game.sh` | fast-play-launcher: standard 960x540 eller `WIN="640 360"`, sikrer `xulstore.json`, starter den kendte Firefox-opsætning, indlæser spillet via minimal BiDi-preload, verificerer renderflade/WebGL og efterlader Firefox kørende |
+| `bidi_cyan.py` canvas-live-scale | automatisk `CYAN_CANVAS_LIVE_SCALE=0.75` efter 20 sekunders stabilt game-canvas; `CYAN_CANVAS_LIVE_SCALE=1` slår skalering fra |
 | `ensure_audio.sh` | kontrollerer at PulseAudio bruger `/opt/alsa-da` og `alsa_output.dmixer`; genstarter serveren kontrolleret hvis den er faldet tilbage til `auto_null` |
 | `kill_firefox.sh` | stopper Firefox-parent og alle content-/helperprocesser via præcis argv[0]-matchning; undgår orphans og SSH-fælden ved `pkill -f` |
 | `stability_monitor.sh` | logger Firefox-proces-træ, hukommelse, temperatur og crashfiler under en længere test; markerer når parenten eller en aktiv content-process forsvinder |

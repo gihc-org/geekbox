@@ -26,6 +26,7 @@ RESTART=${RESTART:-0}
 BIDI_SECS=${BIDI_SECS:-120}
 SHOT_AT=${SHOT_AT:-65}
 READY_TIMEOUT=${READY_TIMEOUT:-120}
+KEEP_BIDI=${KEEP_BIDI:-0}
 
 D=$(mktemp -d /tmp/play_fast_game.XXXXXX)
 LAUNCH_LOG="$D/launch.log"
@@ -209,6 +210,8 @@ say "indlaeser spillet via minimal BiDi-preload"
 SHOT_AT="$SHOT_AT" \
 SHOT_DIR="$SHOT_DIR" \
 CLOSE_WHEN_DONE=0 \
+CYAN_CANVAS_LIVE_SCALE="${CYAN_CANVAS_LIVE_SCALE-0.75}" \
+CYAN_CANVAS_LIVE_DELAY="${CYAN_CANVAS_LIVE_DELAY:-20}" \
 PYTHONUNBUFFERED=1 \
   nohup python3 /root/bidi_cyan.py preloadmin goto \
     "$URL" "$BIDI_SECS" >"$BIDI_LOG" 2>&1 </dev/null &
@@ -243,7 +246,9 @@ pgrep -x firefox-esr >/dev/null 2>&1 \
 # Preloadet er nu udført. Luk kun BiDi-klienten; browseren må ikke lukkes.
 # Både den normale 120 s-udgang og screenshot-tråden kan hænge på den ene
 # tilladte WebSocket-session, så frigør den aktivt efter en vellykket load.
-if kill -0 "$BIDI_PID" 2>/dev/null; then
+if [ "$KEEP_BIDI" = "1" ]; then
+    say "BiDi-klienten beholdes til live-eksperimenter (PID $BIDI_PID)"
+elif kill -0 "$BIDI_PID" 2>/dev/null; then
     kill -TERM "$BIDI_PID" 2>/dev/null || true
     for _ in $(seq 1 10); do
         kill -0 "$BIDI_PID" 2>/dev/null || break
@@ -261,4 +266,8 @@ fi
 say "FAST-PLAY KLAR: ${W}x${H}, Firefox koerer"
 say "logs: $D"
 say "screenshot: $(first_shot)"
-say "BiDi-klienten er lukket; Firefox bliver koerende."
+if [ "$KEEP_BIDI" = "1" ]; then
+    say "BiDi-klienten koerer fortsat; Firefox bliver koerende."
+else
+    say "BiDi-klienten er lukket; Firefox bliver koerende."
+fi

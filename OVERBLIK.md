@@ -354,11 +354,12 @@ sudo-regel. FPS-profilering er nu aktivt med en profileret 960x540-baseline
 som første skridt. Profilen udpegede RGB565-konverteringen i
 `X11NativeWindow::present()`; NEON, genbrugt buffer og fire
 konverteringstråde har øget skærmraten ved 960x540 fra cirka 3,2 til 6,5
-opdateringer/s med måling og 5,9/s uden måleoverhead. Næste valg er accept af
-960x540 eller en målt 640x360-hastighedsvariant; brugeren har valgt at teste
-640x360, fordi 960x540 stadig lagger. 640x360 gav kun 5,2/s og krævede
-scroll, så 960x540 er fortsat standard. Canvas-nedskalering er næste
-foreslåede FPS-forsøg.
+opdateringer/s med måling og 5,9/s uden måleoverhead. 640x360 gav kun 5,2/s
+og krævede scroll, så 960x540 er fortsat standard. Canvas 0,75 gav 7,5/s;
+canvas 0,5 blev tydeligt pixeleret og gav 6,2-6,6/s. Frisk 0,75-test gav
+8,5/s og 77-87 rAF/10 s. Automatisk 0,75 efter 20 sekunders stabilt canvas
+er nu standard og giver 8,0/s samt 69-79 rAF/10 s; `CYAN_CANVAS_LIVE_SCALE=1`
+giver fuld canvas.
 
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var

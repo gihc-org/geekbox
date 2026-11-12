@@ -367,6 +367,54 @@ def main():
             "}"
             "}catch(e){}"
         )
+        live_scale_raw = os.environ.get("CYAN_CANVAS_LIVE_SCALE", "")
+        live_delay_raw = os.environ.get("CYAN_CANVAS_LIVE_DELAY", "20")
+        if live_scale_raw:
+            try:
+                live_scale = float(live_scale_raw)
+                live_delay = int(live_delay_raw)
+            except ValueError:
+                raise SystemExit(
+                    "CYAN_CANVAS_LIVE_SCALE skal være et tal og "
+                    "CYAN_CANVAS_LIVE_DELAY et helt antal sekunder")
+            if not 0.25 <= live_scale <= 1.0:
+                raise SystemExit(
+                    "CYAN_CANVAS_LIVE_SCALE skal være mellem 0.25 og 1.0")
+            pre_canvas_live = (
+                "(function(){"
+                "var __cyLiveScale=" + json.dumps(live_scale) + ";"
+                "var __cyLiveDelay=" + json.dumps(live_delay * 1000) + ";"
+                "var __cyLiveSeen=0;"
+                "setInterval(function(){"
+                "if(String(location.href).indexOf('gdn.poki.com')<0)return;"
+                "var best=null;"
+                "document.querySelectorAll('canvas').forEach(function(cv){"
+                "if(cv.width>=256&&cv.height>=180&&"
+                "(!best||cv.width*cv.height>best.width*best.height))best=cv;"
+                "});"
+                "if(!best){__cyLiveSeen=0;return;}"
+                "if(!__cyLiveSeen){__cyLiveSeen=Date.now();return;}"
+                "if(Date.now()-__cyLiveSeen<__cyLiveDelay)return;"
+                "var rect=best.getBoundingClientRect();"
+                "var targetw=Math.max(64,Math.round(rect.width*__cyLiveScale));"
+                "var targeth=Math.max(64,Math.round(rect.height*__cyLiveScale));"
+                "if(Math.abs(best.width-targetw)<2&&"
+                "Math.abs(best.height-targeth)<2)return;"
+                "var oldw=best.width,oldh=best.height;"
+                "if(rect.width>0)best.style.width=rect.width+'px';"
+                "if(rect.height>0)best.style.height=rect.height+'px';"
+                "best.width=targetw;"
+                "best.height=targeth;"
+                "window.dispatchEvent(new Event('resize'));"
+                "try{dump('CANVAS-AUTO-SCALE '+oldw+'x'+oldh+'->'+"
+                "best.width+'x'+best.height+' css='+Math.round(rect.width)+"
+                "'x'+Math.round(rect.height)+' factor='+__cyLiveScale+'\\n');}"
+                "catch(x){}"
+                "},1000);"
+                "})();"
+            )
+        else:
+            pre_canvas_live = ""
         canvas_scale_raw = os.environ.get("CYAN_CANVAS_SCALE", "1")
         try:
             canvas_scale = float(canvas_scale_raw)
@@ -448,6 +496,7 @@ def main():
             + canvas_scale_js +
             pre_measure +
             pre_ui +
+            pre_canvas_live +
             "}catch(e){}}"
         )
         pre_full = (
@@ -580,6 +629,7 @@ def main():
             + canvas_scale_js +
             pre_measure +
             pre_ui +
+            pre_canvas_live +
             "}catch(e){}}"
         )
         pre = pre_min if mode == "preloadmin" else pre_full

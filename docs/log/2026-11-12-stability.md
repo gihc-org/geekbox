@@ -136,14 +136,39 @@ er aktivt nu.
 - [foreslået] Test canvas-nedskalering efter stabil gameplay som næste
   FPS-forsøg, nu hvor præsentationskonverteringen er cirka ni gange hurtigere.
   (21:52)
+- [aftalt] Test canvas-nedskalering efter stabil gameplay ved først 0,75 og
+  derefter 0,5, med 960x540 som ydre vindue og fersk måling før hver ændring.
+  (21:55)
+- [udført] Canvas 0,75 gav 7,5 skærmopdateringer/s og 67-71 rAF/10 s mod
+  baseline 5,6/s og 45-53 rAF/10 s. (21:58)
+- [udført] Canvas 0,5 gav først 6,6/s, derefter 6,2/s over 30 sekunder.
+  Brugeren vurderede billedet som tydeligt pixeleret, men hurtigere. (22:01)
+- [aftalt] Test 0,75 igen som den sandsynlige balance mellem billedkvalitet og
+  hastighed. (22:01)
+- [udført] Frisk test af canvas 0,75 gav 8,5 skærmopdateringer/s og 77-87
+  rAF/10 s. Det er en tydelig forbedring mod baseline 5,6/s og 45-53 rAF/10 s.
+  (22:05)
+- [afventer] Brugeren skal vurdere billedskarpheden ved 0,75, før faktoren
+  eventuelt gøres permanent. (22:05)
+- [aftalt] Brugeren accepterer 0,75 som lidt pixeleret, men acceptabelt.
+  Faktoren gøres permanent som automatisk skalering efter stabil gameplay.
+  (22:07)
+- [udført] Automatisk skalering kører nu i normal fast-play uden BiDi-klient.
+  Efter 20 sekunders stabilt game-canvas skifter den 640x360 til 480x270 med
+  CSS 640x360. (22:10)
+- [udført] Endelig måling med automatisk 0,75 gav 8,0 skærmopdateringer/s og
+  69-79 rAF/10 s. Fuld canvas gav 5,6/s og 45-53 rAF/10 s i den friske
+  baseline. Lyden var `alsa_output.dmixer`, og temperaturen var 97 °C.
+  (22:10)
+- [aftalt] Canvas 0,75 er standard i fast-play; 1,0 kan vælges ved at sætte
+  `CYAN_CANVAS_LIVE_SCALE=1`. (22:10)
 - [udført] `ensure_audio.sh` har nu timeout på `pactl`-kald, så en fastlåst
   PulseAudio-server ikke kan blokere oprydningen i over et minut. (21:32)
 
 ## Næste skridt
 
-1. Få brugerens beslutning om canvas-nedskalering som næste FPS-forsøg.
-2. Behold 960x540 som standard, indtil en bedre variant er målt.
-3. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
+1. Brug automatisk canvas 0,75 som ny fast-play-baseline.
+2. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 
 ## Kommandoer

@@ -477,8 +477,10 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   RGB565-konvertering; NEON, genbrugt buffer og fire konverteringstråde har
   øget skærmraten ved 960x540 fra cirka 3,2 til 5,9 opdateringer/s i
   produktion (6,5 med måling). 640x360 gav kun 5,2/s og krævede scroll, så
-  960x540 er fortsat standard. NÆSTE: Beslut om canvas-nedskalering efter
-  stabil gameplay. START PÅ BOKSEN:
+  960x540 er fortsat standard. Canvas 0,75 gav 7,5/s; canvas 0,5 blev
+  tydeligt pixeleret og gav 6,2-6,6/s. Automatic canvas 0,75 er nu standard
+  efter 20 sekunders stabilt canvas og giver 8,0/s samt 69-79 rAF/10 s.
+  Sæt `CYAN_CANVAS_LIVE_SCALE=1` for fuld canvas. START PÅ BOKSEN:
   `RESTART=1 bash /root/play_fast_game.sh`. Monitor:
   `nohup /root/stability_monitor.sh 18000 5
   >/tmp/stability_monitor_20261112.out 2>&1 &`. FÆLDER:
