@@ -15,9 +15,11 @@ spillet var fortsat aktivt. Den tidligere langtidshændelse kl. 00:56 efter
 cirka fire timer blev ikke reproduceret. Den skal derfor betragtes som en
 enkeltstående hændelse, indtil den eventuelt gentages.
 
-Næste spor er besluttet: UI-/viewport-fejlen undersøges først, derefter laves
-et samlet bring-up-flow, og FPS-profilering kommer som tredje spor. UI-sporet
-er aktivt nu.
+Subway Surfers-POC'en er afsluttet for dette formål: spillet er stabilt,
+spilbart og starter lokalt efter genstart. Ved 960x540 med automatisk canvas
+0,75 måles cirka 8,0 skærmopdateringer/s. Næste milepæl er at gøre løsningen
+genbrugelig som en platform med separat spilprofil i stedet for at fortsætte
+Subway-specifik FPS-tuning.
 
 ## Aftaler og beslutninger
 
@@ -164,11 +166,24 @@ er aktivt nu.
   `CYAN_CANVAS_LIVE_SCALE=1`. (22:10)
 - [udført] `ensure_audio.sh` har nu timeout på `pactl`-kald, så en fastlåst
   PulseAudio-server ikke kan blokere oprydningen i over et minut. (21:32)
+- [aftalt] Subway-POC'en betragtes som afsluttet: stabil, spillbar og lokalt
+  startbar med cirka 8 opdateringer/s. (22:15)
+- [aftalt] Næste spor er generalisering til tre lag: fælles platform,
+  Firefox/WebGL-runner og spilprofil. (22:15)
+- [aftalt] Første accepttest er, at Subway kører uændret gennem en profil, og
+  at en uafhængig lokal WebGL-test kan startes uden Poki-specifik kode.
+  (22:15)
 
 ## Næste skridt
 
-1. Brug automatisk canvas 0,75 som ny fast-play-baseline.
-2. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
+1. Opret en versionsstyret spilprofil med URL, DOM-selectors, overlay,
+   canvasfaktor og depth-clear.
+2. Udskil en generisk `start-browser-game.sh --profile ...` fra den
+   Subway-specifikke launcher.
+3. Start en uafhængig lokal WebGL-testside gennem samme runner.
+4. Test et andet WebGL-spil med kun profilændringer.
+5. Test en native 3D-opgave gennem GPU-/X11-platformen.
+6. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 
 ## Kommandoer

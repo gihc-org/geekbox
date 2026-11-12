@@ -8,50 +8,39 @@ At få flashet GeekBox (RK3368) med en Linux distribution
 
 GeekBox er flashet med Lubuntu V160309 (august 2026). Metode, værktøjer og kilder er dokumenteret i `README.md`.
 
-Devuan Excalibur (armhf) booter fra eMMC med vendor-kernel 3.10 på begge bokse: desktop (LXDE/fbdev), WiFi, HDMI-lyd og ssh (dropbear) virker. **GPU + WebGL virker:** DDK 1.5@3830101 kører på en genbygget 3.10-kernel med 1.5-KM, 1.5-userspace (32-bit) og 64-bit `pvrsrvctl`. Subway Surfers er spilbart i Firefox med vnext12 `dcc0a68f` (den tunge proxy), alpha-shim via BiDi-preload og `CYAN_DEPTHCLEAR=1`; standarden er 960x540 med cirka 3-4 skærmopdateringer/s. Lyd og input virker via fast-play-launcheren. Boks 2 blev flashet direkte fra laptop i loader-tilstand (script `09` + `UF`, aug 2026). Scripts i `devuan/`.
+Devuan Excalibur (armhf) booter fra eMMC med vendor-kernel 3.10 på begge bokse: desktop (LXDE/fbdev), WiFi, HDMI-lyd og ssh (dropbear) virker. **GPU + WebGL virker:** DDK 1.5@3830101 kører på en genbygget 3.10-kernel med 1.5-KM, 1.5-userspace (32-bit) og 64-bit `pvrsrvctl`. Subway Surfers er stabilt spilbart i Firefox med vnext12 `dcc0a68f`, alpha-shim via BiDi-preload og `CYAN_DEPTHCLEAR=1`. Standarden er 960x540 med automatisk canvas 0,75 og cirka 8 skærmopdateringer/s. Lyd, input og lokal ét-kliks start efter genstart virker. Boks 2 blev flashet direkte fra laptop i loader-tilstand (script `09` + `UF`, aug 2026). Scripts i `devuan/`.
 
-**Aktuelt spor (12. nov 2026): Stabilitet i Firefox-fast-play** på branch
-`firefox-fps-tuning`. Den tidligere tab-crash efter cirka 20-22 minutter var
-forårsaget af en fence-fd-lækage i `eglplatform_x11.cpp`: hver præsenteret
-frame efterlod et `sync_fence`-fd i Firefox-parenten, indtil grænsen på 4096
-descriptors blev nået. `queueBuffer()` og `cancelBuffer()` lukker nu fencen.
+**Aktuelt spor (12. nov 2026): Generalisering af Subway-POC'en** på branch
+`firefox-fps-tuning`. POC'en er afsluttet: fence-fd-lækagen er rettet, UI- og
+viewport-fokus er løst, lokal ét-kliks bring-up virker efter genstart, og
+automatisk canvas 0,75 giver cirka 8 skærmopdateringer/s ved 960x540.
 
-Fixet holdt gennem en fem timer lang test med `Web Content` intakt, ingen
-tab-crash og kun 3-4 sync-fences. Brugeren spillede med flere pauser, og
-Firefox kørte fortsat efter næsten seks timer. Ressourcetallene var stabile
-eller faldende. En enkeltstående `threaded-ml`-segmentation efter cirka fire
-timer i den foregående kørsel blev ikke reproduceret.
+Den næste milepæl er at opdele løsningen i tre lag: fælles GPU/X11-platform,
+Firefox/WebGL-runner og en versionsstyret spilprofil. Subway skal fortsat
+køre uændret gennem profilen. Derefter skal en uafhængig lokal WebGL-test og
+et andet WebGL-spil kunne startes med profilkonfiguration frem for
+kodeændringer. En native 3D-opgave skal validere, at GPU- og
+præsentationslaget også kan genbruges uden browseren.
 
-Stabilitets- og UI-sporet er bestået for det praktiske spilflow.
-Bring-up-flowet er implementeret og bestået gennem genstart: skrivebordsikon,
-lxterminal-wrapper, afgrænset sudo-regel og `start_game_all.sh` retter uret
-fra gatewayen og bringer GPU, proxy, bind-api, VT og lyd op før fast-play.
-FPS-profilering er nu det aktive spor. Profilen udpegede RGB565-konverteringen
-i `X11NativeWindow::present()` som den konkrete flaskehals. NEON, genbrugt
-buffer og fire konverteringstråde har øget skærmraten ved 960x540 fra cirka
-3,2 til 6,5 opdateringer/s med måling og 5,9/s uden måleoverhead. Næste
-test viste at 640x360 kun gav 5,2/s og krævede scroll; det er derfor ikke
-bedre. Behold 960x540 som standard. Canvas-nedskalering efter stabil gameplay
-er nu det aktive FPS-forsøg. 0,75 gav 7,5/s; 0,5 gav 6,2-6,6/s og blev
-vurderet som tydeligt pixeleret. Brugeren accepterede 0,75 som lidt pixeleret,
-men acceptabelt. Automatisk skalering efter 20 sekunders stabilt canvas er nu
-standard og giver 8,0/s og 69-79 rAF/10 s. Sæt `CYAN_CANVAS_LIVE_SCALE=1` for
-fuld canvas. Læs den nyeste handover i `TODO.md`,
-`docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md` og
-`docs/faeller.md` fælde 41-68.
+Fortsæt ikke med Subway-specifik FPS-tuning, før generaliseringen og
+genbrugstestene er gennemført. Læs den nyeste handover i `TODO.md`,
+`docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md`,
+`docs/grafik/fps-analysen-2026-09-25.md` §0 og `docs/faeller.md` fælde
+41-68.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,
 native depth-clear giver GPU-wedge, og der er separate
 Maglev-/JITless-crashes.
 
 **Firefox/FPS-baggrund:** den tunge vnext12-proxy må bruges når spillet skal
 kunne ses; `CYAN_LIGHT=1` frøser præsentationen og må kun bruges til isolerede
-målinger. Det målte fps-loft ligger i Firefox' software-compositing og er
-arealbestemt, ikke i driverens draw-kald. Billige prefs,
-`layout.frame_rate`, canvas-nedskalering, SWGL og hardware-WebRender er
-allerede målt som blindgyder. Blå glitches og den nye mønt-/bogstavfejl er
-udskudt. Kernel clone3-fix er bygget og flashet; næste kernel-byg er fortsat
-planlagt med `CONFIG_ANDROID_PARANOID_NETWORK` fra plus bcmdhd. NTP-sporet er
-åbent. Overblik: `OVERBLIK.md`.
+målinger. Profilering udpegede RGB565-præsentationen som en stor fælles
+flaskehals; NEON og fire konverteringstråde reducerede `present()` fra cirka
+261 ms til cirka 29 ms. `layout.frame_rate`, SWGL og hardware-WebRender er
+fortsat blindgyder, mens canvas 0,75 nu er den accepterede webspil-variant.
+Blå glitches og mønt-/bogstavfejlen er udskudt. Kernel clone3-fix er bygget og
+flashet; næste kernel-byg er planlagt med
+`CONFIG_ANDROID_PARANOID_NETWORK` fra plus bcmdhd. NTP-sporet er åbent.
+Overblik: `OVERBLIK.md`.
 
 ## Agentens rolle
 

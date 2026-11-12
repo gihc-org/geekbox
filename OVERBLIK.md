@@ -361,6 +361,12 @@ canvas 0,5 blev tydeligt pixeleret og gav 6,2-6,6/s. Frisk 0,75-test gav
 er nu standard og giver 8,0/s samt 69-79 rAF/10 s; `CYAN_CANVAS_LIVE_SCALE=1`
 giver fuld canvas.
 
+Næste milepæl er at gøre POC'en genbrugelig: fælles GPU/X11-platform,
+Firefox/WebGL-runner og versionsstyret spilprofil. Subway skal køre uændret
+gennem sin profil, derefter valideres en lokal WebGL-test, et andet WebGL-spil
+og en native 3D-opgave. Yderligere Subway-specifik FPS-tuning er ikke næste
+skridt.
+
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var
 pauset. Firefox-parenten blev efterladt uden content-process og spandt i en

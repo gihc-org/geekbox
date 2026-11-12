@@ -455,8 +455,55 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+- **God start i en ny session (generalisering af Subway-POC, 12. nov 2026
+  ~22:15) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-12-stability.md` (hele notatet),
+  `docs/log/2026-11-11-stability.md`, `docs/grafik/fps-analysen-2026-09-25.md`
+  §0 og `docs/faeller.md` fælde 41-68. Branch er `firefox-fps-tuning`.
+  Seneste tekniske commit er `ad6411e` (`perf: skalér spilcanvas automatisk
+  til 0,75`).
+  STATUS 12. nov 2026 ~22:15: Subway Surfers-POC'en er afsluttet. Spillet er
+  stabilt, spillbart og kan startes lokalt fra skrivebordsikonet efter
+  genstart. Fast-play bruger 960x540 og automatisk canvas 0,75 efter 20
+  sekunders stabilt game-canvas. Målt produktion: cirka 8,0
+  skærmopdateringer/s og 69-79 rAF/10 s. Fuld canvas giver cirka 5,9/s.
+  Canvas 0,5 er forkastet som tydeligt pixeleret. 640x360 som ydre vindue
+  giver kun 5,2/s og kræver scroll.
+  Den største nyere gevinst kom fra fælles EGL/X11-arbejde: fence-fd-lækagen
+  er lukket, og NEON plus fire konverteringstråde reducerede RGB565-
+  præsentationen fra cirka 261 til 29 ms. Cirka 56 % af den målte
+  fps-fremgang er generel præsentation; cirka 44 % kommer fra
+  webspil-specifik canvas-nedskalering.
+  NÆSTE, AFTALT: Generalisér POC'en i tre lag: (1) fælles GPU/X11-platform,
+  (2) Firefox/WebGL-runner, (3) versionsstyret spilprofil. Platformen må ikke
+  indeholde hårde Subway/Poki-navne eller selectors.
+  FØRSTE OPGAVE: Definér en spilprofil med mindst URL, canvas-host/selector,
+  game-frame-selector, cookie-overlay-selector, canvasfaktor,
+  canvas-settle-tid og depth-clear. Opret en tilsvarende Subway-profil, så
+  nuværende adfærd og 8 opdateringer/s bevares. Udskil derefter en generisk
+  `start-browser-game.sh --profile ...`; `start_game_all.sh` skal kun stå for
+  fælles bring-up.
+  ACCEPTTESTE, i rækkefølge: (a) Subway kører uændret gennem profilen med
+  lyd, input og ét-kliks start; (b) en helt lokal WebGL-testside kan køre
+  gennem samme runner uden Poki; (c) et andet WebGL-spil kan startes med kun
+  profilændringer; (d) en native 3D-opgave kan bruge GPU-/X11-platformen
+  uden browserlaget.
+  START PÅ BOKSEN: `RESTART=1 bash /root/play_fast_game.sh`; fuld canvas:
+  `CYAN_CANVAS_LIVE_SCALE=1 RESTART=1 bash /root/play_fast_game.sh`.
+  Diagnostik med BiDi beholdt:
+  `KEEP_BIDI=1 BIDI_SECS=900 CANVAS_SCALE_POLL=/tmp/canvas_scale_now
+  RESTART=1 bash /root/play_fast_game.sh`.
+  Ikke næste skridt: flere Subway-specifikke mikrooptimeringer, 720p,
+  hardware-WebRender, SWGL eller DDK/kernel-opgradering, medmindre
+  generaliseringen viser et konkret behov.
+  FÆLDER: canvas skal skaleres efter stabil load, ikke i preload før spillet
+  er klar; `CYAN_CANVAS_LIVE_SCALE=1` giver fuld canvas; `CYAN_LIGHT=1`
+  frøser præsentationen; `pkill -x firefox-esr` efterlader helpers;
+  `pkill -f` kan dræbe egen ssh; BiDi = én session; `MOZ_LOG_FILE` skal ligge
+  i `/tmp`."*
+
 - **God start i en ny session (stabilitet, 12. nov 2026 ~14:40) —
-  NUVÆRENDE:**
+  HISTORISK, AFLØST 12. nov 2026 ~22:15:**
   *"Læs `docs/log/2026-11-12-stability.md`,
   `docs/log/2026-11-11-stability.md` og `docs/faeller.md` fælde 41-68.
   Branch er `firefox-fps-tuning`. STATUS 12. nov 2026 ~20:35:
