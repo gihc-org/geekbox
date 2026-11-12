@@ -125,13 +125,24 @@ er aktivt nu.
 - [afventer] Brugeren skal vurdere, om forbedringen er tilstrækkelig ved
   960x540, eller om 640x360-hastighedsvarianten skal gøres til standard.
   (21:47)
+- [aftalt] 960x540 er spillbart men lagger fortsat for meget. Næste test er
+  640x360 med den nye NEON- og firetråds-præsentationsvej. (21:49)
+- [udført] 640x360-testen gav 5,2 skærmopdateringer/s og 47-55 rAF/10 s,
+  hvilket ikke er bedre end 960x540. Spillets canvas er fortsat 640x360 i
+  begge tilfælde; den mindre ydre ramme reducerer primært den omkringliggende
+  Poki-side. (21:52)
+- [udført] 640x360 kræver desuden `scrollY=228` for at vise spillet i det
+  lave browservindue. Varianten forkastes som standard. (21:52)
+- [foreslået] Test canvas-nedskalering efter stabil gameplay som næste
+  FPS-forsøg, nu hvor præsentationskonverteringen er cirka ni gange hurtigere.
+  (21:52)
 - [udført] `ensure_audio.sh` har nu timeout på `pactl`-kald, så en fastlåst
   PulseAudio-server ikke kan blokere oprydningen i over et minut. (21:32)
 
 ## Næste skridt
 
-1. Få brugerens vurdering af 960x540 ved cirka 5,9 opdateringer/s.
-2. Mål 640x360 med den nye præsentationsvej, hvis der ønskes mere hastighed.
+1. Få brugerens beslutning om canvas-nedskalering som næste FPS-forsøg.
+2. Behold 960x540 som standard, indtil en bedre variant er målt.
 3. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 

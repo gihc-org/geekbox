@@ -355,7 +355,10 @@ som første skridt. Profilen udpegede RGB565-konverteringen i
 `X11NativeWindow::present()`; NEON, genbrugt buffer og fire
 konverteringstråde har øget skærmraten ved 960x540 fra cirka 3,2 til 6,5
 opdateringer/s med måling og 5,9/s uden måleoverhead. Næste valg er accept af
-960x540 eller en målt 640x360-hastighedsvariant.
+960x540 eller en målt 640x360-hastighedsvariant; brugeren har valgt at teste
+640x360, fordi 960x540 stadig lagger. 640x360 gav kun 5,2/s og krævede
+scroll, så 960x540 er fortsat standard. Canvas-nedskalering er næste
+foreslåede FPS-forsøg.
 
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var
