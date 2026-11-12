@@ -37,7 +37,7 @@ pulse() {
 }
 
 default_sink() {
-    pulse pactl info 2>/dev/null \
+    pulse timeout 3 pactl info 2>/dev/null \
         | sed -n 's/^Default Sink: //p' \
         | head -1
 }
@@ -124,7 +124,8 @@ done
 [ -n "$(default_sink)" ] || die "PulseAudio startede ikke"
 
 if [ "$(default_sink)" != "alsa_output.dmixer" ]; then
-    pulse pactl set-default-sink alsa_output.dmixer 2>/dev/null || true
+    pulse timeout 3 pactl set-default-sink alsa_output.dmixer \
+        2>/dev/null || true
 fi
 
 audio_ok || die "PulseAudio kører stadig uden alsa_output.dmixer"
