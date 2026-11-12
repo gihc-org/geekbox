@@ -293,6 +293,80 @@ def main():
             "window.__drawms=0;"
             "if(window.__dc)window.__dc=0;}catch(x){}},10000);"
         )
+        pre_ui = (
+            "try{"
+            "window.__uiLast='';"
+            "function __uiTag(el){"
+            "if(!el)return '-';"
+            "var cls=typeof el.className==='string'?el.className:'';"
+            "return el.tagName+'#'+(el.id||'')+'.'+cls.slice(0,32);}"
+            "function __uiState(){"
+            "var se=document.scrollingElement||document.documentElement;"
+            "var center=null;"
+            "try{center=document.elementFromPoint("
+            "Math.floor(window.innerWidth/2),Math.floor(window.innerHeight/2));}"
+            "catch(e){}"
+            "var parts=[];"
+            "var cvs=document.querySelectorAll('canvas');"
+            "for(var i=0;i<cvs.length;i++){"
+            "var cv=cvs[i];if(cv.width<100||cv.height<100)continue;"
+            "var r=cv.getBoundingClientRect();"
+            "var cx=Math.floor(r.left+r.width/2);"
+            "var cy=Math.floor(r.top+r.height/2);"
+            "var top=null;"
+            "if(cx>=0&&cy>=0&&cx<window.innerWidth&&cy<window.innerHeight){"
+            "try{top=document.elementFromPoint(cx,cy);}catch(e){}}"
+            "parts.push('canvas='+cv.width+'x'+cv.height+"
+            "' rect='+Math.round(r.left)+','+Math.round(r.top)+"
+            "'/'+Math.round(r.width)+'x'+Math.round(r.height)+"
+            "' top='+__uiTag(top));}"
+            "return 'href='+String(location.href).slice(0,80)+"
+            "' viewport='+window.innerWidth+'x'+window.innerHeight+"
+            "' scroll='+Math.round(window.scrollX||0)+','+"
+            "Math.round(window.scrollY||0)+"
+            "' doc='+(se?se.clientWidth+'x'+se.clientHeight+"
+            "'/'+se.scrollWidth+'x'+se.scrollHeight:'?')+"
+            "' active='+__uiTag(document.activeElement)+"
+            "' center='+__uiTag(center)+' canvases=['+parts.join(';')+']';}"
+            "setInterval(function(){"
+            "try{var s=__uiState();"
+            "if(s!==window.__uiLast){window.__uiLast=s;"
+            "dump('UICHECK '+s+'\\n');}}"
+            "catch(e){try{dump('UICHECK-FEJL '+e+'\\n');}catch(x){}}"
+            "},2000);"
+            "if(window.top===window){"
+            "function __uiFocusGame(){"
+            "try{"
+            "if(document.querySelector('#qc-cmp2-ui'))return;"
+            "var f=document.querySelector('iframe#game-element');"
+            "if(!f||document.activeElement===f)return;"
+            "var a=document.activeElement;"
+            "var tag=a&&a.tagName?a.tagName:'';"
+            "if(/^(INPUT|TEXTAREA|SELECT)$/.test(tag))return;"
+            "f.focus();"
+            "try{dump('UIFOCUS game active='+__uiTag(document.activeElement)+'\\n');}"
+            "catch(x){}"
+            "}"
+            "catch(e){}}"
+            "window.addEventListener('load',__uiFocusGame);"
+            "setInterval(__uiFocusGame,1000);"
+            "document.addEventListener('keydown',function(e){"
+            "var c=e.code||'',k=e.key||'';"
+            "var blocked=['Space','ArrowUp','ArrowDown','ArrowLeft',"
+            "'ArrowRight','PageUp','PageDown'].indexOf(c)>=0;"
+            "blocked=blocked||[' ','ArrowUp','ArrowDown','ArrowLeft',"
+            "'ArrowRight'].indexOf(k)>=0;"
+            "if(!blocked)return;"
+            "var a=document.activeElement;"
+            "var tag=a&&a.tagName?a.tagName:'';"
+            "if(/^(INPUT|TEXTAREA|SELECT)$/.test(tag))return;"
+            "e.preventDefault();"
+            "try{dump('UISCROLL-GUARD '+c+' active='+__uiTag(a)+'\\n');}"
+            "catch(x){}"
+            "},true);"
+            "}"
+            "}catch(e){}"
+        )
         canvas_scale_raw = os.environ.get("CYAN_CANVAS_SCALE", "1")
         try:
             canvas_scale = float(canvas_scale_raw)
@@ -373,6 +447,7 @@ def main():
             "try{dump('PAGE-ERROR: '+e.message+'\\n');}catch(x){}});"
             + canvas_scale_js +
             pre_measure +
+            pre_ui +
             "}catch(e){}}"
         )
         pre_full = (
@@ -504,6 +579,7 @@ def main():
             ",10000);"
             + canvas_scale_js +
             pre_measure +
+            pre_ui +
             "}catch(e){}}"
         )
         pre = pre_min if mode == "preloadmin" else pre_full

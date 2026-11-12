@@ -22,9 +22,9 @@ Firefox kørte fortsat efter næsten seks timer. Ressourcetallene var stabile
 eller faldende. En enkeltstående `threaded-ml`-segmentation efter cirka fire
 timer i den foregående kørsel blev ikke reproduceret.
 
-Stabilitetssporet er dermed bestået for det praktiske spilflow. Næste større
-spor kræver en ny, udtrykkelig beslutning: UI-/viewport-fejlen, dybere FPS
-eller brugervenlighed ved bring-up. Læs den nyeste handover i `TODO.md`,
+Stabilitets- og UI-sporet er bestået for det praktiske spilflow. Næste spor er
+besluttet i denne rækkefølge: et samlet bring-up-flow nu og derefter
+FPS-profilering. Læs den nyeste handover i `TODO.md`,
 `docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md` og
 `docs/faeller.md` fælde 41-68.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,
