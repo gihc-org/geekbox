@@ -118,14 +118,20 @@ er aktivt nu.
   øgede konverteringstiden fra 19 til 23 ms. (21:44)
 - [udført] Et framebuffer-dump efter optimeringen viser korrekte farver og
   aktivt gameplay. (21:45)
+- [udført] Endelig produktionskørsel uden `CYAN_PRESENT_STATS` gav **5,9
+  skærmopdateringer/s** og 48-56 rAF/10 s ved 960x540. Før optimeringen var
+  tilsvarende tal cirka 3,2/s og 32 rAF/10 s. Lyden var `alsa_output.dmixer`
+  i RUNNING, og temperaturen var 94 °C. (21:47)
+- [afventer] Brugeren skal vurdere, om forbedringen er tilstrækkelig ved
+  960x540, eller om 640x360-hastighedsvarianten skal gøres til standard.
+  (21:47)
 - [udført] `ensure_audio.sh` har nu timeout på `pactl`-kald, så en fastlåst
   PulseAudio-server ikke kan blokere oprydningen i over et minut. (21:32)
 
 ## Næste skridt
 
-1. Optag en profileret 960x540-baseline i aktivt gameplay.
-2. Brug profilen til at vælge mellem Firefox/compositor- og drivervede
-   optimeringer ud fra målte tråde og tidsforbrug.
+1. Få brugerens vurdering af 960x540 ved cirka 5,9 opdateringer/s.
+2. Mål 640x360 med den nye præsentationsvej, hvis der ønskes mere hastighed.
 3. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 

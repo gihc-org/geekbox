@@ -475,9 +475,9 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   `/usr/local/bin/subway-surfers` og skrivebordsikonet. NÆSTE:
   FPS-profilering er aktivt. En Gecko-profil udpegede præsentationens
   RGB565-konvertering; NEON, genbrugt buffer og fire konverteringstråde har
-  øget skærmraten ved 960x540 fra cirka 3,2 til 6,5 opdateringer/s. NÆSTE:
-  Verificér den valgte binære fil efter genstart og mål eventuelt 640x360 som
-  hastighedsvariant. START PÅ BOKSEN:
+  øget skærmraten ved 960x540 fra cirka 3,2 til 5,9 opdateringer/s i
+  produktion (6,5 med måling). NÆSTE: Få brugerens vurdering af 960x540, og
+  mål eventuelt 640x360 som hastighedsvariant. START PÅ BOKSEN:
   `RESTART=1 bash /root/play_fast_game.sh`. Monitor:
   `nohup /root/stability_monitor.sh 18000 5
   >/tmp/stability_monitor_20261112.out 2>&1 &`. FÆLDER:

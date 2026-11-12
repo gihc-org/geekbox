@@ -29,7 +29,9 @@ fra gatewayen og bringer GPU, proxy, bind-api, VT og lyd op før fast-play.
 FPS-profilering er nu det aktive spor. Profilen udpegede RGB565-konverteringen
 i `X11NativeWindow::present()` som den konkrete flaskehals. NEON, genbrugt
 buffer og fire konverteringstråde har øget skærmraten ved 960x540 fra cirka
-3,2 til 6,5 opdateringer/s. Læs den nyeste handover i `TODO.md`,
+3,2 til 6,5 opdateringer/s med måling og 5,9/s uden måleoverhead. Næste
+beslutning er brugeraccept af 960x540 eller en målt 640x360-variant. Læs den
+nyeste handover i `TODO.md`,
 `docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md` og
 `docs/faeller.md` fælde 41-68.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,
