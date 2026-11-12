@@ -455,8 +455,30 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (stabilitet, 8. nov 2026 ~00:45) —
+- **God start i en ny session (stabilitet, 12. nov 2026 ~14:40) —
   NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-12-stability.md`,
+  `docs/log/2026-11-11-stability.md` og `docs/faeller.md` fælde 41-68.
+  Branch er `firefox-fps-tuning`. STATUS 12. nov 2026 ~20:35:
+  Fence-fd-lækagen er rettet i `eglplatform_x11.cpp`; `queueBuffer()` og
+  `cancelBuffer()` lukker nu `fenceFd`. En fem timer lang test kørte uden
+  tab-crash og med kun 3-4 sync-fences; brugeren spillede med flere pauser,
+  og Firefox kørte fortsat efter næsten seks timer. Ressourcetallene var
+  stabile eller faldende. Den tidligere enkeltstående
+  `threaded-ml`-segmentation efter cirka fire timer blev ikke reproduceret.
+  Logs fra den beståede test er arkiveret i
+  `/root/stability_success_20261112/`; den tidligere hændelse ligger i
+  `/root/crash_fastplay_20261112_0056/`. Stabilitetssporet er bestået for
+  det praktiske spilflow. NÆSTE: Vælg nyt større spor eksplicit: UI-/viewport,
+  dybere FPS eller bring-up-flow. START PÅ BOKSEN:
+  `RESTART=1 bash /root/play_fast_game.sh`. Monitor:
+  `nohup /root/stability_monitor.sh 18000 5
+  >/tmp/stability_monitor_20261112.out 2>&1 &`. FÆLDER:
+  `pkill -x firefox-esr` efterlader helpers (fælde 68); `pkill -f` kan dræbe
+  egen ssh; BiDi = én session; `MOZ_LOG_FILE` skal ligge i `/tmp`."*
+
+- **God start i en ny session (stabilitet, 8. nov 2026 ~00:45) —
+  HISTORISK, AFLØST 12. nov 2026:**
   *"Læs `docs/log/2026-11-08-stability.md`,
   `docs/log/2026-11-07-firefox-fast-play.md` og `docs/faeller.md` fælde
   41-68. Branch er `firefox-fps-tuning`; `da2ec65` er pushet, og

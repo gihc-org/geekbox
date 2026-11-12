@@ -253,7 +253,13 @@ protected:
 
     virtual int queueBuffer(BaseNativeWindowBuffer *buffer, int fenceFd)
     {
-        (void)fenceFd;
+        /* Android native-window-lageret overtager fenceFd ved queueBuffer.
+         * Fencen holdes selvfølgelig i live af GPU'ens interne reference, men
+         * dette fd-handtag skal lukkes af modtageren. Uden close() lækkede vi
+         * cirka ét sync_fence-fd pr. præsenteret frame, indtil Firefox ramte
+         * RLIMIT_NOFILE=4096 og IPC-contentprocessen døde. */
+        if (fenceFd >= 0)
+            close(fenceFd);
         X11NativeWindowBuffer *b = static_cast<X11NativeWindowBuffer *>(buffer);
         refresh_size();
         present(b);
@@ -263,7 +269,8 @@ protected:
 
     virtual int cancelBuffer(BaseNativeWindowBuffer *buffer, int fenceFd)
     {
-        (void)fenceFd;
+        if (fenceFd >= 0)
+            close(fenceFd);
         release_buffer(static_cast<X11NativeWindowBuffer *>(buffer));
         return NO_ERROR;
     }

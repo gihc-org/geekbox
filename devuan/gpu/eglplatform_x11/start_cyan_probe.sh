@@ -13,6 +13,16 @@ WEBGL=/usr/local/lib/firefox-webgl
 URL="${GAME_URL:-https://poki.com/en/g/subway-surfers}"
 LOG="${GAME_LOG:-/root/cyan_game.log}"
 
+# En sikkerhedsmargin mod uopdagede descriptor-lækager. Root kan hæve den
+# hårde grænse; hvis start uden root ikke kan, fortsætter vi med den gamle.
+FD_LIMIT=${FD_LIMIT:-16384}
+CUR_HARD=$(ulimit -Hn)
+if [ "$CUR_HARD" != "unlimited" ] && [ "$CUR_HARD" -lt "$FD_LIMIT" ]; then
+    ulimit -Hn "$FD_LIMIT" 2>/dev/null || true
+fi
+ulimit -Sn "$FD_LIMIT" 2>/dev/null || true
+echo "start_cyan_probe: RLIMIT_NOFILE soft=$(ulimit -Sn) hard=$(ulimit -Hn)"
+
 # Ryd gamle probe-log + eventuelle Firefox-låse
 rm -f "$PROFILE/.parentlock" "$PROFILE/lock"
 rm -f /tmp/cyan_draw_probe.log /tmp/fragdepth_probe.log

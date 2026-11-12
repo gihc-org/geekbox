@@ -334,6 +334,19 @@ en PulseAudio-server autospawnet uden `/opt/alsa-da`, hvilket gav `auto_null`.
 at lyden er tilbage. Fast-play- og lydarbejdet er dermed afsluttet;
 960x540 er standard. Det tidligere minidump er fortsat arkiveret.
 
+**Opdateret 12. nov 2026 ~20:35 (fence-fd-lækagen løst; femtimers test bestået):**
+Den gentagne tab-crash efter cirka 20-22 minutter blev ført tilbage til
+`X11NativeWindow::queueBuffer()` i `eglplatform_x11.cpp`: modtageren af hver
+præsenteret frame lukkede ikke den medfølgende `sync_fence`-fd. Firefox
+parenten nåede 4091/4096 descriptors, heraf 3968 sync-fences. Efter fixet
+kørte en fem timer lang test med `Web Content` intakt, ingen tab-crash og kun
+3-4 sync-fences. Brugeren spillede med flere pauser, og Firefox kørte fortsat
+efter næsten seks timer. Den tidligere enkeltstående
+`threaded-ml`-segmentation efter cirka fire timer blev ikke reproduceret.
+Stabilitetssporet er bestået for det praktiske spilflow. Logs fra den beståede
+test ligger i `/root/stability_success_20261112/`; detaljer og kandidatspor
+står i `docs/log/2026-11-12-stability.md`.
+
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var
 pauset. Firefox-parenten blev efterladt uden content-process og spandt i en

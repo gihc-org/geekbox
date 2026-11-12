@@ -64,7 +64,7 @@ snapshot() {
 import os
 
 target = "/usr/lib/firefox-esr/firefox-esr"
-print("PID PPID COMM VmSize VmRSS Threads Maps")
+print("PID PPID COMM VmSize VmRSS Threads Maps FDs SyncFences")
 for name in os.listdir("/proc"):
     if not name.isdigit():
         continue
@@ -81,6 +81,18 @@ for name in os.listdir("/proc"):
                     status[key] = value.strip()
         with open(f"/proc/{name}/maps", "rb") as stream:
             maps = sum(1 for _ in stream)
+        fds = 0
+        sync_fences = 0
+        try:
+            for fd in os.listdir(f"/proc/{name}/fd"):
+                fds += 1
+                try:
+                    if os.readlink(f"/proc/{name}/fd/{fd}") == "anon_inode:sync_fence":
+                        sync_fences += 1
+                except (FileNotFoundError, PermissionError):
+                    pass
+        except (FileNotFoundError, PermissionError):
+            pass
         print(
             name,
             status.get("PPid", "?"),
@@ -89,6 +101,8 @@ for name in os.listdir("/proc"):
             status.get("VmRSS", "?").replace(" ", ""),
             status.get("Threads", "?"),
             maps,
+            fds,
+            sync_fences,
         )
     except (FileNotFoundError, PermissionError, ProcessLookupError):
         continue
