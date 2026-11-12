@@ -13,7 +13,7 @@ OUT="$HERE/out"
 mkdir -p "$OUT"
 
 echo "== eglplatform_x11.so =="
-g++ -O2 -fPIC -shared -o "$OUT/eglplatform_x11.so" "$HERE/eglplatform_x11.cpp" \
+g++ -O3 -g -fPIC -mfpu=neon -pthread -shared -o "$OUT/eglplatform_x11.so" "$HERE/eglplatform_x11.cpp" \
     -I"$INC" -I"$INC/android" -I"$INC/hybris/eglplatformcommon" \
     -L"$LIB" -Wl,-rpath-link,"$LIB" \
     -lhybris-eglplatformcommon -lhardware -lhybris-common -landroid-properties \

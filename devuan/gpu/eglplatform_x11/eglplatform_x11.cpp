@@ -40,12 +40,17 @@ extern "C" {
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 #include <vector>
 #include <fcntl.h>
 #include <dirent.h>
 #include <linux/vt.h>
 #include <sys/ioctl.h>
 #include <dlfcn.h>
+
+#if defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
 
 #ifndef HAL_PIXEL_FORMAT_RGBA_8888
 #define HAL_PIXEL_FORMAT_RGBA_8888 1
@@ -59,11 +64,18 @@ extern "C" {
 
 static gralloc_module_t *g_gralloc = NULL;
 static alloc_device_t *g_alloc = NULL;
+static bool g_present_stats = false;
 static long long now_ms(void)
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+static long long now_us(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 static Display *g_dpy = NULL;
 static unsigned long g_present_count = 0;
@@ -185,7 +197,10 @@ public:
           m_format(HAL_PIXEL_FORMAT_RGBA_8888),
           m_usage(GRALLOC_USAGE_HW_FB | X11WS_SW_READ_OFTEN),
           m_bufferCount(0), m_nextBuffer(0), m_interval(1), m_sizeDirty(false),
-          m_present_seq(0)
+          m_present_seq(0), m_stat_count(0), m_stat_total_us(0),
+          m_stat_lock_us(0), m_stat_unlock_us(0), m_stat_convert_us(0),
+          m_stat_image_us(0), m_stat_gc_us(0), m_stat_put_us(0),
+          m_stat_flush_us(0), m_stat_sync_us(0), m_stat_cleanup_us(0)
     {
     }
     virtual ~X11NativeWindow()
@@ -406,6 +421,7 @@ private:
     void present(X11NativeWindowBuffer *b)
     {
         struct timeval t0, t1, t2, t3;
+        long long stat_start = g_present_stats ? now_us() : 0;
         gettimeofday(&t0, NULL);
         void *ptr = NULL;
         g_present_count++;
@@ -421,6 +437,8 @@ private:
                                  X11WS_SW_READ_OFTEN,
                                  0, 0, b->width, b->height, &ptr);
         gettimeofday(&t1, NULL);
+        if (g_present_stats)
+            m_stat_lock_us += now_us() - stat_start;
         if (rc != 0 || !ptr) {
             int nv = -1, nf = -1, ni = -1;
             if (b->handle) {
@@ -461,8 +479,30 @@ private:
         put_image((const unsigned char *)ptr, b->width, b->height,
                   b->stride, b->format);
         gettimeofday(&t2, NULL);
+        long long unlock_start = g_present_stats ? now_us() : 0;
         g_gralloc->unlock(g_gralloc, b->handle);
         gettimeofday(&t3, NULL);
+        if (g_present_stats) {
+            m_stat_unlock_us += now_us() - unlock_start;
+            m_stat_total_us += now_us() - stat_start;
+            m_stat_count++;
+            if (m_stat_count % 50 == 0) {
+                fprintf(stderr,
+                        "x11ws: stats n=%lu avg_total=%.1fms lock=%.1f "
+                        "convert=%.1f image=%.1f gc=%.1f put=%.1f "
+                        "flush=%.1f sync=%.1f cleanup=%.1f unlock=%.1f\n",
+                        m_stat_count, m_stat_total_us / m_stat_count / 1000.0,
+                        m_stat_lock_us / m_stat_count / 1000.0,
+                        m_stat_convert_us / m_stat_count / 1000.0,
+                        m_stat_image_us / m_stat_count / 1000.0,
+                        m_stat_gc_us / m_stat_count / 1000.0,
+                        m_stat_put_us / m_stat_count / 1000.0,
+                        m_stat_flush_us / m_stat_count / 1000.0,
+                        m_stat_sync_us / m_stat_count / 1000.0,
+                        m_stat_cleanup_us / m_stat_count / 1000.0,
+                        m_stat_unlock_us / m_stat_count / 1000.0);
+            }
+        }
         if (g_present_count <= 5 || g_present_count % 25 == 0)
             fprintf(stderr,
                     "x11ws: present #%lu tid lock=%ldms put=%ldms unlock=%ldms\n",
@@ -491,6 +531,7 @@ private:
 
     void put_image(const unsigned char *src, int w, int h, int stride, int fmt)
     {
+        long long t_start = g_present_stats ? now_us() : 0;
         XWindowAttributes a;
         if (!XGetWindowAttributes(m_dpy, m_win, &a)) {
             fprintf(stderr, "x11ws: XGetWindowAttributes fejlede i put_image\n");
@@ -498,20 +539,36 @@ private:
         }
         int depth = a.depth;
         if (depth == 16) {
-            std::vector<unsigned char> rgb565((size_t)w * h * 2);
-            for (int y = 0; y < h; y++) {
-                const unsigned char *row = src + (size_t)y * stride * 4;
-                unsigned char *dst = &rgb565[(size_t)y * w * 2];
-                for (int x = 0; x < w; x++) {
-                    unsigned int r = row[x * 4 + 0];
-                    unsigned int g = row[x * 4 + 1];
-                    unsigned int b = row[x * 4 + 2];
-                    unsigned int v = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
-                    dst[x * 2] = (unsigned char)(v & 0xff);
-                    dst[x * 2 + 1] = (unsigned char)(v >> 8);
+            size_t pixels = (size_t)w * h;
+            if (m_rgb565.size() != pixels)
+                m_rgb565.resize(pixels);
+            uint16_t *dst = m_rgb565.data();
+            int chunks = h >= 240 ? 4 : 1;
+            int rows = (h + chunks - 1) / chunks;
+            if (chunks == 1) {
+                convert_rgb565_rows(src, stride, dst, w, 0, h);
+            } else {
+                std::vector<std::thread> workers;
+                workers.reserve(chunks);
+                for (int part = 0; part < chunks; part++) {
+                    int y0 = part * rows;
+                    int y1 = y0 + rows;
+                    if (y0 >= h)
+                        break;
+                    if (y1 > h)
+                        y1 = h;
+                    workers.emplace_back(
+                        [=]() {
+                            convert_rgb565_rows(src, stride, dst, w, y0, y1);
+                        });
                 }
+                for (auto &worker : workers)
+                    worker.join();
             }
-            put_ximage(&rgb565[0], w, h, 16, w * 2);
+            if (g_present_stats)
+                m_stat_convert_us += now_us() - t_start;
+            put_ximage(reinterpret_cast<const unsigned char *>(m_rgb565.data()),
+                       w, h, 16, w * 2);
         } else if (depth == 32) {
             /* Firefox' kompositorvindue er TrueColor depth 32 (målt 25. aug
              * 2026: vindue 0x1e00048 = 1280x948 depth 32). Gralloc-bufferen
@@ -519,10 +576,13 @@ private:
              * 32-bit buffer eksplicit. Før dette tegnede vi et 16-bit XImage
              * på det 32-bit vindue -> XPutImage BadMatch (request 72) og sort
              * skærm, selvom present/WEBGL ellers virkede. */
-            std::vector<unsigned char> argb((size_t)w * h * 4);
+            size_t bytes = (size_t)w * h * 4;
+            if (m_argb.size() != bytes)
+                m_argb.resize(bytes);
+            unsigned char *argb = m_argb.data();
             for (int y = 0; y < h; y++) {
                 const unsigned char *row = src + (size_t)y * stride * 4;
-                unsigned char *dst = &argb[(size_t)y * w * 4];
+                unsigned char *dst = argb + (size_t)y * w * 4;
                 for (int x = 0; x < w; x++) {
                     /* LSBFirst-pixel 0xAARRGGBB = bytes [B,G,R,A] */
                     dst[x * 4 + 0] = row[x * 4 + 2];
@@ -531,7 +591,9 @@ private:
                     dst[x * 4 + 3] = 0xff;
                 }
             }
-            put_ximage(&argb[0], w, h, 32, w * 4);
+            if (g_present_stats)
+                m_stat_convert_us += now_us() - t_start;
+            put_ximage(argb, w, h, 32, w * 4);
         } else {
             fprintf(stderr, "x11ws: X-depth %d endnu ikke understøttet (16/32)\n", depth);
         }
@@ -539,11 +601,13 @@ private:
 
     void put_ximage(const unsigned char *data, int w, int h, int depth, int bpl)
     {
+        long long t_mark;
         XWindowAttributes a;
         if (!XGetWindowAttributes(m_dpy, m_win, &a)) {
             fprintf(stderr, "x11ws: XGetWindowAttributes fejlede i put_ximage\n");
             return;
         }
+        t_mark = g_present_stats ? now_us() : 0;
         XImage *img = XCreateImage(m_dpy, a.visual, depth, ZPixmap, 0,
                                    (char *)data, w, h,
                                    depth == 16 ? 16 : 32, bpl);
@@ -551,6 +615,9 @@ private:
             fprintf(stderr, "x11ws: XCreateImage fejlede\n");
             return;
         }
+        if (g_present_stats)
+            m_stat_image_us += now_us() - t_mark;
+        t_mark = g_present_stats ? now_us() : 0;
         GC gc = XCreateGC(m_dpy, m_win, 0, NULL);
         if (!gc) {
             fprintf(stderr, "x11ws: XCreateGC fejlede\n");
@@ -558,12 +625,57 @@ private:
             XDestroyImage(img);
             return;
         }
+        if (g_present_stats)
+            m_stat_gc_us += now_us() - t_mark;
+        t_mark = g_present_stats ? now_us() : 0;
         XPutImage(m_dpy, m_win, gc, img, 0, 0, 0, 0, w, h);
-        XFreeGC(m_dpy, gc);
+        if (g_present_stats)
+            m_stat_put_us += now_us() - t_mark;
+        t_mark = g_present_stats ? now_us() : 0;
         XFlush(m_dpy);
+        if (g_present_stats)
+            m_stat_flush_us += now_us() - t_mark;
+        t_mark = g_present_stats ? now_us() : 0;
         XSync(m_dpy, False); /* tving protokol-fejl frem nu (logges af handler) */
+        if (g_present_stats)
+            m_stat_sync_us += now_us() - t_mark;
+        t_mark = g_present_stats ? now_us() : 0;
+        XFreeGC(m_dpy, gc);
         img->data = NULL; /* data ejes af kalderen — lad XDestroyImage ikke frigøre */
         XDestroyImage(img);
+        if (g_present_stats)
+            m_stat_cleanup_us += now_us() - t_mark;
+    }
+
+    static void convert_rgb565_rows(const unsigned char *src, int stride,
+                                    uint16_t *dst, int w, int y0, int y1)
+    {
+        for (int y = y0; y < y1; y++) {
+            const unsigned char *row = src + (size_t)y * stride * 4;
+            uint16_t *dst_row = dst + (size_t)y * w;
+            int x = 0;
+#if defined(__ARM_NEON)
+            for (; x + 8 <= w; x += 8) {
+                uint8x8x4_t rgba = vld4_u8(row + (size_t)x * 4);
+                uint16x8_t r = vmovl_u8(rgba.val[0]);
+                uint16x8_t g = vmovl_u8(rgba.val[1]);
+                uint16x8_t b = vmovl_u8(rgba.val[2]);
+                uint16x8_t v = vorrq_u16(
+                    vshlq_n_u16(vshrq_n_u16(r, 3), 11),
+                    vorrq_u16(vshlq_n_u16(vshrq_n_u16(g, 2), 5),
+                              vshrq_n_u16(b, 3)));
+                vst1q_u16(dst_row + x, v);
+            }
+#endif
+            for (; x < w; x++) {
+                uint32_t pixel;
+                memcpy(&pixel, row + (size_t)x * 4, sizeof pixel);
+                dst_row[x] =
+                    (uint16_t)(((pixel & 0x000000f8u) << 8) |
+                               ((pixel & 0x0000fc00u) >> 5) |
+                               ((pixel & 0x00f80000u) >> 19));
+            }
+        }
     }
 
     Display *m_dpy;
@@ -579,6 +691,19 @@ private:
     std::vector<X11NativeWindowBuffer *> m_bufList;
     unsigned long m_present_seq;
     std::vector<std::pair<X11NativeWindowBuffer *, unsigned long> > m_retired;
+    std::vector<uint16_t> m_rgb565;
+    std::vector<unsigned char> m_argb;
+    unsigned long m_stat_count;
+    long long m_stat_total_us;
+    long long m_stat_lock_us;
+    long long m_stat_unlock_us;
+    long long m_stat_convert_us;
+    long long m_stat_image_us;
+    long long m_stat_gc_us;
+    long long m_stat_put_us;
+    long long m_stat_flush_us;
+    long long m_stat_sync_us;
+    long long m_stat_cleanup_us;
 };
 
 /* ------------------------------------------------------------------ */
@@ -747,6 +872,8 @@ static void x11ws_setSwapInterval(EGLDisplay dpy, EGLNativeWindowType win,
 
 static void x11ws_init_module(struct ws_egl_interface *egl_iface)
 {
+    const char *stats = getenv("CYAN_PRESENT_STATS");
+    g_present_stats = stats && *stats && strcmp(stats, "0") != 0;
     g_dpy = XOpenDisplay(NULL);
     if (!g_dpy)
         fprintf(stderr, "x11ws: XOpenDisplay(NULL) fejlede\n");

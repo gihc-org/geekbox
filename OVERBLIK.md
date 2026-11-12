@@ -350,7 +350,11 @@ står i `docs/log/2026-11-12-stability.md`.
 UI-/viewport-fejlen er løst ved at fokusere spil-iframen efter
 cookie-overlayet og forhindre utilsigtet sidescroll. Bring-up-flowet er
 implementeret og bestået gennem genstart med skrivebordsikon og afgrænset
-sudo-regel. FPS-profilering er næste spor.
+sudo-regel. FPS-profilering er nu aktivt med en profileret 960x540-baseline
+som første skridt. Profilen udpegede RGB565-konverteringen i
+`X11NativeWindow::present()`; NEON, genbrugt buffer og fire
+konverteringstråde har øget skærmraten ved 960x540 fra cirka 3,2 til 6,5
+opdateringer/s.
 
 **Opdateret 8. nov 2026 ~00:10 (stabilitet er aktivt spor):**
 En længere spilkørsel crashede efter cirka 20 minutter, mens spillet var

@@ -51,6 +51,7 @@ runuser -u kristian -- env -i \
   CYAN_LIGHT="${CYAN_LIGHT:-}" \
   CYAN_FLUSH="${CYAN_FLUSH:-}" \
   CYAN_FPS="${CYAN_FPS:-}" \
+  CYAN_PRESENT_STATS="${CYAN_PRESENT_STATS:-}" \
   SHIM_NO_DISPLAY_DANCE="${SHIM_NO_DISPLAY_DANCE:-}" \
   SHIM_NO_CHVT="${SHIM_NO_CHVT:-}" \
   MOZ_LOG="${MOZ_LOG:-}" \

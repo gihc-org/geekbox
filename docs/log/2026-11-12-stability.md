@@ -98,11 +98,35 @@ er aktivt nu.
 - [udført] Bring-up-flowet er bestået for den genstartede boks. Et ekstra
   værn stopper launcherne med en tydelig besked, hvis Firefox allerede kører.
   (21:17)
+- [aftalt] FPS-profilering er nu det aktive spor. (21:20)
+- [udført] En eksisterende Firefox-kørsel blev stoppet for at fjerne termisk
+  forurening; temperaturen faldt fra 89 til 72 °C. (21:20)
+- [aftalt] Første FPS-forsøg er en 960x540 Gecko-profil med 5 ms sampling,
+  uden `MOZ_LOG`, efterfulgt af analyse af Renderer-, Compositor- og
+  WebRender-trådene. (21:20)
+- [udført] Gecko-profilen viste, at Renderer var den aktive flaskehals, med
+  cirka 59 % af samples i `X11NativeWindow::present()`; Compositor ventede
+  næsten hele tiden. Præsentationsmåling viste 250 ms pixelkonvertering,
+  5 ms `XPutImage`, 1,4 ms `XSync` og 261 ms total per frame. (21:28)
+- [udført] Første optimering skiftede til 32-bit/NEON-baseret RGB565-konvertering:
+  konvertering faldt til 44 ms, præsentation til 55 ms og skærmraten steg fra
+  3,2 til 5,3 opdateringer/s. (21:35)
+- [udført] Fire scheduler-styrede konverteringstråde reducerede konverteringen
+  til cirka 19 ms og præsentationen til cirka 29 ms. Skærmraten steg til
+  **6,5 opdateringer/s**, og spillets rAF til cirka 61-68 per 10 s. (21:42)
+- [foreslået] CPU-pinning til kernerne 4-7 blev målt og forkastet, fordi den
+  øgede konverteringstiden fra 19 til 23 ms. (21:44)
+- [udført] Et framebuffer-dump efter optimeringen viser korrekte farver og
+  aktivt gameplay. (21:45)
+- [udført] `ensure_audio.sh` har nu timeout på `pactl`-kald, så en fastlåst
+  PulseAudio-server ikke kan blokere oprydningen i over et minut. (21:32)
 
 ## Næste skridt
 
-1. Gå videre til FPS-profilering.
-2. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
+1. Optag en profileret 960x540-baseline i aktivt gameplay.
+2. Brug profilen til at vælge mellem Firefox/compositor- og drivervede
+   optimeringer ud fra målte tråde og tidsforbrug.
+3. Hvis langtidscrash kl. 00:56 gentages, undersøg `threaded-ml` og
    ressourceforløbet frem mod hændelsen.
 
 ## Kommandoer

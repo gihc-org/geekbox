@@ -38,6 +38,7 @@ og fast-play-/lydværktøjerne 7. nov 2026.
 | `start_game_all.sh` | lokal idempotent bring-up af GPU, vnext12-proxy, bind-api-lap, VT og lyd før fast-play; kræver root |
 | `subway-surfers-launcher.sh` | åbner den lokale bring-up i lxterminal og kalder den afgrænsede sudo-regel |
 | `subway-surfers.desktop` | skrivebords- og menuikon til den samlede lokale spilstart |
+| `eglplatform_x11.cpp` | EGL/gralloc til X-bro; RGB565-konverteringen bruger nu NEON, genbrugt buffer og fire konverteringstråde. `CYAN_PRESENT_STATS=1` logger tidsopdelingen |
 | `s1_variants.sh` | S1-værktøjskæden: `backup`, `prefs V1-V5`, `restore <ts>`, `run`, `wait`, `result` — lægger `s1_prefs/*.user.js` ind i profilen og starter målingen afkoblet |
 | `s1_prefs/V1-V5.user.js` | de fem kompositor-varianter fra S1 (V1 baseline, V2 SWGL, V3 WebRender/GPU, V4 uden GPU-proces, V5 WR/GPU uden GPU-proces) |
 | `s1_snapshot.sh` | kører PÅ boksen: proces-snapshot 75 s inde i kørslen (GPU-proces? hvem har hybris-libEGL? GL-aktivitet i probe.log). Nødvendigt fordi `MOZ_LOG`-modulerne Compositor/LayerManager/WebRender er tavse i ESR-140 (fælde 53) |
