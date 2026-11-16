@@ -20,6 +20,8 @@ PULSE_HOME=${PULSE_HOME:-/home/kristian}
 PULSE_RUNTIME=${PULSE_RUNTIME:-/run/user/1000}
 PA_LIB=${PA_LIB:-/opt/alsa-da/usr/lib/arm-linux-gnueabihf}
 PA_CONFIG="$PULSE_HOME/.config/pulse/client.conf"
+PA_EXISTING_TIMEOUT=${PA_EXISTING_TIMEOUT:-30}
+PA_START_TIMEOUT=${PA_START_TIMEOUT:-180}
 
 say() {
     printf 'ensure_audio: %s\n' "$*"
@@ -33,7 +35,8 @@ die() {
 pulse() {
     runuser -u "$PULSE_USER" -- env \
         HOME="$PULSE_HOME" USER="$PULSE_USER" LOGNAME="$PULSE_USER" \
-        DISPLAY=:0 XDG_RUNTIME_DIR="$PULSE_RUNTIME" "$@"
+        DISPLAY=:0 XDG_RUNTIME_DIR="$PULSE_RUNTIME" \
+        LANG=C LC_ALL=C "$@"
 }
 
 default_sink() {
@@ -50,6 +53,25 @@ uses_legacy_alsa() {
 
 audio_ok() {
     [ "$(default_sink)" = "alsa_output.dmixer" ] && uses_legacy_alsa
+}
+
+wait_for_audio() {
+    local timeout=${1:-$PA_START_TIMEOUT}
+    local deadline=$((SECONDS + timeout))
+    local sink
+
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        sink=$(default_sink || true)
+        if [ -n "$sink" ] && [ "$sink" != "alsa_output.dmixer" ]; then
+            pulse timeout 3 pactl set-default-sink alsa_output.dmixer \
+                2>/dev/null || true
+        fi
+        if [ "$sink" = "alsa_output.dmixer" ] && uses_legacy_alsa; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
 }
 
 restore_autospawn() {
@@ -72,10 +94,16 @@ if audio_ok; then
     exit 0
 fi
 
-say "PulseAudio bruger ikke den korrekte ALSA-sink; genstarter"
 CURRENT_PID=$(pgrep -x pulseaudio | head -1 || true)
 if [ -n "$CURRENT_PID" ]; then
-    say "nuværende PID $CURRENT_PID: sink=$(default_sink || true)"
+    say "PulseAudio kører, men sink er ikke klar: PID $CURRENT_PID, sink=$(default_sink || true)"
+    if wait_for_audio "$PA_EXISTING_TIMEOUT"; then
+        say "OK: den eksisterende PulseAudio-server blev klar med alsa_output.dmixer"
+        exit 0
+    fi
+    say "PulseAudio blev ikke klar; genstarter"
+else
+    say "PulseAudio kører ikke; starter"
 fi
 
 mkdir -p "$(dirname "$PA_CONFIG")"
@@ -117,16 +145,8 @@ pulse env -i \
     LD_LIBRARY_PATH="$PA_LIB" \
     pulseaudio --start --log-target=syslog
 
-for _ in $(seq 1 10); do
-    [ -n "$(default_sink)" ] && break
-    sleep 1
-done
-[ -n "$(default_sink)" ] || die "PulseAudio startede ikke"
-
-if [ "$(default_sink)" != "alsa_output.dmixer" ]; then
-    pulse timeout 3 pactl set-default-sink alsa_output.dmixer \
-        2>/dev/null || true
-fi
-
-audio_ok || die "PulseAudio kører stadig uden alsa_output.dmixer"
+wait_for_audio || {
+    PA_PID=$(pgrep -x pulseaudio | head -1 || true)
+    die "PulseAudio startede ikke med alsa_output.dmixer inden ${PA_START_TIMEOUT}s (PID ${PA_PID:-mangler})"
+}
 say "OK: PulseAudio genstartet med legacy-ALSA og alsa_output.dmixer"

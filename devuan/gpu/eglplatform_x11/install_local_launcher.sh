@@ -13,8 +13,11 @@ box() {
 }
 
 box --put "$TXTS/start_game_all.sh" /root/start_game_all.sh
+box --put "$TXTS/ensure_audio.sh" /root/ensure_audio.sh
 box --put "$TXTS/subway-surfers-launcher.sh" \
     /usr/local/bin/subway-surfers
+box --put "$TXTS/subway-surfers-terminal.sh" \
+    /usr/local/bin/subway-surfers-terminal
 box --put "$TXTS/subway-surfers.desktop" \
     "/usr/share/applications/subway-surfers.desktop"
 box --put "$TXTS/subway-surfers.desktop" \
@@ -24,8 +27,11 @@ box --put "$TXTS/sudoers-geekbox-game" /tmp/geekbox-game.sudoers
 box "
 set -e
 install -m 0755 /root/start_game_all.sh /root/start_game_all.sh
+install -m 0755 /root/ensure_audio.sh /root/ensure_audio.sh
 install -m 0755 /usr/local/bin/subway-surfers \
     /usr/local/bin/subway-surfers
+install -m 0755 /usr/local/bin/subway-surfers-terminal \
+    /usr/local/bin/subway-surfers-terminal
 install -m 0644 /usr/share/applications/subway-surfers.desktop \
     /usr/share/applications/subway-surfers.desktop
 install -m 0755 /home/kristian/Desktop/subway-surfers.desktop \

@@ -9,7 +9,11 @@
 | `devuan/extra_packages.sh` | pakkelisten: firefox, sudo, rsyslog, locale m.m. |
 | `devuan/09_make_emmc_img.sh` | bygger imaget og sikrer alt det en boks ikke kan undvære |
 | `devuan/testflash.sh` | bygger + flasher, med pause til loader-tilstand |
-| `devuan/find_box.sh` | finder boksen på netværket (dens IP skifter hver boot) |
+| `devuan/find_box.sh` | finder GeekBoxe på netværket; nyere images har stabil MAC/IP, mens ældre boots kan skifte |
+| `devuan/box.sh` | ssh/scp-wrapper med eksplicitte options til en valgt `BOXIP` |
+| `devuan/clock_sync.sh` | gendanner/opdaterer tiden via gatewayens HTTP-`Date` uden DNS; installeres som `/usr/local/sbin/geekbox-clock-sync` |
+| `devuan/gpu/export_game_kit.sh` | eksporterer GPU-platform, Firefox-shims, hjælpescripts og minimal spilprofil fra en kendt god boks |
+| `devuan/gpu/provision_game_box.sh` | installerer GPU-systemimage og den eksporterede game-runtime på en nyflashet boks |
 | `devuan/08_network_manager.sh` | NetworkManager på et **SD-kort** i læseren, og migrering af kendte wifi-netværk. eMMC-flowet får NM via `extra_packages.sh` + `09` |
 | `devuan/emmc_first_boot.sh` | swapfil på 2 GB efter flash |
 | `devuan/fb_overscan.py` | skrumper billedet, så fjernsynets beskæring ikke rammer noget |
@@ -33,13 +37,14 @@ og fast-play-/lydværktøjerne 7. nov 2026.
 | `cyan_ab_run.sh` | én A/B-målekørsel: ren profil, Firefox med proxy-opskriften, BiDi-preload, fokus, `fb_fps`, rAF- og GL-tælling, canvas-geometri |
 | `play_fast_game.sh` | fast-play-launcher: standard 960x540 eller `WIN="640 360"`, sikrer `xulstore.json`, starter den kendte Firefox-opsætning, indlæser spillet via minimal BiDi-preload, verificerer renderflade/WebGL og efterlader Firefox kørende |
 | `bidi_cyan.py` canvas-live-scale | automatisk `CYAN_CANVAS_LIVE_SCALE=0.75` efter 20 sekunders stabilt game-canvas; `CYAN_CANVAS_LIVE_SCALE=1` slår skalering fra |
-| `ensure_audio.sh` | kontrollerer at PulseAudio bruger `/opt/alsa-da` og `alsa_output.dmixer`; genstarter serveren kontrolleret hvis den er faldet tilbage til `auto_null` |
+| `ensure_audio.sh` | kontrollerer at PulseAudio bruger `/opt/alsa-da` og `alsa_output.dmixer`; kører `pactl` med `LANG=C`/`LC_ALL=C`, venter på en eksisterende server og genstarter kun ved en reelt forkert sink |
 | `kill_firefox.sh` | stopper Firefox-parent og alle content-/helperprocesser via præcis argv[0]-matchning; undgår orphans og SSH-fælden ved `pkill -f` |
 | `stability_monitor.sh` | logger Firefox-proces-træ, hukommelse, temperatur og crashfiler under en længere test; markerer når parenten eller en aktiv content-process forsvinder |
-| `start_game_all.sh` | lokal idempotent bring-up af GPU, vnext12-proxy, bind-api-lap, VT og lyd før fast-play; kræver root |
-| `subway-surfers-launcher.sh` | åbner den lokale bring-up i lxterminal og kalder den afgrænsede sudo-regel |
+| `start_game_all.sh` | lokal idempotent bring-up af GPU, vnext12-proxy, bind-api-lap, VT og lyd før fast-play; kræver root og har en `flock`-lås mod parallelle startere |
+| `subway-surfers-launcher.sh` | åbner den lokale bring-up i lxterminal og kalder terminal-wrapperen |
+| `subway-surfers-terminal.sh` | kalder den afgrænsede sudo-regel og holder terminalen åben med fejlkode og logsti, hvis starten fejler |
 | `subway-surfers.desktop` | skrivebords- og menuikon til den samlede lokale spilstart |
-| `eglplatform_x11.cpp` | EGL/gralloc til X-bro; RGB565-konverteringen bruger nu NEON, genbrugt buffer og fire konverteringstråde. `CYAN_PRESENT_STATS=1` logger tidsopdelingen |
+| `eglplatform_x11.cpp` | EGL/gralloc til X-bro; RGB565-konverteringen bruger NEON, genbrugt buffer og fire konverteringstråde. Ved destroy ryddes buffere, mens window-objektet bevares til procesafslutning for at undgå vendor-libEGL'ens use-after-free. `CYAN_PRESENT_STATS=1` logger tidsopdelingen |
 | `s1_variants.sh` | S1-værktøjskæden: `backup`, `prefs V1-V5`, `restore <ts>`, `run`, `wait`, `result` — lægger `s1_prefs/*.user.js` ind i profilen og starter målingen afkoblet |
 | `s1_prefs/V1-V5.user.js` | de fem kompositor-varianter fra S1 (V1 baseline, V2 SWGL, V3 WebRender/GPU, V4 uden GPU-proces, V5 WR/GPU uden GPU-proces) |
 | `s1_snapshot.sh` | kører PÅ boksen: proces-snapshot 75 s inde i kørslen (GPU-proces? hvem har hybris-libEGL? GL-aktivitet i probe.log). Nødvendigt fordi `MOZ_LOG`-modulerne Compositor/LayerManager/WebRender er tavse i ESR-140 (fælde 53) |

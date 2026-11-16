@@ -37,6 +37,7 @@ die() {
     || die "brugeren $PROFILE_USER skal have uid 1000"
 command -v xdpyinfo >/dev/null 2>&1 || die "xdpyinfo mangler"
 command -v mountpoint >/dev/null 2>&1 || die "mountpoint mangler"
+command -v flock >/dev/null 2>&1 || die "flock mangler"
 
 mkdir -p "$(dirname "$LOG")"
 touch "$LOG"
@@ -44,6 +45,10 @@ chown "$PROFILE_USER:$PROFILE_USER" "$LOG"
 exec > >(tee -a "$LOG") 2>&1
 
 say "starter $(date '+%F %T %Z')"
+
+LOCK=/run/lock/geekbox-subway-surfers.lock
+exec 9>"$LOCK"
+flock -n 9 || die "en anden start kører allerede"
 
 if pgrep -x firefox-esr >/dev/null 2>&1; then
     say "Firefox kører allerede; luk vinduet før en ny start"
@@ -66,29 +71,22 @@ getent hosts poki.com >/dev/null 2>&1 \
 
 YEAR=$(date +%Y)
 if [ "$YEAR" -lt 2026 ]; then
-    say "uret står på $YEAR; henter tid fra netværksgatewayen"
-    GATEWAY=$(ip route show default | awk 'NR == 1 { print $3 }')
-    if [ -n "$GATEWAY" ]; then
-        EPOCH=$(python3 - "$GATEWAY" <<'PY'
-import sys
-import urllib.request
-from email.utils import parsedate_to_datetime
-
-with urllib.request.urlopen("http://%s" % sys.argv[1], timeout=8) as response:
-    print(int(parsedate_to_datetime(response.headers["Date"]).timestamp()))
-PY
-        ) || EPOCH=
-        if [ -n "$EPOCH" ]; then
-            date -s "@$EPOCH" >/dev/null
-        fi
-    fi
-    chronyc makestep >/dev/null 2>&1 || true
+    say "uret står på $YEAR; synkroniserer via HTTP-Date"
+    /usr/local/sbin/geekbox-clock-sync sync || true
     say "ur efter synkronisering: $(date '+%F %T %Z')"
+fi
+
+SYSTEM_IMG=/usr/local/share/libhybris/system.img
+if [ -f "$SYSTEM_IMG" ] && ! mountpoint -q /system; then
+    say "monterer $SYSTEM_IMG på /system"
+    mkdir -p /system
+    mount -o loop,ro "$SYSTEM_IMG" /system
+    ln -sfn /system/vendor /vendor
 fi
 
 say "bringer GPU op"
 lsmod | grep -q '^pvrsrvkm' || insmod /root/pvrsrvkm_leddaz.ko
-sh /root/gpu_up.sh
+sh /root/gpu_up.sh 9>&-
 chmod 666 /dev/sw_sync 2>/dev/null || true
 
 say "installerer vnext12-proxyen"
@@ -142,9 +140,9 @@ for f in /sys/class/display/*/enable; do
 done
 
 say "kontrollerer lydstakken"
-bash /root/ensure_audio.sh
+bash /root/ensure_audio.sh 9>&-
 
 say "starter fast-play"
-RESTART="${RESTART:-0}" bash /root/play_fast_game.sh
+RESTART="${RESTART:-0}" bash /root/play_fast_game.sh 9>&-
 
 say "færdig $(date '+%F %T %Z')"

@@ -6,9 +6,9 @@
 #   bash devuan/box.sh --put <lokal> <fjern>      kopiér fil til boksen
 #   bash devuan/box.sh --get <fjern> <lokal>      hent fil fra boksen
 #
-# IP'en findes med devuan/find_box.sh hvis BOXIP ikke er sat. Baggrunden er at
-# boksen ikke har nogen MAC i IDB'en og derfor får en ny DHCP-adresse ved hver
-# boot (.171 og .188 er samme boks — find_box.sh viser hvad der svarer lige nu).
+# IP'en findes med devuan/find_box.sh hvis BOXIP ikke er sat. Efter den nye
+# serialbaserede MAC er DHCP-adressen stabil, men ældre boots/images kan stadig
+# have skiftende adresser.
 set -uo pipefail
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -24,7 +24,7 @@ find_ip() {
 }
 
 IP=$(find_ip)
-COMMON=(-i "$SSHKEY" -o ConnectTimeout=8 -o ServerAliveInterval=15
+COMMON=(-F /dev/null -i "$SSHKEY" -o ConnectTimeout=8 -o ServerAliveInterval=15
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 
 case "${1:-}" in

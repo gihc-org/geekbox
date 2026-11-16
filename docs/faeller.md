@@ -1341,6 +1341,28 @@ resterende processer. Ved testen blev syv processer stoppet, og den gamle
 WebExtensions-helper krævede SIGKILL. Undgå et bredt `pkill -f`, som kan ramme
 egen SSH-session (fælde 41).
 
+### Fælde 69: EGL/X11-destroy kan få et allerede frigivet window-objekt
+Målt 16. nov 2026. Firefox-lukning gav et crashreporter-vindue. Gdb fangede
+`SIGSEGV` i Renderer-tråden:
+
+```text
+#0  0x20202020
+#1  ws_DestroyWindow
+#2  eglDestroySurface
+```
+
+Strace viste `SEGV_MAPERR` på `0x20202020`. Ved indgangen til vores
+`x11ws_DestroyWindow()` var `X11NativeWindow`-objektet allerede fyldt med
+allocator-data. `ws_module_info` og callback-funktionen var korrekte. Det er
+derfor ikke en korrupt funktionstabel, men en livscyklusfejl mellem EGL-surface
+og native window.
+
+**Fix:** Platformen kalder `dispose()` for at flytte buffere til retired-køen,
+men beholder window-objektet til procesafslutning. Dermed undgås
+virtual-destructor på frigivet hukommelse, også hvis libEGL kalder destroy
+flere gange eller genbruger pointeradressen. En simpel pointer-baseret guard er
+ikke nok på grund af ABA-problemet.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer

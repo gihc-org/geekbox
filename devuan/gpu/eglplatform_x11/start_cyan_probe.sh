@@ -13,6 +13,15 @@ WEBGL=/usr/local/lib/firefox-webgl
 URL="${GAME_URL:-https://poki.com/en/g/subway-surfers}"
 LOG="${GAME_LOG:-/root/cyan_game.log}"
 
+# Denne 3.10/hybris-stak kan crashe under EGL/X11-nedlukning. Minidumpet bliver
+# ugyldigt, og crashreporteren ender derfor som et fastlåst GTK-vindue. Bevar
+# dumpforsøg og loggen, men undlad rapport-UI som standard. Sæt
+# CYAN_CRASH_UI=1 for at vise crashreporteren under en isoleret fejlsøgning.
+CRASH_ENV=()
+if [ "${CYAN_CRASH_UI:-0}" != "1" ]; then
+    CRASH_ENV+=(MOZ_CRASHREPORTER_NO_REPORT=1)
+fi
+
 # En sikkerhedsmargin mod uopdagede descriptor-lækager. Root kan hæve den
 # hårde grænse; hvis start uden root ikke kan, fortsætter vi med den gamle.
 FD_LIMIT=${FD_LIMIT:-16384}
@@ -63,6 +72,7 @@ runuser -u kristian -- env -i \
   MOZ_PROFILER_STARTUP_INTERVAL="${MOZ_PROFILER_STARTUP_INTERVAL:-}" \
   MOZ_PROFILER_STARTUP_ENTRIES="${MOZ_PROFILER_STARTUP_ENTRIES:-}" \
   MOZ_PROFILER_STARTUP_FEATURES="${MOZ_PROFILER_STARTUP_FEATURES:-}" \
+  "${CRASH_ENV[@]}" \
   LD_PRELOAD="$WEBGL/system_shim.so $WEBGL/egl_platform_shim.so" \
   LD_LIBRARY_PATH=/opt/hybris:"$WEBGL" \
   EGL_PLATFORM=x11 MOZ_X11_EGL=1 MOZ_DISABLE_CONTENT_SANDBOX=1 \

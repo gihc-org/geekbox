@@ -262,19 +262,24 @@ dd er nødvendig (se docs/boksen/flash.md §10). Scripts i `devuan/`:
   (i dag overskriver den EGL-lappen med vnext12).
 
 Videre (prioriteret rækkefølge, aftalt aug 2026):
-- [ ] **Kernel-rebuild-regression: WiFi mangler (26. aug 2026)** — vores genbyggede
-  3.10-kerner (marts-defconfig) har `RTL8188EU=y`/`RKWIFI=y` men INGEN `bcmdhd` →
-  wlan0 findes ikke, og NetworkManager har ingen wifi-mulighed (original-kernen
-  har bcmdhd indbygget). Fix: næste kernel-byg med bcmdhd slået på; firmware ligger
-  i /system/etc/firmware (kræver velfungerende system.img). Se
-  `docs/log/2026-08-26-ddk15-baseline-flashtest.md`.
-- [ ] **NTP i stedet for HTTP-ur-sync (26. aug 2026, brugerønsket):** myinit's
-  HTTP-Date-sync er arbejdsfixet; ønsket er at få chrony/NTP til at virke. Tidligere
-  fejl: "No suitable source for synchronisation" selv med makestep — MISTANKE:
-  samme syscall-403-problem (chrony er 32-bit armhf; brugte muligvis clock_gettime64
-  der fejlede). Den nye kernel (compat-403-fix, build 26. aug ~17:5x) kan have
-  fikset det — TEST chrony igen efter flash. Hvis det virker: fjern HTTP-fixet fra
-  myinit (eller behold som fallback).
+- [x] **Kernel-rebuild-regression: WiFi mangler — løst (16. nov 2026)** — den
+  aktuelle kernel har `bcmdhd`. Efter at `myinit` har monteret `system.img`,
+  indlæses firmwaren, `wlan0` får DHCP og virker sammen med Ethernet.
+- [x] **Tid uden RTC — HTTP-Date via gateway (16. nov 2026):** Offentlig NTP
+  er filtreret på netværket (`chronyc sources` viser ingen reachable source),
+  mens gatewayen svarer korrekt på HTTP. `geekbox-clock-sync` gendanner seneste
+  epoch fra eMMC, synker via gatewayens `Date` uden DNS og kører hvert 15.
+  minut. Boksen blev rettet fra 2013 til korrekt 2026-tid og matchede laptoppen
+  inden for ét sekund. NTP/chrony beholdes kun som opportunistisk fallback.
+- [x] **Golden game-runtime til nye bokse (16. nov 2026):**
+  `devuan/gpu/export_game_kit.sh` eksporterer GPU-platform, Firefox-shims,
+  hjælpescripts og en minimal spilprofil (6,2 MB). `provision_game_box.sh`
+  installerer vendor-`system.img`, Hybris-broer, runtime, launcher, ikon,
+  sudo-regel, aktuel `myinit.sh` og tidsfix på en nyflashet boks.
+- [ ] **Byg og test næste spilklare image:** kræver sudo-adgangskode til
+  `devuan/09_make_emmc_img.sh`; derefter fysisk loader-tilstand til
+  `devuan/testflash.sh` og provisioning af den nye boks. Se
+  `docs/log/2026-11-16-boot-stability.md`.
 - [x] Sikkerhed: ssh strammet (dropbear `-s` = kun nøgler), bruger `kristian` oprettet (sudo-gruppe, nøgle-login), OpenSSH-service disabled
 - [ ] Skift kodeord: `passwd` (root) og `passwd kristian` på boksen — gøres af ejeren selv
 - [x] WiFi: VIRKER (aug 2026) — nl80211 + wpa_supplicant, wlan0 får DHCP ved boot via /etc/network/interfaces. Bemærk: `wext` virker ikke på denne bcmdhd, brug `nl80211`. Kræver `isc-dhcp-client` + `wireless-tools` (installeret på boksen)
@@ -303,12 +308,22 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] **rsyslog druknede i syscall-403-floden (19. aug 2026)** — 3.10 dumper alle registre ved hvert `clock_gettime64`-kald, hvilket blev ~30 MB/time skrevet til eMMC'en (syslog + kern.log) så snart rsyslog var installeret. Dumpet er KERN_WARNING, så prioritet kan ikke bruges. `09` lægger nu et indholdsfilter i `/etc/rsyslog.d/`. Målt: fra ~950 linjer/45 s til 0, mens `logger` stadig kommer igennem. NB: rsyslogs `regex` er POSIX BRE (`+` er et almindeligt tegn, `(a|b)` virker ikke) — brug `ereregex`
 - [x] **Grafisk wifi (19. aug 2026)** — `network-manager` + `network-manager-gnome` i pakkelisten (16 MiB inkl. 16 afhængigheder). Den ikke-oplagte del er polkit: standardreglerne kræver en "aktiv session", og nodm laver ikke en, så uden en gruppebaseret regel kan man SE netværkene men ikke tilslutte sig. `09` sætter `netdev`-gruppen + `/etc/polkit-1/rules.d/50-nm-netdev.rules`. eth0 bliver bevidst `unmanaged` (ssh-vejen skal ikke afhænge af NM); wlan0 må ikke stå i `/etc/network/interfaces`, ellers lader NM den være. Verificeret: nm-applet i bakken, wifi-liste, tilsluttet. NB: er både boks og laptop på wifi, kan routerens client isolation blokere ssh mellem dem — brug kablet
 - [x] **Firefox afbrydes med "stack smashing detected" (19. aug 2026) — dæmpet, ikke løst.** Ægte hukommelseskorruption (SIGABRT fra glibcs stak-canary), IKKE pladsmangel: swappen urørt, 1 GiB fri. Ramte både hovedprocessen og isolerede indholdsprocesser (kernen: `Comm: Isolated Web Co`, `potentially unexpected fatal signal 6`), på både youtube.com og dr.dk. **Sporet er lukket på denne boks:** vendor-kernen er bygget uden `CONFIG_COREDUMP` (`/proc/sys/kernel/core_pattern` findes ikke) og firefox' egen minidump-generering fejler — ingen af de to veje til et stakspor virker. Arbejdshypotese (ubevist): firefox' seccomp-sandkasse emulerer systemkald kernen mangler, og `clock_gettime64` kaldes tusindvis af gange i minuttet. Fire indstillinger i `/etc/firefox-esr/firefox-esr.js` (lagt ind af 09): `security.sandbox.content.level=0`, `fission.autostart=false`, `dom.ipc.processCount=1`, `browser.sessionstore.resume_from_crash=true`. Derefter 7 min YouTube uden nedbrud, og procestypen der crashede findes ikke længere. **Vi isolerede IKKE hvilken indstilling der var afgørende** — én test ville afgøre det: sæt sandkassen tilbage til 2 og se om nedbruddene vender tilbage; virker det, kan site-isolation tændes igen. Se docs/faeller.md fælde 14
-- [ ] Diagnostik til næste gang: `echo 1 > /proc/sys/debug/exception-trace` og `/proc/sys/kernel/print-fatal-signals` — uden dem er et nedbrud i en almindelig proces helt tavst i kernens log. Nulstilles ved boot; overvej at sætte dem fast i myinit
+- [x] Diagnostik til næste gang: `myinit.sh` sætter nu
+  `/proc/sys/debug/exception-trace=1` og
+  `/proc/sys/kernel/print-fatal-signals=1` ved hver boot (16. nov 2026).
 - [ ] `passwd` for kristian + root på alle bokse (07 sætter midlertidigt `geekbox`)
 - [ ] Genkør `sudo devuan/extra_packages.sh` så `sudo` kommer i bygge-rootfs'en før næste image
-- [ ] **eth0 får en ny tilfældig MAC ved hver boot** — der er ingen MAC i boksens IDB (`dmesg`: "Read the Ethernet MAC address from IDB:00:00:00:00:00:00"), så kernen genererer en. Følge: ny DHCP-IP ved hver boot, og routerens leasetabel fyldes op. Fix (lille): sæt en fast MAC i `myinit.sh` med `ip link set eth0 address ...` før dhclient — én pr. boks, fx afledt af boksnummeret. Værktøj til at finde boksen indtil da: `devuan/find_box.sh`
+- [x] **Stabil eth0-MAC udledt fra CPU-serien (16. nov 2026):** `myinit.sh`
+  beregner en lokalt administreret MAC som `02` plus fem bytes fra
+  `sha256(/proc/cpuinfo Serial)`. Hver boks får dermed en stabil, unik adresse
+  uden en manuel identitetsfil. Den aktive boot beholder sin gamle tilfældige
+  MAC indtil næste strømcyklus.
 - [ ] Boks 1: opdatér `/root/myinit.sh` til repoets nuværende version ved lejlighed (`ssh -i ~/.ssh/geekbox_key root@<ip> 'cat > /root/myinit.sh' < devuan/myinit.sh`) — dens ældre myinit virker i dag, men kun fordi dens PHY-timing og EDID-race tilfældigvis opfører sig (se docs/boksen/flash.md §10, fælde 3+4)
-- [x] RTC: løst (aug 2026) — chrony installeret; synker fra NTP i runlevel 2 når netværket er oppe. Boksen har ingen batteri-backup, så uret starter i 2013 ved hver boot indtil chrony retter det (apt virker herefter). NB: chrony manglede i eMMC-imaget (rootfs bygget før 01 fik den i pakkelisten; boks 1 fik den efterinstalleret) — nu i extra_packages.sh + vagt i 09. Efterinstalleres på boks 1 næste gang den er online: `apt-get install -y --no-install-recommends chrony`
+- [x] **RTC/tid: endeligt arbejdsfix (16. nov 2026)** — boksen har stadig
+  intet RTC-batteri og starter i 2013. NTP er ikke brugbart på netværket.
+  `clock_sync.sh` gendanner seneste epoch fra eMMC og synker via gatewayens
+  HTTP-Date uden DNS. Se
+  `docs/log/2026-11-16-boot-stability.md`.
 - [x] **GPU bragt til live (20. aug 2026)** — GLES 3.1 på PowerVR G6110 via hybris-stakken: vendors system.img loop-montet ved /system (myinit), logd+servicemanager+pvrsrvctl (`devuan/gpu/gpu_up.sh`), `cma=128M` i parameteren (ellers EPERM på 2. CMA-buffer), system()-shim mod glibc-2.41-EFAULT. Eget test-program renderer 500 frames (docs/grafik/gpu-historien.md §5.15, `devuan/gpu/test_triangle.cpp`). NB: X kan ikke køre samtidig med hwcomposer-præsentationen — testen kører med nodm stoppet
 - [ ] **WebGL-frysen i spil (25. aug 2026, GL-layers-forsøg):** WebGL 2.0 + hele UI'et virker med Basic-kompositoren, men Subway Surfers (poki.com) frøs efter første frame (0 fps; main ~118 % CPU; content-clock_gettime-storm ~3,8 kHz; SoftwareVsyncThread-spin ~1,8 kHz; ingen GPU-proces). **`layers.acceleration.disabled=false` (GL-layers, webrender stadig false) får spillet til at animere i vinduet** (70–168k px/2–4 s; present #250+), og efter genstart virker den simple testside end-to-end (root 518k px + fb0 329k px/2 s) — **men skærmen opdaterer IKKE for spillet** (første frame når root, derefter 0; to svigtmønstre: GPU-proces-DeviceReset midt i kørslen ELLER blot sænket present-rate ~5 fps). To spil-kørsler tog boksen ned. **Stress-siden er bygget + kørt uden måle-læsninger (run C, 25. aug nat): GPU-proces DeviceReset WR_POST_UPDATE ~1 min inde; derefter renderer WebRender SORTE frames ind i EGL-overfladen — rAF/FPS/presents kører videre, vinduet er sort på skærmen, resten af skærmen har fine farver; gdb viser presents kører; xrefresh hjælper ikke; ingen CONTEXT_LOST. REVIDERET KONKLUSION: frysen = render-fejl efter GPU-genstart, IKKE present-/kompositeringsfejl; fb-driverens read-wedge (XGetImage/fb0 i D-state) er et separat måle-artefakt.** Run D (gfx:5): reset allerede ved present #2–3; MOZ_LOG=gfx:5 giver intet output. **Standalone GLES-loop UDFØRT (300 swaps uden fejl, 2,2 fps): vendor-stakken overlever — fejlen er Firefox/WebRender-samspillet; test_client-artefakt (fmt=4 RGB_565 vs hårdkodet RGBA8888-konvertering) skal rettes.** Run E+F (scale=1 og 0,5): begge overlevede 800+ presents / 0 reset → **reset'et er flaky (~50 % af kørslerne), ikke canvas-afhængigt**; Firefox-kompositor-kadence ~1,4 Hz uafhængig af canvas-størrelse (vsync-problematik). **PRIMÆR HYPOTESE (buffer-race):** Firefox laver 1×1→resize-dansen; `destroyBuffers()` sletter busy-buffere → use-after-free → sporadisk GL-fejl → WR_POST_UPDATE-reset; standalone-klienten laver ikke dansen og reseter aldrig. **Næste:** fiks buffer-lifecycle (retire, slet aldrig busy), genbyg eglplatform_x11.so, mål reset-raten over 4-6 kørsler → derefter swap/queue-fejllogning, kompositor-verifikation (WebRender vs. gammel GL-layers), resize-reproduktion, kadence (~1,4 Hz) → til sidst test spillet + andre WebGL-sider (Shadertoy, aquarium/three.js, Basemark sidst). Detaljer: docs/grafik/gpu-historien.md §5.15d, `docs/log/2026-08-25-gl-layers.md`, værktøjer i `devuan/gpu/eglplatform_x11/` (webgl_stress.html, wedge_capture.sh, capture_stress.sh, stall_capture.sh, xdump.c, rootdiff.c, x32probe1-4.c, start_game.sh). **STATUS 23:45:** buffer-fixet (retired, slet aldrig busy, md5 409af875) er bygget + installeret, men reset'et skete stadig (run 1, 98 s/#100, 0 retire-hændelser) — hypotesen er ikke bekræftet; `gfx.webrender.force-disabled=true` ændrer intet (Firefox 128 har kun WebRender når acceleration er til — 25 WR*-tråde i GPU-processen). **`gl_reset_probe` UDFØRT (23:41): 300 frames 1280×720, glGetError/eglGetError pr. frame → 0 afvigelser** (bevis: `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`) — vendor-GL ren, reset'et er WebRender-intern. **Bugzilla-signaturmatch:** 1989579 (dup af 1986254 → 1667748) viser præcis vores sekvens (`WR_POST_UPDATE` efter `Failed to compile vertex shader` → `Handling webrender error 2`); desktop-rodårsag der var dma-buf-fd uden CLOEXEC arvet af child-processer. **RUN G (00:1x): RUST_LOG virker på ESR; ALLE shaders kompilerede Success (inkl. 1989579-shaderne), men reset kom alligevel ved #950 / ~11 min — UDEN shader-/GL-fejl og uden dmesg-signatur → shader-hypotesen AFKRÆFTET; reset kan komme sent; ~1,4 Hz er sandsynligvis transfer-cap ~2M px/s på fuld-vindue-presents.** **GENNEMBRUD 26. aug morgen — GPU-MMU-fault:** dmesg viser PVR-kernens `BIF0 - FAULT` (TPUA_USC læser fra umappet 0x0102FF9540) + `Innocent Lockup`-recovery → kontekst ødelagt → WR_POST_UPDATE. **`gfx.webrender.precache-shaders=true` gør shader-fejlen (`cs_border_segment` ved warmup) + reset DETERMINISTISK (målt 3×, #50–#150 / ~1–3 min); uden precache kompilerer shaderen Success og reset er flaky.** gdb fangede SIGSEGV i Renderer-tråden efter reset. **BUFFER-FIX INSTALLERET (01:1x, md5 4ba7a90d): `destroyBuffers()` flytter ALLE buffere til retired-kø (frigøres efter 3 presents) — PVR-MMU-faulten er VÆK (0 i dmesg), stress-kørslen stabil (#350–450 uden reset mod tidligere #2–#150 flaky; ét sent reset ved ~#450); FPS ~1,5 (2,7 kun med gdb-breakpoint på eglMakeCurrent — skjult flaskehals, ikke produktionsløsning).** **SUBWAY SURFERS FRYS FORKLARET (01:5x): spillets Unity-shaders kræver #extension GL_EXT_draw_buffers + GL_EXT_frag_depth, og driver-kompileren afviser begge — GL_EXT_draw_buffers står i GL_EXTENSIONS men kompilerer ikke (målt ES2+ES3 med shader_ext_test.c); GL_EXT_frag_depth mangler helt. Spillet kan derfor ikke rendere → frys. Dette er den egentlige spil-blokade, separat fra buffer/GPU-reset-sporet.** **WEBGL1-TVANG AFKRÆFTET (02:1x): webgl.enable-webgl2=false + driver-patch (GL_EXT_draw_buffers fjernet fra udvidelseslisten via bind-mount) — spillet fejler stadig: Unitys egne shaders kræver MRT-direktivet, og kompileren afviser det uanset udvidelseslisten (målt med trivial_test.c). Konklusion: MRT-blokaden er en 2016-æra driver-begrænsning, ikke konfigurationsfejl. Reverse-engineering/erstatning af bloben er urealistisk (lukket USC-firmware; flerårigt driverprojekt).** **Næste:** research nyere PowerVR-DDK til RK3368 (draw_buffers) som afgrænset spor, ELLER find spil uden MRT-shaders; buffer-fixet beholdes; dmesg-overvågning i start_game.sh. Detaljer: docs/grafik/gpu-historien.md §5.15e, `docs/log/2026-08-26-gpu-fault-gennembrud.md`, beviser i `devuan/gpu/beviser/`.**
   - **DDK-SPORET (26. aug 02:3x–04:0x): DDK 1.5@3830101 fundet (leddaz-dump-stash, Android 6.0.1) og PRØVEINSTALLERET med NEGATIVT resultat:** 1.5-userspace (32-bit) + Android 6.0-libc (`__register_atfork` mangler i 5.1-libc) hænger boksens indbyggede KM **hårdt ved EGL-init (2× wedge, anden gang på rent filsystem)**. **KM'en er bygget ind i kernen** ("Rogue L 0.22", tom /proc/modules, insmod "Invalid module format", rmmod "not supported") → 1.5-KM kræver kernel-rebuild, ikke .ko-bytte. Dumpets pvrsrvctl er 64-bit (ubrugbar på 32-bit-stakken). Restore til 1.4 gennemført og verificeret (baseline bekræftet); `/system`-image forstørret 192→254 MB (var 100 % fuldt). **Spor-videre (foreslået):** (a) 1.5-KM via kernel-rebuild (stort), (b) spil uden MRT-shaders, (c) accept. **LØSNINGEN ER DOKUMENTERET (26. aug ~04:2x):** `docs/log/2026-08-26-ddk15-kernel-rebuild-loesning.md` beskriver den fulde vej — 3.10-kernel-rebuild med 1.5-KM fra `geekboxzone/mmallow_kernel` (gren `geekbox`, `drivers/gpu/rogue`) + løsning af blokaderne (`__register_atfork` via shim/patch, 64-bit `pvrsrvctl` via dumpets 64-bit-runtime). **→ OVERTAGET: hele vejen er GENNEMFØRT + verificeret (næste entry).** Detaljer: `docs/log/2026-08-26-ddk-proeveinstallation.md`, plan i `docs/log/2026-08-26-ddk-handover.md`.**
@@ -455,8 +470,25 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
+- **God start i en ny session (boot-stabilitet og provisionering, 16. nov
+  2026 ~20:43) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-16-boot-stability.md` og den nyeste del af
+  `docs/log/2026-11-16-launcher.md`. Branch er `firefox-fps-tuning`. STATUS:
+  Spillet kan startes efter reboot. Tiden stod på 2013, fordi HTTP-synken
+  krævede DNS og NTP/UDP er filtreret. `geekbox-clock-sync` synker nu via
+  gatewayens HTTP-Date, gemmer epoch på eMMC og kører hvert 15. minut;
+  boksen matchede laptoppen inden for ét sekund. Efter strømcyklus er stabil
+  MAC `02:fe:f1:8b:9f:77`, korrekt tid ved skrivebordet og både Ethernet og
+  WiFi verificeret. `myinit` aktiverer fatal-signal-logning. NÆSTE: byg
+  imaget med `sudo devuan/09_make_emmc_img.sh`; flash næste boks med
+  `sudo devuan/testflash.sh`; kør
+  `bash devuan/gpu/provision_game_box.sh <ny-ip> <kilde-ip>` og start spillet.
+  FÆLDER: NTP er ikke tilgængelig; DNS kan mangle tidligt i boot; `sudo` i
+  agent-sessionen kan kræve adgangskode; `wlan0` er først klar efter
+  firmware-load."*
+
 - **God start i en ny session (generalisering af Subway-POC, 12. nov 2026
-  ~22:15) — NUVÆRENDE:**
+  ~22:15) — TIDLIGERE HOVEDSPOR, stadig milepæl:**
   *"Læs `docs/log/2026-11-12-stability.md` (hele notatet),
   `docs/log/2026-11-11-stability.md`, `docs/grafik/fps-analysen-2026-09-25.md`
   §0 og `docs/faeller.md` fælde 41-68. Branch er `firefox-fps-tuning`.
@@ -501,6 +533,27 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   frøser præsentationen; `pkill -x firefox-esr` efterlader helpers;
   `pkill -f` kan dræbe egen ssh; BiDi = én session; `MOZ_LOG_FILE` skal ligge
   i `/tmp`."*
+
+- [x] **Skrivebordsikonets bring-up hærdet (16. nov 2026):** Ikonet stoppede
+  i `ensure_audio.sh`, fordi skrivebordets `da_DK.UTF-8` fik `pactl info` til
+  at skrive `Standard sink:`, mens scriptet ledte efter `Default Sink:`.
+  Lydkaldene tvinger nu `LANG=C` og `LC_ALL=C`; kontrollen venter desuden på
+  en eksisterende server før genstart. Bring-up har en `flock`-lås, og
+  terminalen bliver stående med fejl og logsti. Den faktiske launchervej er
+  testet med dansk locale til `FAST-PLAY KLAR: 960x540`. Detaljer:
+  `docs/log/2026-11-16-launcher.md`.
+
+- [x] **Crashreporter-popup ved Firefox-lukning dæmpet (16. nov 2026):**
+  Lukning kan trigge en ægte EGL/X11-teardown-crash efter `destroyBuffers()`.
+  Minidumpet er ufuldstændigt, og crashreporteren ender som et fastlåst
+  GTK-vindue. Gdb og strace fandt use-after-free i
+  `x11ws_DestroyWindow()`: window-objektet var allerede frigivet, og et
+  virtual-destructor-kald ramte `0x20202020`. Platformen rydder nu buffere,
+  men beholder objektet til procesafslutning. Normal
+  `WM_DELETE_WINDOW`-lukning er testet uden exception handler,
+  crashreporter-popup eller ny pending minidump.
+  `MOZ_CRASHREPORTER_NO_REPORT=1` er beholdt som ekstra værn. Detaljer:
+  `docs/log/2026-11-16-launcher.md`.
 
 - **God start i en ny session (stabilitet, 12. nov 2026 ~14:40) —
   HISTORISK, AFLØST 12. nov 2026 ~22:15:**

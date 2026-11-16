@@ -34,6 +34,7 @@ BIDI_LOG="$D/bidi.log"
 GAME_LOG="$D/game.log"
 WIN_LOG="$D/win.log"
 SHOT_DIR="$D/shots"
+BIDI_PID=
 
 say() {
     printf 'play_fast_game: %s\n' "$*"
@@ -44,6 +45,15 @@ die() {
     printf 'play_fast_game: logs ligger i %s\n' "$D" >&2
     exit 1
 }
+
+cleanup_children() {
+    if [ -n "${BIDI_PID:-}" ] && kill -0 "$BIDI_PID" 2>/dev/null; then
+        kill -TERM "$BIDI_PID" 2>/dev/null || true
+        sleep 1
+        kill -KILL "$BIDI_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup_children EXIT
 
 first_shot() {
     find "$SHOT_DIR" -maxdepth 1 -type f -name 'shot_*.png' -print -quit \
@@ -231,6 +241,8 @@ for _ in $(seq 1 "$READY_TIMEOUT"); do
         shot_ready=1
     fi
     [ "$game_ready" -eq 1 ] && [ "$shot_ready" -eq 1 ] && break
+    kill -0 "$LAUNCH_PID" 2>/dev/null \
+        || die "Firefox-startscriptet stoppede under indlaesningen; se $LAUNCH_LOG"
     kill -0 "$BIDI_PID" 2>/dev/null \
         || break
     sleep 1
@@ -256,6 +268,7 @@ elif kill -0 "$BIDI_PID" 2>/dev/null; then
     done
     kill -KILL "$BIDI_PID" 2>/dev/null || true
 fi
+BIDI_PID=
 
 if [ -n "$USERJS_BEFORE" ]; then
     USERJS_AFTER=$(md5sum "$PROFILE/user.js" | awk '{print $1}')

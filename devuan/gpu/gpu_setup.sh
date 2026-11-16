@@ -2,6 +2,9 @@
 # gpu_setup.sh — gør en NYFLASHET boks GPU-klar. KØRES PÅ LAPTOPPEN.
 #
 # Brug:   devuan/gpu/gpu_setup.sh <boks-ip> [kilde-boks-ip]
+#
+# Til en komplet spilklar boks brug hellere:
+#   devuan/gpu/provision_game_box.sh <ny-ip> <kilde-ip>
 # Kilde-boksen (default boks 1, 192.168.0.188) leverer de færdigkompilerede
 # binærer (test_triangle, system_shim.so, gpu_up.sh) — så den nye boks IKKE
 # behøver gcc/gdb/strace.
@@ -17,13 +20,18 @@ set -euo pipefail
 BOX=${1:?brug: gpu_setup.sh <boks-ip> [kilde-boks-ip]}
 SRC=${2:-192.168.0.188}
 KEY=~/.ssh/geekbox_key
+SSH_OPTS=(-F /dev/null -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=no
+          -o UserKnownHostsFile=/dev/null)
+SCP_OPTS=(-F /dev/null -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=no
+          -o UserKnownHostsFile=/dev/null)
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 VENDOR="$REPO/vendor_root"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 echo "== 1. vendors system.img (~200 MB) til /usr/local/share/libhybris =="
-ssh -i "$KEY" "root@$BOX" 'mkdir -p /usr/local/share/libhybris'
-scp -i "$KEY" "$VENDOR/usr/local/share/libhybris/system.img" "root@$BOX:/usr/local/share/libhybris/"
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'mkdir -p /usr/local/share/libhybris'
+scp "${SCP_OPTS[@]}" "$VENDOR/usr/local/share/libhybris/system.img" \
+    "root@$BOX:/usr/local/share/libhybris/"
 
 echo "== 2. hybris-broer til /opt/hybris (fra vendor_root, usage-patchet) =="
 STAGE=$(mktemp -d)
@@ -39,26 +47,26 @@ cp -a "$VENDOR/usr/local/lib"/libhybris-common.so* \
       "$STAGE/"
 cp -a "$VENDOR/usr/local/lib/libhybris" "$STAGE/"
 python3 "$HERE/patch_hwc_usage.py" "$STAGE/libhybris-hwcomposerwindow.so.1.0.0"
-ssh -i "$KEY" "root@$BOX" 'mkdir -p /opt/hybris /usr/local/lib/libhybris'
-scp -i "$KEY" -r "$STAGE"/* "root@$BOX:/opt/hybris/"
-ssh -i "$KEY" "root@$BOX" 'cp /opt/hybris/libhybris/*.so /usr/local/lib/libhybris/'
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'mkdir -p /opt/hybris /usr/local/lib/libhybris'
+scp "${SCP_OPTS[@]}" -r "$STAGE"/* "root@$BOX:/opt/hybris/"
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'cp /opt/hybris/libhybris/*.so /usr/local/lib/libhybris/'
 rm -rf "$STAGE"
 
 echo "== 3. headere (kun nødvendige hvis der skal BYGGES på boksen) =="
 TAR=$(mktemp)
 (cd "$VENDOR/usr/local/include" && tar czf "$TAR" .)
-ssh -i "$KEY" "root@$BOX" 'mkdir -p /usr/local/include'
-ssh -i "$KEY" "root@$BOX" 'tar xzf - -C /usr/local/include' < "$TAR"
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'mkdir -p /usr/local/include'
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'tar xzf - -C /usr/local/include' < "$TAR"
 rm -f "$TAR"
 
 echo "== 4. færdige binærer fra kilde-boksen =="
 for f in test_triangle system_shim.so gpu_up.sh; do
-    scp -i "$KEY" "root@$SRC:/root/$f" "root@$BOX:/root/"
+    scp "${SCP_OPTS[@]}" "root@$SRC:/root/$f" "root@$BOX:/root/"
 done
 
 echo "== 5. sikr at myinit monterer /system (idempotent — ældre images) =="
-scp -i "$KEY" "$HERE/diagnostik/patch_myinit.py" "root@$BOX:/root/"
-ssh -i "$KEY" "root@$BOX" 'python3 /root/patch_myinit.py'
+scp "${SCP_OPTS[@]}" "$HERE/diagnostik/patch_myinit.py" "root@$BOX:/root/"
+ssh "${SSH_OPTS[@]}" "root@$BOX" 'python3 /root/patch_myinit.py'
 
 echo
 echo "FÆRDIG. Strøm-cykl nu boksen — ved næste boot monterer myinit /system selv."

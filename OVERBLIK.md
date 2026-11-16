@@ -560,7 +560,8 @@ LD_PRELOAD=/root/system_shim.so LD_LIBRARY_PATH=/opt/hybris EGL_PLATFORM=x11 DIS
   vindue/canvas, `gfx.webrender.software`, `layers.acceleration.disabled`) og
   720p gjort rigtigt (HDMI-mode + `fbset`/genstart). `CYAN_LIGHT` frøser
   fortsat præsentationen. Blå glitches er lagt til side indtil videre.
-- NTP/chrony (myinit-synk virker som plaster).
+- Tiden synkroniseres via gatewayens HTTP-`Date` og et persistent
+  `geekbox-clock-sync`; NTP er filtreret på netværket.
 - Næste kernel-byg (planlagt): `CONFIG_ANDROID_PARANOID_NETWORK` fra +
   bcmdhd (WiFi) — samme byggevej som dagens.
 - Spor B: mainline-kernel/nyere Linux (headless; HDMI/GPU mangler).

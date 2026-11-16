@@ -112,6 +112,8 @@ echo "== myinit.sh: altid den aktuelle version fra devuan/ =="
 # en forældet myinit satte fx statisk IP 192.168.1.50 (fejlsøgnings-version).
 cp "$PROJ/devuan/myinit.sh" "$ROOTFS/root/myinit.sh"
 chmod 755 "$ROOTFS/root/myinit.sh"
+install -D -m 755 "$PROJ/devuan/clock_sync.sh" \
+    "$ROOTFS/usr/local/sbin/geekbox-clock-sync"
 
 echo "== skrivebordsbaggrund: symlink til LXDE's tapet =="
 # pcmanfm's wallpaper peger på /etc/alternatives/desktop-background, som ejes af

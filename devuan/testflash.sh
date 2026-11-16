@@ -53,8 +53,8 @@ if "$UPGRADE" uf "$IMG"; then
     echo "  * blåt LXDE-tapet"
     echo "  * et synligt panel i bunden med menu-ikon til venstre og ur til højre"
     echo
-    echo "Bagefter, når du kender boksens IP:"
-    echo "  ssh -i ~/.ssh/geekbox_key root@<ip> 'bash -s' < devuan/emmc_first_boot.sh"
+    echo "Bagefter, når du kender boksens IP, gør den spilklar med:"
+    echo "  bash devuan/gpu/provision_game_box.sh <ny-ip> <kendt-god-ip>"
 else
     echo
     echo "FEJL: flashningen gik ikke igennem — er boksen i loader-tilstand?"

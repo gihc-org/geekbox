@@ -30,6 +30,7 @@ dualos_blobs/
 lollipop_kernel_src/
 Geekbox_Lollipop_Lubuntu_dualOS_V151129/
 devuan/gpu/bin/
+devuan/gpu/game-kit/
 
 # Python-cache fra py_compile af værktøjerne (fx prof_top.py, bidi_cyan.py)
 __pycache__/

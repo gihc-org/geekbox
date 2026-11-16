@@ -9,6 +9,16 @@ mount -t devtmpfs dev /dev 2>/dev/null
 mkdir -p /run/sshd /dev/pts
 mount -t devpts devpts /dev/pts 2>/dev/null
 
+# Bevar en kort kernelinje når en proces senere dør af et fatalt signal.
+# Indstillingen nulstilles ved hver boot og skal derfor sættes her.
+[ -w /proc/sys/kernel/print-fatal-signals ] && \
+    echo 1 >/proc/sys/kernel/print-fatal-signals 2>/dev/null || true
+[ -w /proc/sys/debug/exception-trace ] && \
+    echo 1 >/proc/sys/debug/exception-trace 2>/dev/null || true
+
+CLOCK_SYNC=/usr/local/sbin/geekbox-clock-sync
+[ -x "$CLOCK_SYNC" ] && "$CLOCK_SYNC" restore >>/root/clock-sync.log 2>&1 || true
+
 # GPU-stak (hvis installeret, se DOK §5.15 + devuan/gpu/gpu_setup.sh): vendors
 # Android-system.img indeholder wifi-firmwaren OG PowerVR-blobs'ene — derfor skal
 # den monteres TIDLIGT: bcmdhd læser /system/etc/firmware når wlan0 kommer op.
@@ -77,6 +87,20 @@ fi
 # netværk: eth0 med DHCP først, ellers statisk fallback — men KUN hvis der er link!
 # (ellers efterlades en død default-route på eth0, der kvalte wlan0)
 # wlan0 overlades til ifupdown/wpa_supplicant i rcS (undgår dobbelt-dhclient)
+# Brug CPU-serialen til en stabil, lokalt administreret MAC. Vendor-IDB'en har
+# ingen MAC, så kernen ellers genererer en ny tilfældig adresse ved hver boot.
+CPU_SERIAL=$(awk '/^Serial[[:space:]]*:/ { print $3; exit }' /proc/cpuinfo)
+if [ -n "$CPU_SERIAL" ]; then
+    STABLE_MAC=$(printf '%s' "$CPU_SERIAL" | sha256sum \
+        | awk '{ h=$1; printf "02:%s:%s:%s:%s:%s\n", substr(h,1,2), substr(h,3,2), substr(h,5,2), substr(h,7,2), substr(h,9,2) }')
+    CURRENT_MAC=$(cat /sys/class/net/eth0/address 2>/dev/null || true)
+    if [ -n "$STABLE_MAC" ] && [ "$CURRENT_MAC" != "$STABLE_MAC" ]; then
+        ip link set dev eth0 down 2>/dev/null || true
+        ip link set dev eth0 address "$STABLE_MAC" 2>/dev/null \
+            && echo "myinit: stabil eth0-MAC $STABLE_MAC"
+    fi
+fi
+
 # VIGTIGT: interfacet skal OP før carrier kan læses meningsfuldt — på et interface
 # der er DOWN læses carrier som 0/EINVAL, så testen alene ville slå eth0 permanent fra
 ip link set eth0 up
@@ -96,6 +120,22 @@ if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = "1" ]; then
         # load due to network problems", og uret blev stående på 2013 (myinit's
         # HTTP-sync kunne ikke nå ud). Se fælde 57.
         ip route add default via 192.168.1.254 metric 100
+        (
+            # rcS/ifupdown kan senere få en rigtig DHCP-lease. Fjern den
+            # statiske nødadresse og metric-100-ruten, når den er aktiv.
+            i=0
+            while [ "$i" -lt 120 ]; do
+                if ip -4 addr show eth0 2>/dev/null \
+                    | grep -q 'inet 192\.168\.0\.'; then
+                    ip route del default via 192.168.1.254 metric 100 \
+                        2>/dev/null || true
+                    ip addr del 192.168.1.50/24 dev eth0 2>/dev/null || true
+                    break
+                fi
+                i=$((i + 1))
+                sleep 2
+            done
+        ) >/root/network-fallback-cleanup.log 2>&1 &
     fi
 fi
 # DNS (boksen har ingen RTC — ved statisk fallback skal nameserver sættes her)
@@ -105,48 +145,16 @@ DNSGW=$(ip route | awk '/^default via/ && !/metric 100/ {print $3; exit}')
 grep -q nameserver /etc/resolv.conf 2>/dev/null || \
     echo "nameserver $DNSGW" > /etc/resolv.conf
 
-# Uret: boksen har ingen RTC og chrony/NTP kan fejle på vendor-kernen (målt 26. aug
-# 2026: "No suitable source for synchronisation" selv med makestep på vores
-# genbyggede kernel — undersøges). Uden korrekt tid afvises HTTPS/TLS-certifikater
-# ("certificate is not yet valid"), så Firefox viser "ingen internet". Synk derfor
-# via HTTP-Date-headeren (port 80 virker på denne router); kun hvis uret er langt
-# forkert (< 2023) og kun når netværket er oppe.
-if [ "$(date +%s)" -lt 1700000000 ]; then
-    i=0
-    while [ "$i" -lt 5 ] && [ "$(date +%s)" -lt 1700000000 ]; do
-        python3 - >/root/clock-sync.log 2>&1 <<'EOF' && break
-import urllib.request, email.utils, subprocess
-try:
-    h = urllib.request.urlopen("http://example.com", timeout=8).headers["Date"]
-    t = int(email.utils.parsedate_to_datetime(h).timestamp())
-    subprocess.run(["date", "-s", f"@{t}"], check=True)
-    print("ur synkroniseret til", t)
-except Exception as e:
-    print("ur-sync fejlede:", e)
-EOF
-        i=$((i+1))
-        sleep 10
-    done
-    # Hvis netværket/DNS stadig ikke er klar: fortsæt i baggrunden (op til ~3 min)
-    if [ "$(date +%s)" -lt 1700000000 ]; then
-        (
-            j=0
-            while [ "$j" -lt 12 ] && [ "$(date +%s)" -lt 1700000000 ]; do
-                python3 - >/root/clock-sync.log 2>&1 <<'EOF' && break
-import urllib.request, email.utils, subprocess
-try:
-    h = urllib.request.urlopen("http://example.com", timeout=8).headers["Date"]
-    t = int(email.utils.parsedate_to_datetime(h).timestamp())
-    subprocess.run(["date", "-s", f"@{t}"], check=True)
-    print("ur synkroniseret til", t)
-except Exception as e:
-    print("ur-sync fejlede:", e)
-EOF
-                j=$((j+1))
-                sleep 15
-            done
-        ) >/root/clock-sync-bg.log 2>&1 &
-    fi
+# Uret: gatewayens HTTP-Date virker uden DNS. Gendan seneste kendte tid først,
+# synk straks efter netværket og hold den ved lige hvert 15. minut.
+if [ -x "$CLOCK_SYNC" ]; then
+    "$CLOCK_SYNC" sync >>/root/clock-sync.log 2>&1 || true
+    (
+        while :; do
+            sleep 900
+            "$CLOCK_SYNC" sync >>/root/clock-sync.log 2>&1 || true
+        done
+    ) >/root/clock-sync-bg.log 2>&1 &
 fi
 
 # dropbear virker på 3.10; OpenSSH 10 gør ikke (seccomp-sandbox kræver nyere kernel)

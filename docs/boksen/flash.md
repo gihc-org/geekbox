@@ -265,3 +265,35 @@ Første boks flashet med den SD-frie metode (09 med bagt parameter + `UF` — in
 andre skridt). Virkede med det samme: boot fra eMMC, netværk via DHCP, desktop med
 korrekte farver efter én X-genstart ved første boot (se ovenfor). resize2fs +
 swapfil gjort over ssh. Metoden er dermed verificeret på hardware.
+
+## 11. Fra flashet base til spillbar boks (16. nov 2026)
+
+Base-imaget er ikke stort nok til både Firefox-rootfs og vendors `system.img`.
+GPU-/WebGL-runtimen lægges derfor på efter første boot.
+
+1. Byg og flash basen:
+
+   ```bash
+   sudo devuan/testflash.sh
+   ```
+
+2. Start boksen og find dens IP:
+
+   ```bash
+   bash devuan/find_box.sh
+   ```
+
+3. Installer den kendte spilruntime fra en fungerende boks:
+
+   ```bash
+   bash devuan/gpu/provision_game_box.sh <ny-ip> <kendt-god-ip>
+   ```
+
+Provisioneringen kopierer vendors `system.img`, Hybris-broerne,
+`eglplatform_x11.so`, Firefox-shims, den afgrænsede proxy, hjælpescripts og en
+minimal spilprofil. Launcher, skrivebordsikon, sudo-regel, aktuel `myinit.sh`
+og `geekbox-clock-sync` installeres samtidig.
+
+`start_game_all.sh` monterer nu selv `system.img`, så spillet kan startes med
+det samme. Ved næste reboot valideres den serielt afledte MAC og den fulde
+tidskæde.

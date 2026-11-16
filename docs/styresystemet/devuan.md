@@ -96,8 +96,13 @@ død eth0 ikke blokerer wlan0's tur i ifupdown.
 Brug strøm-cykling.
 
 ### 5.8 Uret starter i 2013
-Ingen RTC-backup → apt brokker sig ("Release file not valid yet"). **Løsning: chrony**
-— synker i runlevel 2 når netværket er oppe.
+Ingen RTC-backup → apt brokker sig ("Release file not valid yet"). Offentlig
+NTP er filtreret i dette netværk, så chrony alene er ikke nok.
+
+**Løsning:** `geekbox-clock-sync` gendanner seneste kendte epoch fra eMMC,
+synker derefter via gatewayens HTTP-`Date` uden DNS og gentager hvert 15.
+minut. `chrony` kører fortsat som opportunistisk fallback, hvis UDP/123 senere
+bliver tilgængeligt.
 
 ### 5.9 Pakke-installation på boksen
 - `systemd-sysusers` (Devuans standalone-variant) fejler med "Failed to take

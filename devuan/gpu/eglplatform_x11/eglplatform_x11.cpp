@@ -41,6 +41,8 @@ extern "C" {
 #include <cstdlib>
 #include <cstring>
 #include <thread>
+#include <mutex>
+#include <set>
 #include <vector>
 #include <fcntl.h>
 #include <dirent.h>
@@ -204,6 +206,11 @@ public:
     {
     }
     virtual ~X11NativeWindow()
+    {
+        destroyBuffers();
+    }
+
+    void dispose()
     {
         destroyBuffers();
     }
@@ -706,6 +713,14 @@ private:
     long long m_stat_cleanup_us;
 };
 
+/* libEGL/eglDestroySurface kan kalde ws_DestroyWindow mere end én gang for
+ * samme native window under Firefox-shutdown. Efter første delete peger
+ * objektets vptr på allocator-fyld (målt 0x20202020), og den anden delete
+ * crasher i virtual-destructor-dispatch. Hold derfor en lille livscyklus-tabel:
+ * kun den første DestroyWindow for en pointer må frigøre objektet. */
+static std::mutex g_windows_mutex;
+static std::set<X11NativeWindow *> g_live_windows;
+
 /* ------------------------------------------------------------------ */
 /* ws_module-eksport (facitlisten fra A3: hwcomposer/fbdev-mønstret)  */
 /* ------------------------------------------------------------------ */
@@ -764,6 +779,10 @@ static EGLNativeWindowType x11ws_CreateWindow(EGLNativeWindowType win,
     X11NativeWindow *nw = new X11NativeWindow(g_dpy, xid,
                                               (unsigned int)a.width,
                                               (unsigned int)a.height);
+    {
+        std::lock_guard<std::mutex> lock(g_windows_mutex);
+        g_live_windows.insert(nw);
+    }
     fprintf(stderr, "x11ws: vindue 0x%lx pakket ind (%dx%d)\n",
             (unsigned long)xid, a.width, a.height);
     return *nw;
@@ -772,7 +791,24 @@ static EGLNativeWindowType x11ws_CreateWindow(EGLNativeWindowType win,
 static void x11ws_DestroyWindow(EGLNativeWindowType win)
 {
     ANativeWindow *aw = (ANativeWindow *)win;
-    delete static_cast<X11NativeWindow *>(aw);
+    X11NativeWindow *nw = static_cast<X11NativeWindow *>(aw);
+    {
+        std::lock_guard<std::mutex> lock(g_windows_mutex);
+        if (g_live_windows.erase(nw) == 0) {
+            fprintf(stderr, "x11ws: ignorerer gentaget DestroyWindow %p\n",
+                    (void *)nw);
+            return;
+        }
+    }
+    /* libEGL kan sende et allerede frigivet window og/eller genbruge samme
+     * pointeradresse til et nyt objekt under Firefox-shutdown. En pointer-baseret
+     * double-free-guard er derfor ikke nok (ABA). Ryd platformens buffere, men
+     * behold objektet til procesafslutning; OS'et frigør det sammen med processen.
+     * Dette er en livline for vendor-libEGL'ens teardown-rækkefølge og undgår
+     * virtual-destructor på allocator-fyld (målt SIGSEGV ved 0x20202020). */
+    nw->dispose();
+    fprintf(stderr, "x11ws: DestroyWindow %p ryddet; objektet bevares\n",
+            (void *)nw);
 }
 
 static void *x11ws_wrapper_symbol(const char *name)

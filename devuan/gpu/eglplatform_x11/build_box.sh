@@ -19,15 +19,17 @@ g++ -O3 -g -fPIC -mfpu=neon -pthread -shared -o "$OUT/eglplatform_x11.so" "$HERE
     -lhybris-eglplatformcommon -lhardware -lhybris-common -landroid-properties \
     -lsync -lX11 -ldl -lrt
 
-echo "== test_client_x11 =="
-g++ -O2 -o "$OUT/test_client_x11" "$HERE/test_client_x11.cpp" \
-    -I"$INC" -I"$INC/android" \
-    -L"$LIB" -Wl,-rpath-link,"$LIB" \
-    -lEGL -lGLESv2 -lhybris-common -lhardware -lX11 -ldl -lrt -lm
-
 echo "== installér platformen (libEGL leder i /usr/local/lib/libhybris) =="
 cp "$OUT/eglplatform_x11.so" /usr/local/lib/libhybris/eglplatform_x11.so
 chmod 755 /usr/local/lib/libhybris/eglplatform_x11.so
+
+echo "== test_client_x11 =="
+if ! g++ -O2 -o "$OUT/test_client_x11" "$HERE/test_client_x11.cpp" \
+    -I"$INC" -I"$INC/android" \
+    -L"$LIB" -Wl,-rpath-link,"$LIB" \
+    -lEGL -lGLESv2 -lhybris-common -lhardware -lX11 -ldl -lrt -lm; then
+    echo "ADVARSEL: test_client_x11 kunne ikke linke; platformen er installeret." >&2
+fi
 
 echo
 echo "FÆRDIG → $OUT"
