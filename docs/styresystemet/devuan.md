@@ -99,10 +99,13 @@ Brug strøm-cykling.
 Ingen RTC-backup → apt brokker sig ("Release file not valid yet"). Offentlig
 NTP er filtreret i dette netværk, så chrony alene er ikke nok.
 
-**Løsning:** `geekbox-clock-sync` gendanner seneste kendte epoch fra eMMC,
-synker derefter via gatewayens HTTP-`Date` uden DNS og gentager hvert 15.
-minut. `chrony` kører fortsat som opportunistisk fallback, hvis UDP/123 senere
-bliver tilgængeligt.
+**Løsning:** `_chrony` skal have primær GID `3003/inet`, fordi vendor-kernen
+kræver Android-paranoid netværksgruppe og chronyd rydder supplerende grupper
+under privilege-drop. Numeriske NTP-kilder ligger i
+`/etc/chrony/sources.d/geekbox-fixed.sources`.
+
+`geekbox-clock-sync` gendanner desuden seneste kendte epoch fra eMMC og synker
+via gatewayens HTTP-`Date` som fallback, hvis NTP eller DNS er utilgængeligt.
 
 ### 5.9 Pakke-installation på boksen
 - `systemd-sysusers` (Devuans standalone-variant) fejler med "Failed to take

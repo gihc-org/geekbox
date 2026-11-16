@@ -6,9 +6,10 @@
 
 Boksen blev strømcyklet kl. 09:50 på boksens ur: **2013-01-21**. eMMC, X,
 HDMI, Ethernet, PulseAudio og `alsa_output.dmixer` virkede, men uret forblev
-forkert. `myinit` forsøgte `http://example.com` før DNS var klar, og chrony
-havde ingen brugbare kilder. Gatewayen `192.168.0.1` svarer derimod korrekt på
-HTTP med en `Date`-header; offentlig NTP/UDP 123 er ikke tilgængelig.
+forkert. `myinit` forsøgte `http://example.com` før DNS var klar. Chrony kunne
+heller ikke oprette IPv4-sockets: `_chrony` havde ikke gruppe 3003/inet, så
+vendor-kernen gav `EACCES`. Gatewayens HTTP-Date blev derfor den første
+pålidelige tidskilde.
 
 Tiden synkroniseres nu via `geekbox-clock-sync`: gatewayens HTTP-Date bruges
 først, seneste kendte epoch gemmes på eMMC og gendannes ved boot, og tiden
@@ -60,6 +61,12 @@ et provisioning-script til en nyflashet boks.
   bliver aktiv. (21:07)
 - [udført] HTTP-synken venter nu op til 60 sekunder på den rigtige
   DHCP-gateway og foretrækker den frem for metric-100-fallbacken. (21:07)
+- [udført] NTP-roden fundet med strace: `_chrony` manglede primær GID
+  `3003/inet`, og chronyd rydder supplerende grupper under privilege-drop.
+  (21:18)
+- [udført] `_chrony` har nu primær GID `inet`, og numeriske NTP-kilder er
+  installeret. Chrony valgte `n3.taur.dk` og rapporterer `Leap status: Normal`.
+  (21:19)
 - [afventer] Base-imaget skal bygges med `sudo devuan/09_make_emmc_img.sh`;
   den nuværende session kan ikke indtaste sudo-adgangskoden. (20:52)
 
@@ -123,10 +130,24 @@ Den nuværende kernel har `bcmdhd`, og efter at `myinit` har monteret
 `system.img`, kommer `wlan0` op og får DHCP. Grundet firmware-load tager det
 omkring 38 sekunder. Ethernet er primær rute.
 
-Offentlig NTP svarer ikke på dette netværk. En direkte kilde
-`216.239.35.0` stod som `^?` med `reach=0`, mens gatewayens HTTP-Date svarede
-med det samme. Fejlen er derfor netværksfiltrering af UDP/123 eller manglende
-NTP-adgang, ikke DNS, RTC eller et chrony-programfejl.
+Laptoppen bruger `ntpsec 1.2.3` og har reachable Debian-pools. En direkte
+UDP/123-test fra boksen fik også svar fra både Google og laptoppen. NTP var
+derfor ikke filtreret.
+
+Strace viste den egentlige fejl:
+
+```text
+socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP)
+    = -1 EACCES (Permission denied)
+```
+
+Vendor-kernen bruger Android-paranoid netværk og kræver aflagte rettigheder.
+Chronyd skifter til `_chrony` og rydder supplerende grupper, så et almindeligt
+gruppe-tillæg forsvinder. Løsningen er at give `_chrony` primær GID `3003`
+(`inet`) og installere DNS-uafhængige numeriske servere i
+`/etc/chrony/sources.d/geekbox-fixed.sources`.
+
+HTTP-Date beholdes som fallback, hvis NTP eller DNS midlertidigt svigter.
 
 ## Kommandoer
 

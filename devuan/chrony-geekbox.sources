@@ -1,0 +1,7 @@
+# Numeriske kilder undgår DNS-race i chronys tidlige bootfase.
+# GeekBox-kernen kræver desuden at _chrony har primær GID 3003/inet,
+# ellers returnerer socket(AF_INET, ...) EACCES efter privilege-drop.
+server 216.239.35.0 iburst
+server 216.239.35.4 iburst
+server 216.239.35.8 iburst
+server 216.239.35.12 iburst

@@ -115,6 +115,35 @@ chmod 755 "$ROOTFS/root/myinit.sh"
 install -D -m 755 "$PROJ/devuan/clock_sync.sh" \
     "$ROOTFS/usr/local/sbin/geekbox-clock-sync"
 
+echo "== NTP: fast inet-gruppe og DNS-uafhængige kilder =="
+python3 - "$ROOTFS/etc/passwd" "$ROOTFS/etc/group" <<'PYEOF'
+import sys
+
+passwd_path, group_path = sys.argv[1:3]
+group_lines = open(group_path).read().splitlines()
+inet_gid = None
+for line in group_lines:
+    fields = line.split(":")
+    if len(fields) >= 3 and fields[0] == "inet":
+        inet_gid = fields[2]
+        break
+if inet_gid != "3003":
+    raise SystemExit("gruppe inet mangler eller har uventet GID: %s" % inet_gid)
+
+passwd_lines = open(passwd_path).read().splitlines()
+for index, line in enumerate(passwd_lines):
+    fields = line.split(":")
+    if len(fields) >= 4 and fields[0] == "_chrony":
+        fields[3] = inet_gid
+        passwd_lines[index] = ":".join(fields)
+        break
+else:
+    raise SystemExit("brugeren _chrony mangler i rootfs")
+open(passwd_path, "w").write("\n".join(passwd_lines) + "\n")
+PYEOF
+install -D -m 644 "$PROJ/devuan/chrony-geekbox.sources" \
+    "$ROOTFS/etc/chrony/sources.d/geekbox-fixed.sources"
+
 echo "== skrivebordsbaggrund: symlink til LXDE's tapet =="
 # pcmanfm's wallpaper peger på /etc/alternatives/desktop-background, som ejes af
 # desktop-base — en pakke vi ikke installerer. Uden linket er skrivebordet SORT, og et

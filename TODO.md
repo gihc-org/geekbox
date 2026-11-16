@@ -265,12 +265,13 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] **Kernel-rebuild-regression: WiFi mangler — løst (16. nov 2026)** — den
   aktuelle kernel har `bcmdhd`. Efter at `myinit` har monteret `system.img`,
   indlæses firmwaren, `wlan0` får DHCP og virker sammen med Ethernet.
-- [x] **Tid uden RTC — HTTP-Date via gateway (16. nov 2026):** Offentlig NTP
-  er filtreret på netværket (`chronyc sources` viser ingen reachable source),
-  mens gatewayen svarer korrekt på HTTP. `geekbox-clock-sync` gendanner seneste
-  epoch fra eMMC, synker via gatewayens `Date` uden DNS og kører hvert 15.
-  minut. Boksen blev rettet fra 2013 til korrekt 2026-tid og matchede laptoppen
-  inden for ét sekund. NTP/chrony beholdes kun som opportunistisk fallback.
+- [x] **Tid uden RTC — NTP og HTTP-fallback (16. nov 2026):** NTP virker fra
+  både laptop og boks. Den oprindelige chrony-fejl var `socket(AF_INET) =
+  EACCES`, fordi `_chrony` manglede primær GID `3003/inet`; supplerende grupper
+  ryddes ved privilege-drop. `_chrony` bruger nu `inet` som primær gruppe, og
+  numeriske kilder i `/etc/chrony/sources.d/geekbox-fixed.sources` gør NTP
+  uafhængig af tidlig DNS. `geekbox-clock-sync` er beholdt som fallback og
+  gendanner seneste epoch fra eMMC.
 - [x] **Golden game-runtime til nye bokse (16. nov 2026):**
   `devuan/gpu/export_game_kit.sh` eksporterer GPU-platform, Firefox-shims,
   hjælpescripts og en minimal spilprofil (6,2 MB). `provision_game_box.sh`
@@ -474,18 +475,19 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   2026 ~20:43) — NUVÆRENDE:**
   *"Læs `docs/log/2026-11-16-boot-stability.md` og den nyeste del af
   `docs/log/2026-11-16-launcher.md`. Branch er `firefox-fps-tuning`. STATUS:
-  Spillet kan startes efter reboot. Tiden stod på 2013, fordi HTTP-synken
-  krævede DNS og NTP/UDP er filtreret. `geekbox-clock-sync` synker nu via
-  gatewayens HTTP-Date, gemmer epoch på eMMC og kører hvert 15. minut;
-  boksen matchede laptoppen inden for ét sekund. Efter strømcyklus er stabil
-  MAC `02:fe:f1:8b:9f:77`, korrekt tid ved skrivebordet og både Ethernet og
-  WiFi verificeret. `myinit` aktiverer fatal-signal-logning. NÆSTE: byg
-  imaget med `sudo devuan/09_make_emmc_img.sh`; flash næste boks med
+  Spillet kan startes efter reboot. Tiden stod på 2013, fordi tidlig DNS
+  fejlede og `_chrony` fik EACCES på IPv4-sockets uden primær GID 3003/inet.
+  Chrony/NTP virker nu med `inet` som primær gruppe og numeriske kilder;
+  `geekbox-clock-sync` via gatewayens HTTP-Date er fallback og gendanner
+  seneste epoch fra eMMC. Efter strømcyklus er stabil MAC
+  `02:fe:f1:8b:9f:77`, korrekt tid ved skrivebordet og både Ethernet og WiFi
+  verificeret. `myinit` aktiverer fatal-signal-logning. NÆSTE: byg imaget med
+  `sudo devuan/09_make_emmc_img.sh`; flash næste boks med
   `sudo devuan/testflash.sh`; kør
   `bash devuan/gpu/provision_game_box.sh <ny-ip> <kilde-ip>` og start spillet.
-  FÆLDER: NTP er ikke tilgængelig; DNS kan mangle tidligt i boot; `sudo` i
-  agent-sessionen kan kræve adgangskode; `wlan0` er først klar efter
-  firmware-load."*
+  FÆLDER: chronyd rydder supplerende grupper, så inet skal være primær GID;
+  DNS kan mangle tidligt i boot; `sudo` i agent-sessionen kan kræve
+  adgangskode; `wlan0` er først klar efter firmware-load."*
 
 - **God start i en ny session (generalisering af Subway-POC, 12. nov 2026
   ~22:15) — TIDLIGERE HOVEDSPOR, stadig milepæl:**

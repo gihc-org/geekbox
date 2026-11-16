@@ -1363,6 +1363,22 @@ virtual-destructor på frigivet hukommelse, også hvis libEGL kalder destroy
 flere gange eller genbruger pointeradressen. En simpel pointer-baseret guard er
 ikke nok på grund af ABA-problemet.
 
+### Fælde 70: chrony får EACCES på socket uden gruppe 3003/inet
+Målt 16. nov 2026 på vendor-kernen. Chrony havde ingen reachable kilder, mens
+både laptoppen og en direkte UDP/123-test fra boksen kunne hente NTP.
+
+Strace viste:
+
+```text
+socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP)
+    = -1 EACCES (Permission denied)
+```
+
+Kernen kræver Android-paranoid netværksgruppe for IPv4-sockets. Det er ikke
+nok at sætte `_chrony` som supplerende medlem af `inet`, fordi chronyd rydder
+supplerende grupper under privilege-drop. `_chrony` skal have **primær GID
+3003**. Numeriske NTP-servere omgår samtidig en DNS-race tidligt i boot.
+
 ---
 
 ## 5. Fejlfinding: de fem første kommandoer
