@@ -127,8 +127,11 @@ for line in group_lines:
     if len(fields) >= 3 and fields[0] == "inet":
         inet_gid = fields[2]
         break
-if inet_gid != "3003":
-    raise SystemExit("gruppe inet mangler eller har uventet GID: %s" % inet_gid)
+if inet_gid is None:
+    group_lines.append("inet:x:3003:")
+    inet_gid = "3003"
+elif inet_gid != "3003":
+    raise SystemExit("gruppe inet har uventet GID: %s" % inet_gid)
 
 passwd_lines = open(passwd_path).read().splitlines()
 for index, line in enumerate(passwd_lines):
@@ -140,6 +143,7 @@ for index, line in enumerate(passwd_lines):
 else:
     raise SystemExit("brugeren _chrony mangler i rootfs")
 open(passwd_path, "w").write("\n".join(passwd_lines) + "\n")
+open(group_path, "w").write("\n".join(group_lines) + "\n")
 PYEOF
 install -D -m 644 "$PROJ/devuan/chrony-geekbox.sources" \
     "$ROOTFS/etc/chrony/sources.d/geekbox-fixed.sources"

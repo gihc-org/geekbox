@@ -12,6 +12,7 @@
 | `devuan/find_box.sh` | finder GeekBoxe på netværket; nyere images har stabil MAC/IP, mens ældre boots kan skifte |
 | `devuan/box.sh` | ssh/scp-wrapper med eksplicitte options til en valgt `BOXIP` |
 | `devuan/clock_sync.sh` | gendanner/opdaterer tiden via gatewayens HTTP-`Date` uden DNS; installeres som `/usr/local/sbin/geekbox-clock-sync` |
+| `devuan/chrony-geekbox.sources` | numeriske NTP-kilder til chrony; `09` sætter samtidig `_chrony` til primær GID `3003/inet` |
 | `devuan/gpu/export_game_kit.sh` | eksporterer GPU-platform, Firefox-shims, hjælpescripts og minimal spilprofil fra en kendt god boks |
 | `devuan/gpu/provision_game_box.sh` | installerer GPU-systemimage og den eksporterede game-runtime på en nyflashet boks |
 | `devuan/08_network_manager.sh` | NetworkManager på et **SD-kort** i læseren, og migrering af kendte wifi-netværk. eMMC-flowet får NM via `extra_packages.sh` + `09` |

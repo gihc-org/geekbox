@@ -141,13 +141,17 @@ sudo devuan/testflash.sh
 #    Bemærk: der er INTET blåt boot-logo mere hvis DTB_PATCH har været brugt —
 #    skærmen er sort de første 15-30 sekunder, det er normalt.
 
-# 4. Find boksen på nettet (dens MAC er tilfældig ved hver boot, så søg ikke på den)
+# 4. Find boksen på nettet (nye images bruger stabil MAC ud fra CPU-serien)
 devuan/find_box.sh
 
-# 5. Efterbehandling: filsystem 1,4 GB -> 15 GB + 2 GB swapfil
-ssh -i ~/.ssh/geekbox_key root@<IP> 'bash -s' < devuan/emmc_first_boot.sh
+# 5. Første boot udvider selv filsystemet og opretter 2 GB swap via myinit.
+#    Kontrollér eventuelt med:
+ssh -i ~/.ssh/geekbox_key root@<IP> 'df -h /; free -h; cat /proc/swaps'
 
-# 6. Til sidst: passwd for både kristian og root (07 sætter midlertidigt 'geekbox'),
+# 6. Gør boksen spilklar med GPU-/Firefox-runtime og launcher:
+bash devuan/gpu/provision_game_box.sh <IP> <kendt-god-IP>
+
+# 7. Til sidst: passwd for både kristian og root (07 sætter midlertidigt 'geekbox'),
 #    og evt. wifi-credentials.
 ```
 
@@ -295,5 +299,5 @@ minimal spilprofil. Launcher, skrivebordsikon, sudo-regel, aktuel `myinit.sh`
 og `geekbox-clock-sync` installeres samtidig.
 
 `start_game_all.sh` monterer nu selv `system.img`, så spillet kan startes med
-det samme. Ved næste reboot valideres den serielt afledte MAC og den fulde
-tidskæde.
+det samme. Den serielt afledte MAC er verificeret på den nuværende boks;
+nye bokse skal kontrollere MAC, NTP og HTTP-fallback ved deres første boot.

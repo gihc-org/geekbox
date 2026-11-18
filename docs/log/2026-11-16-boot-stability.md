@@ -25,6 +25,10 @@ den ikke senere i bootforløbet.
 Fatal-signal-diagnostik sættes ved boot, og der er lavet en golden game-kit og
 et provisioning-script til en nyflashet boks.
 
+Opfølgning 18. nov 2026: Boksen kørte fortsat stabilt. Chrony var stadig
+synkroniseret med `Reference ID 91.229.203.9`, `Stratum 3`,
+`Leap status: Normal` og cirka 50 mikrosekunders offset.
+
 ## Aftaler og beslutninger
 
 - [aftalt] Boksen skal have korrekt tid efter hver strømcyklus uden manuelle
@@ -67,6 +71,8 @@ et provisioning-script til en nyflashet boks.
 - [udført] `_chrony` har nu primær GID `inet`, og numeriske NTP-kilder er
   installeret. Chrony valgte `n3.taur.dk` og rapporterer `Leap status: Normal`.
   (21:19)
+- [udført] NTP blev kontrolleret igen 18. nov efter to døgn og var fortsat
+  synkroniseret med cirka 50 us offset. (18. nov 21:24)
 - [afventer] Base-imaget skal bygges med `sudo devuan/09_make_emmc_img.sh`;
   den nuværende session kan ikke indtaste sudo-adgangskoden. (20:52)
 
@@ -117,7 +123,8 @@ Scriptet:
    spilprofil fra den kendte boks
 3. installerer launcher, skrivebordsikon og sudo-regel
 4. installerer aktuel `myinit.sh` og tidsfix
-5. verificerer de kritiske filer
+5. sætter `_chrony` til primær GID 3003/inet og installerer numeriske NTP-kilder
+6. verificerer de kritiske filer
 
 `start_game_all.sh` monterer nu selv `system.img`, så et ekstra reboot er ikke
 påkrævet for at starte spillet. Den aktuelle boks har allerede valideret

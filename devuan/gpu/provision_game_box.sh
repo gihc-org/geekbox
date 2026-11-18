@@ -45,10 +45,15 @@ ssh "${SSH_OPTS[@]}" "root@$TARGET" 'mkdir -p /usr/local/sbin'
 scp "${SCP_OPTS[@]}" "$REPO/devuan/myinit.sh" "$TARGET:/root/myinit.sh"
 scp "${SCP_OPTS[@]}" "$REPO/devuan/clock_sync.sh" \
     "$TARGET:/usr/local/sbin/geekbox-clock-sync"
+scp "${SCP_OPTS[@]}" "$REPO/devuan/chrony-geekbox.sources" \
+    "$TARGET:/etc/chrony/sources.d/geekbox-fixed.sources"
 
 ssh "${SSH_OPTS[@]}" "root@$TARGET" '
 set -e
 chmod 755 /root/myinit.sh /usr/local/sbin/geekbox-clock-sync
+getent group inet >/dev/null || groupadd -g 3003 inet
+usermod -g inet _chrony
+service chrony restart
 geekbox-clock-sync sync || true
 chown -R kristian:kristian /home/kristian/ffprof
 chmod 755 /root/start_game_all.sh /root/play_fast_game.sh \
@@ -69,6 +74,7 @@ test -x /usr/local/bin/subway-surfers
 test -f /usr/local/lib/libhybris/eglplatform_x11.so
 test -f /usr/local/lib/firefox-webgl/system_shim.so
 test -f /home/kristian/ffprof/user.js
+test "$(id -g _chrony)" = 3003
 echo "runtime installeret"
 '
 

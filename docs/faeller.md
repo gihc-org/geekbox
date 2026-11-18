@@ -398,6 +398,7 @@ kernens log, og man tror fejlagtigt at "der står ingenting nogen steder".
 - **Boksen har ingen MAC-adresse i hardwaren**, så kernen laver en tilfældig ved hver boot.
   Derfor får boksen en ny IP hver gang, og derfor kan man ikke lede efter den på MAC.
   `devuan/find_box.sh` leder efter dropbear-svar i stedet.
+  **Rettet 16. nov 2026:** myinit udleder nu en stabil MAC fra CPU-serien.
 - **`cat /dev/fb0` viser kun den øverste halvdel** af skærmen. Brug `mmap`.
 - **`y_vir=960` i driverens statusfil er ikke en højde.** Det er linjelængden målt i
   4-byte-ord: 1920 × 2 ÷ 4 = 960. Helt normalt.

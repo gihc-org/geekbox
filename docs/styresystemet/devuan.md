@@ -96,8 +96,7 @@ død eth0 ikke blokerer wlan0's tur i ifupdown.
 Brug strøm-cykling.
 
 ### 5.8 Uret starter i 2013
-Ingen RTC-backup → apt brokker sig ("Release file not valid yet"). Offentlig
-NTP er filtreret i dette netværk, så chrony alene er ikke nok.
+Ingen RTC-backup → apt brokker sig ("Release file not valid yet").
 
 **Løsning:** `_chrony` skal have primær GID `3003/inet`, fordi vendor-kernen
 kræver Android-paranoid netværksgruppe og chronyd rydder supplerende grupper

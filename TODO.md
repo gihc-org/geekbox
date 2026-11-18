@@ -317,13 +317,13 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
 - [x] **Stabil eth0-MAC udledt fra CPU-serien (16. nov 2026):** `myinit.sh`
   beregner en lokalt administreret MAC som `02` plus fem bytes fra
   `sha256(/proc/cpuinfo Serial)`. Hver boks får dermed en stabil, unik adresse
-  uden en manuel identitetsfil. Den aktive boot beholder sin gamle tilfældige
-  MAC indtil næste strømcyklus.
+  uden en manuel identitetsfil. Efter strømcyklus blev `02:fe:f1:8b:9f:77`
+  verificeret på den aktuelle boks.
 - [ ] Boks 1: opdatér `/root/myinit.sh` til repoets nuværende version ved lejlighed (`ssh -i ~/.ssh/geekbox_key root@<ip> 'cat > /root/myinit.sh' < devuan/myinit.sh`) — dens ældre myinit virker i dag, men kun fordi dens PHY-timing og EDID-race tilfældigvis opfører sig (se docs/boksen/flash.md §10, fælde 3+4)
 - [x] **RTC/tid: endeligt arbejdsfix (16. nov 2026)** — boksen har stadig
-  intet RTC-batteri og starter i 2013. NTP er ikke brugbart på netværket.
-  `clock_sync.sh` gendanner seneste epoch fra eMMC og synker via gatewayens
-  HTTP-Date uden DNS. Se
+  intet RTC-batteri og starter i 2013. Chrony/NTP virker nu med `_chrony` i
+  primær GID 3003/inet og numeriske kilder. `clock_sync.sh` gendanner seneste
+  epoch fra eMMC og synker via gatewayens HTTP-Date som fallback. Se
   `docs/log/2026-11-16-boot-stability.md`.
 - [x] **GPU bragt til live (20. aug 2026)** — GLES 3.1 på PowerVR G6110 via hybris-stakken: vendors system.img loop-montet ved /system (myinit), logd+servicemanager+pvrsrvctl (`devuan/gpu/gpu_up.sh`), `cma=128M` i parameteren (ellers EPERM på 2. CMA-buffer), system()-shim mod glibc-2.41-EFAULT. Eget test-program renderer 500 frames (docs/grafik/gpu-historien.md §5.15, `devuan/gpu/test_triangle.cpp`). NB: X kan ikke køre samtidig med hwcomposer-præsentationen — testen kører med nodm stoppet
 - [ ] **WebGL-frysen i spil (25. aug 2026, GL-layers-forsøg):** WebGL 2.0 + hele UI'et virker med Basic-kompositoren, men Subway Surfers (poki.com) frøs efter første frame (0 fps; main ~118 % CPU; content-clock_gettime-storm ~3,8 kHz; SoftwareVsyncThread-spin ~1,8 kHz; ingen GPU-proces). **`layers.acceleration.disabled=false` (GL-layers, webrender stadig false) får spillet til at animere i vinduet** (70–168k px/2–4 s; present #250+), og efter genstart virker den simple testside end-to-end (root 518k px + fb0 329k px/2 s) — **men skærmen opdaterer IKKE for spillet** (første frame når root, derefter 0; to svigtmønstre: GPU-proces-DeviceReset midt i kørslen ELLER blot sænket present-rate ~5 fps). To spil-kørsler tog boksen ned. **Stress-siden er bygget + kørt uden måle-læsninger (run C, 25. aug nat): GPU-proces DeviceReset WR_POST_UPDATE ~1 min inde; derefter renderer WebRender SORTE frames ind i EGL-overfladen — rAF/FPS/presents kører videre, vinduet er sort på skærmen, resten af skærmen har fine farver; gdb viser presents kører; xrefresh hjælper ikke; ingen CONTEXT_LOST. REVIDERET KONKLUSION: frysen = render-fejl efter GPU-genstart, IKKE present-/kompositeringsfejl; fb-driverens read-wedge (XGetImage/fb0 i D-state) er et separat måle-artefakt.** Run D (gfx:5): reset allerede ved present #2–3; MOZ_LOG=gfx:5 giver intet output. **Standalone GLES-loop UDFØRT (300 swaps uden fejl, 2,2 fps): vendor-stakken overlever — fejlen er Firefox/WebRender-samspillet; test_client-artefakt (fmt=4 RGB_565 vs hårdkodet RGBA8888-konvertering) skal rettes.** Run E+F (scale=1 og 0,5): begge overlevede 800+ presents / 0 reset → **reset'et er flaky (~50 % af kørslerne), ikke canvas-afhængigt**; Firefox-kompositor-kadence ~1,4 Hz uafhængig af canvas-størrelse (vsync-problematik). **PRIMÆR HYPOTESE (buffer-race):** Firefox laver 1×1→resize-dansen; `destroyBuffers()` sletter busy-buffere → use-after-free → sporadisk GL-fejl → WR_POST_UPDATE-reset; standalone-klienten laver ikke dansen og reseter aldrig. **Næste:** fiks buffer-lifecycle (retire, slet aldrig busy), genbyg eglplatform_x11.so, mål reset-raten over 4-6 kørsler → derefter swap/queue-fejllogning, kompositor-verifikation (WebRender vs. gammel GL-layers), resize-reproduktion, kadence (~1,4 Hz) → til sidst test spillet + andre WebGL-sider (Shadertoy, aquarium/three.js, Basemark sidst). Detaljer: docs/grafik/gpu-historien.md §5.15d, `docs/log/2026-08-25-gl-layers.md`, værktøjer i `devuan/gpu/eglplatform_x11/` (webgl_stress.html, wedge_capture.sh, capture_stress.sh, stall_capture.sh, xdump.c, rootdiff.c, x32probe1-4.c, start_game.sh). **STATUS 23:45:** buffer-fixet (retired, slet aldrig busy, md5 409af875) er bygget + installeret, men reset'et skete stadig (run 1, 98 s/#100, 0 retire-hændelser) — hypotesen er ikke bekræftet; `gfx.webrender.force-disabled=true` ændrer intet (Firefox 128 har kun WebRender når acceleration er til — 25 WR*-tråde i GPU-processen). **`gl_reset_probe` UDFØRT (23:41): 300 frames 1280×720, glGetError/eglGetError pr. frame → 0 afvigelser** (bevis: `devuan/gpu/beviser/gl_reset_probe-2026-08-25.log`) — vendor-GL ren, reset'et er WebRender-intern. **Bugzilla-signaturmatch:** 1989579 (dup af 1986254 → 1667748) viser præcis vores sekvens (`WR_POST_UPDATE` efter `Failed to compile vertex shader` → `Handling webrender error 2`); desktop-rodårsag der var dma-buf-fd uden CLOEXEC arvet af child-processer. **RUN G (00:1x): RUST_LOG virker på ESR; ALLE shaders kompilerede Success (inkl. 1989579-shaderne), men reset kom alligevel ved #950 / ~11 min — UDEN shader-/GL-fejl og uden dmesg-signatur → shader-hypotesen AFKRÆFTET; reset kan komme sent; ~1,4 Hz er sandsynligvis transfer-cap ~2M px/s på fuld-vindue-presents.** **GENNEMBRUD 26. aug morgen — GPU-MMU-fault:** dmesg viser PVR-kernens `BIF0 - FAULT` (TPUA_USC læser fra umappet 0x0102FF9540) + `Innocent Lockup`-recovery → kontekst ødelagt → WR_POST_UPDATE. **`gfx.webrender.precache-shaders=true` gør shader-fejlen (`cs_border_segment` ved warmup) + reset DETERMINISTISK (målt 3×, #50–#150 / ~1–3 min); uden precache kompilerer shaderen Success og reset er flaky.** gdb fangede SIGSEGV i Renderer-tråden efter reset. **BUFFER-FIX INSTALLERET (01:1x, md5 4ba7a90d): `destroyBuffers()` flytter ALLE buffere til retired-kø (frigøres efter 3 presents) — PVR-MMU-faulten er VÆK (0 i dmesg), stress-kørslen stabil (#350–450 uden reset mod tidligere #2–#150 flaky; ét sent reset ved ~#450); FPS ~1,5 (2,7 kun med gdb-breakpoint på eglMakeCurrent — skjult flaskehals, ikke produktionsløsning).** **SUBWAY SURFERS FRYS FORKLARET (01:5x): spillets Unity-shaders kræver #extension GL_EXT_draw_buffers + GL_EXT_frag_depth, og driver-kompileren afviser begge — GL_EXT_draw_buffers står i GL_EXTENSIONS men kompilerer ikke (målt ES2+ES3 med shader_ext_test.c); GL_EXT_frag_depth mangler helt. Spillet kan derfor ikke rendere → frys. Dette er den egentlige spil-blokade, separat fra buffer/GPU-reset-sporet.** **WEBGL1-TVANG AFKRÆFTET (02:1x): webgl.enable-webgl2=false + driver-patch (GL_EXT_draw_buffers fjernet fra udvidelseslisten via bind-mount) — spillet fejler stadig: Unitys egne shaders kræver MRT-direktivet, og kompileren afviser det uanset udvidelseslisten (målt med trivial_test.c). Konklusion: MRT-blokaden er en 2016-æra driver-begrænsning, ikke konfigurationsfejl. Reverse-engineering/erstatning af bloben er urealistisk (lukket USC-firmware; flerårigt driverprojekt).** **Næste:** research nyere PowerVR-DDK til RK3368 (draw_buffers) som afgrænset spor, ELLER find spil uden MRT-shaders; buffer-fixet beholdes; dmesg-overvågning i start_game.sh. Detaljer: docs/grafik/gpu-historien.md §5.15e, `docs/log/2026-08-26-gpu-fault-gennembrud.md`, beviser i `devuan/gpu/beviser/`.**
@@ -342,8 +342,9 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
     Restpunkter: (a) næste kernel-byg: `CONFIG_ANDROID_PARANOID_NETWORK` FRA
     (blokerede ikke-root-sockets; fixet på boksen med inet-gruppe 3003) + bcmdhd
     (wifi mangler); (b) bindapi-patchen er bind-mount og genkøres efter reboot;
-    (c) chrony/NTP afvises på vores byg ("No suitable source") — arbejdsfix = HTTP-
-    ur-sync i myinit.sh; (d) cs_blur-WR-shaderstøj i Firefox-loggen (blokerer ikke
+    (c) chrony/NTP blev oprindeligt afvist ("No suitable source") — **løst 16.
+    nov 2026** med primær GID 3003/inet og numeriske kilder; HTTP-ur-sync er kun
+    fallback; (d) cs_blur-WR-shaderstøj i Firefox-loggen (blokerer ikke
     WebGL); (e) spil-blokaden: **BESLUTTET (26. aug): gralloc-lock-sporet
     forfølges** (præsentation i GPU-processen); Spor B/accept fravalgt. Detaljer:
     `docs/log/2026-08-26-ddk15-baseline-flashtest.md`.
@@ -471,23 +472,34 @@ Videre (prioriteret rækkefølge, aftalt aug 2026):
   original libGLESv2.
 - [ ] **Sorte Firefox-chrome (26. aug aften, løst med software-layers):** med
   `layers.acceleration.disabled=true` vises chrome + side normalt (bekræftet).
-- **God start i en ny session (boot-stabilitet og provisionering, 16. nov
-  2026 ~20:43) — NUVÆRENDE:**
-  *"Læs `docs/log/2026-11-16-boot-stability.md` og den nyeste del af
-  `docs/log/2026-11-16-launcher.md`. Branch er `firefox-fps-tuning`. STATUS:
-  Spillet kan startes efter reboot. Tiden stod på 2013, fordi tidlig DNS
-  fejlede og `_chrony` fik EACCES på IPv4-sockets uden primær GID 3003/inet.
-  Chrony/NTP virker nu med `inet` som primær gruppe og numeriske kilder;
-  `geekbox-clock-sync` via gatewayens HTTP-Date er fallback og gendanner
-  seneste epoch fra eMMC. Efter strømcyklus er stabil MAC
-  `02:fe:f1:8b:9f:77`, korrekt tid ved skrivebordet og både Ethernet og WiFi
-  verificeret. `myinit` aktiverer fatal-signal-logning. NÆSTE: byg imaget med
-  `sudo devuan/09_make_emmc_img.sh`; flash næste boks med
-  `sudo devuan/testflash.sh`; kør
-  `bash devuan/gpu/provision_game_box.sh <ny-ip> <kilde-ip>` og start spillet.
-  FÆLDER: chronyd rydder supplerende grupper, så inet skal være primær GID;
-  DNS kan mangle tidligt i boot; `sudo` i agent-sessionen kan kræve
-  adgangskode; `wlan0` er først klar efter firmware-load."*
+- **God start i en ny session (flash og spillbar boks 2, 18. nov 2026
+  ~21:24) — NUVÆRENDE:**
+  *"Læs `docs/log/2026-11-18-dokumentationsrevision.md` først, derefter
+  `docs/log/2026-11-16-boot-stability.md` (hele notatet), den nyeste
+  del af `docs/log/2026-11-16-launcher.md` og
+  `docs/boksen/flash.md` §11. Branch er `firefox-fps-tuning`; de nyeste
+  tekniske commits er `f5c70ed` (chrony/NTP) og `1edee7a`
+  (boot/tid/spilruntime), efterfulgt af dokumentationsrevisionen.
+  STATUS 18. nov 2026 ~21:24: Boksen har kørt stabilt efter strømcyklus.
+  Tiden var korrekt ved skrivebordet, Subway Surfers startede via
+  skrivebordsikonet, og chrony er fortsat synkroniseret med
+  `Reference ID 91.229.203.9`, `Leap status: Normal` og cirka 50 us offset.
+  Stabil eth0-MAC er `02:fe:f1:8b:9f:77`, Ethernet er `192.168.0.152`, og
+  WiFi/DHCP er også verificeret. NTP virker fordi `_chrony` har primær GID
+  3003/inet; supplerende grupper ryddes ved privilege-drop. Numeriske kilder
+  ligger i `/etc/chrony/sources.d/geekbox-fixed.sources`.
+  FØRSTE OPGAVE: byg base-imaget med
+  `sudo devuan/09_make_emmc_img.sh`. Agent-sessionen kan mangle sudo-adgang,
+  så brugeren kan blive bedt om at køre kommandoen. Sæt derefter den anden
+  boks i fysisk loader-tilstand og flash med `sudo devuan/testflash.sh`.
+  Efter første boot: find IP med `bash devuan/find_box.sh`, og gør boksen
+  spilklar med
+  `bash devuan/gpu/provision_game_box.sh <ny-ip> 192.168.0.152`.
+  ACCEPTTEST: korrekt tid før skrivebordet, NTP Normal, stabil MAC,
+  Ethernet/WiFi, `Subway Surfers` starter med lyd og input, og en fejlet
+  launcher bliver stående med logsti. FÆLDER: chronyd rydder supplerende
+  grupper; DNS kan mangle tidligt i boot; `system.img` er ikke i base-imaget;
+  `sudo` kan kræve adgangskode; `wlan0` kommer først efter firmware-load."*
 
 - **God start i en ny session (generalisering af Subway-POC, 12. nov 2026
   ~22:15) — TIDLIGERE HOVEDSPOR, stadig milepæl:**

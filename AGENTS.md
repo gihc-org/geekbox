@@ -10,23 +10,26 @@ GeekBox er flashet med Lubuntu V160309 (august 2026). Metode, værktøjer og kil
 
 Devuan Excalibur (armhf) booter fra eMMC med vendor-kernel 3.10 på begge bokse: desktop (LXDE/fbdev), WiFi, HDMI-lyd og ssh (dropbear) virker. **GPU + WebGL virker:** DDK 1.5@3830101 kører på en genbygget 3.10-kernel med 1.5-KM, 1.5-userspace (32-bit) og 64-bit `pvrsrvctl`. Subway Surfers er stabilt spilbart i Firefox med vnext12 `dcc0a68f`, alpha-shim via BiDi-preload og `CYAN_DEPTHCLEAR=1`. Standarden er 960x540 med automatisk canvas 0,75 og cirka 8 skærmopdateringer/s. Lyd, input og lokal ét-kliks start efter genstart virker. Boks 2 blev flashet direkte fra laptop i loader-tilstand (script `09` + `UF`, aug 2026). Scripts i `devuan/`.
 
-**Aktuelt spor (12. nov 2026): Generalisering af Subway-POC'en** på branch
-`firefox-fps-tuning`. POC'en er afsluttet: fence-fd-lækagen er rettet, UI- og
-viewport-fokus er løst, lokal ét-kliks bring-up virker efter genstart, og
-automatisk canvas 0,75 giver cirka 8 skærmopdateringer/s ved 960x540.
+**Aktuelt spor (18. nov 2026): Stabil boot og flash af næste boks** på branch
+`firefox-fps-tuning`. Den aktuelle boks har stabil eth0-MAC udledt fra
+CPU-serien, korrekt tid efter strømcyklus og fungerende Ethernet/WiFi.
+Chrony/NTP virker fordi `_chrony` har primær GID `3003/inet`; numeriske
+kilder undgår tidlig DNS. HTTP-`Date` via gatewayen er fallback. Subway
+Surfers kan startes via skrivebordsikonet.
 
-Den næste milepæl er at opdele løsningen i tre lag: fælles GPU/X11-platform,
-Firefox/WebGL-runner og en versionsstyret spilprofil. Subway skal fortsat
-køre uændret gennem profilen. Derefter skal en uafhængig lokal WebGL-test og
-et andet WebGL-spil kunne startes med profilkonfiguration frem for
-kodeændringer. En native 3D-opgave skal validere, at GPU- og
-præsentationslaget også kan genbruges uden browseren.
+Næste milepæl er at bygge et nyt base-image, flashe den anden boks og køre
+`devuan/gpu/provision_game_box.sh` med den nuværende boks som kilde. Den
+fælles game-runtime indeholder GPU-platform, Firefox-shims, hjælpescripts og
+en minimal spilprofil. Accepttesten er korrekt tid/NTP, stabil MAC, lyd,
+input og ét-kliks spilstart på den nye boks.
 
-Fortsæt ikke med Subway-specifik FPS-tuning, før generaliseringen og
-genbrugstestene er gennemført. Læs den nyeste handover i `TODO.md`,
-`docs/log/2026-11-12-stability.md`, `docs/log/2026-11-11-stability.md`,
-`docs/grafik/fps-analysen-2026-09-25.md` §0 og `docs/faeller.md` fælde
-41-68.
+Læs den nyeste handover i `TODO.md`,
+`docs/log/2026-11-18-dokumentationsrevision.md`,
+`docs/log/2026-11-16-boot-stability.md` og
+`docs/log/2026-11-16-launcher.md`, samt `docs/boksen/flash.md` §11.
+Generaliseringen til fælles platform, Firefox-runner og versionsstyret
+spilprofil er fortsat den efterfølgende milepæl. Fortsæt ikke med
+Subway-specifik FPS-tuning før flash-flowet er verificeret.
 Chromium-sporet er parkeret: lyd/logik kan køre, men 3D-verdenen mangler,
 native depth-clear giver GPU-wedge, og der er separate
 Maglev-/JITless-crashes.
@@ -38,8 +41,7 @@ flaskehals; NEON og fire konverteringstråde reducerede `present()` fra cirka
 261 ms til cirka 29 ms. `layout.frame_rate`, SWGL og hardware-WebRender er
 fortsat blindgyder, mens canvas 0,75 nu er den accepterede webspil-variant.
 Blå glitches og mønt-/bogstavfejlen er udskudt. Kernel clone3-fix er bygget og
-flashet; næste kernel-byg er planlagt med
-`CONFIG_ANDROID_PARANOID_NETWORK` fra plus bcmdhd. NTP-sporet er åbent.
+flashet. `bcmdhd`/WiFi virker, og NTP-sporet er lukket.
 Overblik: `OVERBLIK.md`.
 
 ## Agentens rolle
